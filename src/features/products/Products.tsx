@@ -37,14 +37,15 @@ export default function Products() {
                     <TableHead>
                         <TableRow>
                             <TableCell>ID</TableCell>
-                            <TableCell>Название</TableCell>
-                            <TableCell>Артикул</TableCell>
-                            <TableCell>Цена закупки</TableCell>
-                            <TableCell>Цена продажи</TableCell>
-                            <TableCell>Вес</TableCell>
-                            <TableCell>Размеры</TableCell>
-                            <TableCell>Категория</TableCell>
-                            <TableCell>Дата создания</TableCell>
+                            <TableCell>Name</TableCell>
+                            <TableCell>Artikel</TableCell>
+                            <TableCell>Artikel des Lieferant</TableCell>
+                            <TableCell>Anschaffungspreis</TableCell>
+                            <TableCell>Verkaufspreis</TableCell>
+                            <TableCell>Maßeinheit</TableCell>
+                            <TableCell>Gewicht</TableCell>
+                            <TableCell>Abmessungen</TableCell>
+                            <TableCell>Kategorie</TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
@@ -54,14 +55,16 @@ export default function Products() {
                                     <TableCell>{product.id}</TableCell>
                                     <TableCell>{product.name}</TableCell>
                                     <TableCell>{product.article}</TableCell>
+                                    <TableCell>{product.vendorArticle}</TableCell>
                                     <TableCell>{product.purchasingPrice} €</TableCell>
                                     <TableCell>{product.sellingPrice} €</TableCell>
+                                    <TableCell>{product.unitOfMeasurement}</TableCell>
                                     <TableCell>{product.weight} кг</TableCell>
                                     <TableCell>
                                       {product.newDimensions ? `${product.newDimensions.height} * ${product.newDimensions.length} * ${product.newDimensions.width} м`: ""}
                                     </TableCell>
                                     <TableCell>{product.productCategory?.name}</TableCell>
-                                    <TableCell>{new Date(product.createdDate).toLocaleDateString()}</TableCell>
+                            
                                 </TableRow>
                             ))
                         ) : (

@@ -1,6 +1,8 @@
 import { AppBar, Toolbar, Typography, Button } from "@mui/material";
 import { NavLink } from "react-router-dom";
 import { styled } from "@mui/material/styles";
+import { useAppDispatch } from "../redux/hooks";
+import { logout } from "../features/auth/authSlice";
 
 const StyledNavLink = styled(NavLink)(({ theme }) => ({
   textDecoration: "none",
@@ -13,6 +15,11 @@ const StyledNavLink = styled(NavLink)(({ theme }) => ({
 }));
 
 export default function HeaderApp() {
+  
+  const dispatch = useAppDispatch()
+  function handleLogout() {
+    dispatch(logout())
+  }
   return (
     <AppBar position="fixed" color="primary">
       <Toolbar>
@@ -24,8 +31,8 @@ export default function HeaderApp() {
         <StyledNavLink to="/sales">Sales</StyledNavLink>
         <StyledNavLink to="/purchases">Purchases</StyledNavLink>
         <StyledNavLink to="/customs">Customs</StyledNavLink>
-        <Button color="inherit" component={NavLink} to="/login">
-          LogIn
+        <Button color="inherit" component={NavLink} to="/" onClick={handleLogout}>
+          Log out
         </Button>
       </Toolbar>
     </AppBar>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { TextField, Button, Box, Typography, Alert } from "@mui/material";
+import { TextField, Button, Box, Typography, Alert} from "@mui/material";
 import { useSelector } from "react-redux";
 import { RootState } from "../redux/store";
 import { useAppDispatch } from "../redux/hooks";
@@ -21,8 +21,10 @@ const LoginForm = () => {
   };
 
   return (
-    <Box sx={{ maxWidth: 400, mx: "auto", mt: 5 }}>
-      <Typography variant="h5">Login form</Typography>
+    <Box sx={{ maxWidth: 400, mx: "auto", mt: 5, p: 3, bgcolor: "white", boxShadow: 3, borderRadius: 2 }}>
+      <Typography variant="h5" align="center" gutterBottom>
+        SIGN IN
+      </Typography>
       {loginErrorMessage && <Alert severity="error">{loginErrorMessage}</Alert>}
       <form onSubmit={handleSubmit}>
         <TextField
@@ -35,7 +37,7 @@ const LoginForm = () => {
           onChange={handleChange}
         />
         <TextField
-          label="Пароль"
+          label="Passwort"
           name="password"
           type="password"
           fullWidth
@@ -43,7 +45,13 @@ const LoginForm = () => {
           value={form.password}
           onChange={handleChange}
         />
-        <Button type="submit" variant="contained" color="primary" fullWidth disabled={status === "loading"}>
+        
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+          <Typography variant="body2" color="primary" component="a" href="#" sx={{ textDecoration: "none" }}>
+            Forgot Password?
+          </Typography>
+        </Box>
+        <Button type="submit" variant="contained" color="success" fullWidth disabled={status === "loading"}>
           Login
         </Button>
       </form>

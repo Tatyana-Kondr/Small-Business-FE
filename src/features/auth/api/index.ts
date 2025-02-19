@@ -5,16 +5,21 @@ export async function fetchRegister(userCreateDto: UserCreateDto): Promise<User>
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      accept: "*/*",
     },
     body: JSON.stringify(userCreateDto),
   });
 
-  if (!res.ok) {
-    const { message } = await res.json();
-    throw new Error(message || "Registration failed");
+  if (res.status === 409) {
+    throw new Error("Conflict: User already exists.")
   }
 
-  return await res.json();
+  if (!res.ok) {
+    const errorData = await res.json()
+    throw new Error(errorData.message || "Failed to register user.")
+  }
+
+  return res.json()
 }
 
 export async function fetchLogin(userLoginDto: UserLoginDto): Promise<LoginResponse> {
@@ -22,31 +27,39 @@ export async function fetchLogin(userLoginDto: UserLoginDto): Promise<LoginRespo
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      accept: "application/json", // Лучше явно указывать application/json
     },
     body: JSON.stringify(userLoginDto),
   });
-
-  if (!res.ok) {
-    const { message } = await res.json();
-    throw new Error(message || "Login failed");
+  
+  let data;
+  try {
+    data = await res.json(); // Парсим JSON один раз
+  } catch (error) {
+    throw new Error("Ошибка парсинга ответа от сервера");
   }
 
-  return await res.json();
+  if (!res.ok) {
+    throw new Error(data?.message || "Login failed");
+  }
+
+  return data;
 }
 
-export async function fetchCurrentUser(): Promise<User> {
-  const token = localStorage.getItem("token");
-  if (!token) throw new Error("No token found");
 
-  const res = await fetch("/api/account", {
+export async function fetchCurrentUser(): Promise<User> {
+
+  const res = await fetch("/api/auth/me", {
     headers: {
-      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      accept: "*/*",
+      authorization: `Bearer ${localStorage.getItem("token")}`,
     },
   });
 
   if (!res.ok) {
-    throw new Error("Failed to fetch user data");
+    throw new Error("Login failed")
   }
 
-  return await res.json();
+  return res.json();
 }

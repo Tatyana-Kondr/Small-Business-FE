@@ -1,5 +1,5 @@
 import { createAppSlice } from "../../redux/createAppSlice";
-import { fetchLogin, fetchRegister } from "./api";
+import { fetchCurrentUser, fetchLogin, fetchRegister } from "./api";
 import { AuthState, UserCreateDto, UserLoginDto } from "./types";
 
 
@@ -35,7 +35,7 @@ export const authSlice = createAppSlice({
         },
         rejected: (state, action) => {
           state.status = "failed";
-          state.registerErrorMessage = action.error.message || "Registration failed";
+          state.registerErrorMessage = action.error?.message || "Registration failed";
         },
       }
     ),
@@ -59,13 +59,38 @@ export const authSlice = createAppSlice({
           state.status = "failed";
           state.isAuthenticated = false;
           state.token = null;
-          state.loginErrorMessage = action.error.message || "Login failed";
+          state.loginErrorMessage = action.error?.message || "Login failed";
         },
       }
     ),
+
+    user: create.asyncThunk(
+      async () => {
+        const response = await fetchCurrentUser();
+        return response;
+      },
+      {
+        pending: (state) => {},
+        fulfilled: (state, action) => {
+          state.user = action.payload
+        },
+        rejected: state => {
+          state.isAuthenticated = false;
+          state.token = null;
+        },
+      },
+    ),
+
+    logout: create.reducer(state => {
+      state.user = null;
+      state.token = null;
+      state.isAuthenticated = false;
+    }),
+    
   }),
 
   selectors: {
+    selectUser: userState => userState.user,
     selectRoles: userState => userState.user?.role,
     selectIsAuthenticated: userState => userState.isAuthenticated,
     selectLoginError: userState => userState.loginErrorMessage,
@@ -74,6 +99,6 @@ export const authSlice = createAppSlice({
   },
 });
 
-export const { register, login } = authSlice.actions;
-export const { selectRoles, selectIsAuthenticated, selectLoginError, selectRegisterError, selectToken } = authSlice.selectors;
+export const { register, login, user, logout } = authSlice.actions;
+export const { selectUser, selectRoles, selectIsAuthenticated, selectLoginError, selectRegisterError, selectToken } = authSlice.selectors;
 
