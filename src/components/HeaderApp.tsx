@@ -30,7 +30,8 @@ export default function HeaderApp() {
         <StyledNavLink to="/products">Products</StyledNavLink>
         <StyledNavLink to="/sales">Sales</StyledNavLink>
         <StyledNavLink to="/purchases">Purchases</StyledNavLink>
-        <StyledNavLink to="/customs">Customs</StyledNavLink>
+        <StyledNavLink to="/customs">Kunden</StyledNavLink>
+        <StyledNavLink to="/customs">Lieferanten</StyledNavLink>
         <Button color="inherit" component={NavLink} to="/" onClick={handleLogout}>
           Log out
         </Button>
