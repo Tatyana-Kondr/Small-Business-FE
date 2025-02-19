@@ -25,7 +25,7 @@ export default function HeaderApp() {
         <StyledNavLink to="/purchases">Purchases</StyledNavLink>
         <StyledNavLink to="/customs">Customs</StyledNavLink>
         <Button color="inherit" component={NavLink} to="/login">
-          Sign In
+          LogIn
         </Button>
       </Toolbar>
     </AppBar>

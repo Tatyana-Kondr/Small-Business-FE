@@ -2,8 +2,10 @@ import type { Action, ThunkAction } from "@reduxjs/toolkit"
 import { combineSlices, configureStore } from "@reduxjs/toolkit"
 import { setupListeners } from "@reduxjs/toolkit/query"
 import { productsSlice } from "../features/products/productsSlice";
+import { authSlice } from "../features/auth/authSlice";
 
-const rootReducer = combineSlices(productsSlice)
+
+const rootReducer = combineSlices(productsSlice, authSlice)
 
 // TypeScript-оператор, который позволяет получить тип возвращаемого значения функции. 
 // В данном случае, typeof rootReducer даёт тип самой функции редьюсера, 
