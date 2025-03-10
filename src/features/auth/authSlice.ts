@@ -9,7 +9,7 @@ const initialState: AuthState = {
   token: localStorage.getItem("token") || null,
   status: "idle",
   error: null,
-  loginErrorMessage: undefined,
+  loginErrorMessage: undefined, 
   registerErrorMessage: undefined,
 };
 
@@ -70,7 +70,7 @@ export const authSlice = createAppSlice({
         return response;
       },
       {
-        pending: (state) => {},
+        pending: () => {},
         fulfilled: (state, action) => {
           state.user = action.payload
         },
