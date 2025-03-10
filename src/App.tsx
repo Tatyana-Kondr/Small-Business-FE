@@ -9,6 +9,14 @@ import LoginForm from './components/Login';
 import { useAppDispatch, useAppSelector } from './redux/hooks';
 import { selectIsAuthenticated, user } from './features/auth/authSlice';
 import { useEffect } from 'react';
+import Customers from './features/customers/Customers';
+import CustomersWithNumber from './features/customers/CustomersWithNumber';
+import CustomerCard from './features/customers/CustomerCard';
+import CreateCustomer from './features/customers/CreateCustomer';
+import ProductCategoryList from './features/products/components/ProductCategoryList';
+import CreateProductCategory from './features/products/components/CreateProductCategory';
+import ProductCard from './features/products/components/ProductCard';
+
 
 function App() {
   const isAuthenticated = useAppSelector(selectIsAuthenticated)
@@ -35,6 +43,14 @@ function App() {
             element={isAuthenticated ? <Home /> : <Navigate to="login" />}
           />
           <Route path="register" element={<Register />} />
+          <Route path="lieferanten" element={<Customers />} />
+          <Route path="/create-customer" element={<CreateCustomer />} />
+          <Route path="kunden" element={<CustomersWithNumber />} />
+          <Route path="/customer/:customerId" element={<CustomerCard />} />
+          <Route path="/product-card/:productId" element={<ProductCard />} />
+          <Route path="/product-categories" element={<ProductCategoryList />} />
+          <Route path="/create-product-category" element={<CreateProductCategory />} />
+          
           {/* Страница 404 */}
           <Route path="*" element={<NoSuchPage />} />
         </Route>
