@@ -3,9 +3,12 @@ import { combineSlices, configureStore } from "@reduxjs/toolkit"
 import { setupListeners } from "@reduxjs/toolkit/query"
 import { productsSlice } from "../features/products/productsSlice";
 import { authSlice } from "../features/auth/authSlice";
+import { customersSlice } from "../features/customers/customersSlice";
+import { productCategoriesSlice } from "../features/products/productCategoriesSlice";
+import { productFilesSlice } from "../features/products/productFilesSlice";
 
 
-const rootReducer = combineSlices(productsSlice, authSlice)
+const rootReducer = combineSlices(productsSlice, authSlice, customersSlice, productCategoriesSlice, productFilesSlice)
 
 // TypeScript-оператор, который позволяет получить тип возвращаемого значения функции. 
 // В данном случае, typeof rootReducer даёт тип самой функции редьюсера, 
