@@ -10,6 +10,14 @@ website: string
 }
 
 export interface Address{
+  postalCode: string
+  country: string
+  city: string
+  street: string 
+  building:string
+}
+
+export interface AddressDto{
     postalCode: string
     country: string
     city: string
@@ -19,16 +27,16 @@ export interface Address{
 
 export interface NewCustomerDto{
     name: string
-    customerNumber: string
-    address: Address
-    phone: string
-    email: string
-    website: string
+    customerNumber?: string | null;
+    address: AddressDto
+    phone?: string | null;
+    email?: string | null;
+    website?: string | null;
     }
 
 export interface CustomersState {
   customersList: Customer[];
-  selectedProduct: Customer | undefined;
+  selectedCustomer: Customer | undefined;
   totalPages: number;
   currentPage: number;
 }
