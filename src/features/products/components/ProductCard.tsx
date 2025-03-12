@@ -2,11 +2,11 @@ import type React from "react"
 import { useEffect, useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { useAppDispatch, useAppSelector } from "../../../redux/hooks"
-import { getProduct, selectProduct, selectLoading, selectError, editProduct } from "../productsSlice"
+import { getProduct, selectProduct, selectLoading, selectError } from "../productsSlice"
 import { getProductFiles, uploadProductFile, deleteProductFile, selectProductFiles } from "../productFilesSlice"
-import { CircularProgress, Container, Box, Typography, Button, Paper, Grid, Modal, IconButton, TextField } from "@mui/material"
+import { CircularProgress, Container, Box, Typography, Button, Paper, Grid, Modal, IconButton, Dialog, DialogTitle, DialogContent } from "@mui/material"
 import { ArrowBackIos, ArrowForwardIos, Close } from "@mui/icons-material"
-import { UpdateProductDto } from "../types"
+import EditProduct from "./EditProduct"
 
 
 export default function ProductCard() {
@@ -19,21 +19,9 @@ export default function ProductCard() {
     const navigate = useNavigate()
 
     const [currentFileIndex, setCurrentFileIndex] = useState(0)
-    const [openModal, setOpenModal] = useState(false)
+    const [openModal, setOpenModal] = useState(false);
     const [editModalOpen, setEditModalOpen] = useState(false);
-    const [editedProduct, setEditedProduct] = useState<UpdateProductDto>({
-        name: product?.name,
-        article: product?.article,
-        vendorArticle: product?.vendorArticle,
-        purchasingPrice: product?.purchasingPrice,
-        sellingPrice: product?.sellingPrice,
-        unitOfMeasurement: product?.unitOfMeasurement,
-        weight: product?.weight,
-        newDimensions: product?.newDimensions,
-        productCategory: product?.productCategory,
-        description: product?.description,
-        customsNumber: product?.customsNumber
-    });
+    
     const BASE_URL = "http://localhost:8080";
     const NO_IMAGE_PATH = "/media/no.jpg"; // Путь к заглушке
 
@@ -44,25 +32,7 @@ export default function ProductCard() {
         }
     }, [dispatch, productId])
 
-    useEffect(() => {
-        if (product) {
-            setEditedProduct({
-                name: product.name || undefined,
-                article: product.article || undefined,
-                vendorArticle: product.vendorArticle || undefined,
-                purchasingPrice: product.purchasingPrice || undefined,
-                sellingPrice: product.sellingPrice || undefined,
-                unitOfMeasurement: product.unitOfMeasurement || undefined,
-                weight: product.weight || undefined,
-                newDimensions: product.newDimensions || undefined,
-                productCategory: product.productCategory || undefined,
-                description: product.description || undefined,
-                customsNumber: product.customsNumber || undefined,
-            });
-        }
-    }, [product]);
-
-    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         if (event.target.files && event.target.files.length > 0 && productId) {
             dispatch(
                 uploadProductFile({
@@ -103,23 +73,14 @@ export default function ProductCard() {
         setOpenModal(false)
     }
 
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        
-        setEditedProduct((prevState) => ({
-            ...prevState,
-            [name]: value || "",  // Используем name без приведения к типу, так как теперь это разрешено индексной сигнатурой
-        }));
+    const handleOpenEditModal = () => {
+        setEditModalOpen(true);
     };
-    
-  
-    const handleSaveChanges = () => {
-    if (productId && editedProduct) {
-        dispatch(editProduct({ id: Number(productId), updateProductDto: editedProduct }));
-        setEditModalOpen(false);
-    }
-};
 
+    const handleCloseEditModal = () => {
+        setEditModalOpen(false);
+    };
+  
     // Проверка, существует ли файл по текущему индексу
     const isValidIndex = currentFileIndex >= 0 && currentFileIndex < files.length;
     const currentFile = isValidIndex ? files[currentFileIndex] : null;
@@ -213,7 +174,7 @@ export default function ProductCard() {
                                     </Grid>
                                 ))}
                             </Grid>
-                            <Button variant="contained" sx={{ mt: 2 }} onClick={() => setEditModalOpen(true)}>
+                            <Button variant="contained" sx={{ mt: 2 }} onClick={handleOpenEditModal}>
                             Изменить данные
                         </Button>
                         </Box>
@@ -300,30 +261,13 @@ export default function ProductCard() {
                     </IconButton>
                 </Box>
             </Modal>
-            <Modal open={editModalOpen} onClose={() => setEditModalOpen(false)}>
-        <Box sx={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: 400, bgcolor: "background.paper", boxShadow: 24, p: 4 }}>
-          <Typography variant="h6">Редактировать продукт</Typography>
-          {["name", "vendorArticle", "purchasingPrice", "sellingPrice", "unitOfMeasurement", "weight", "newDimensions", "productCategory", "description"].map((field) => (
-            <TextField
-              key={field}
-              label={field}
-              name={field}
-              value={editedProduct[field] || ""}
-              onChange={handleInputChange}
-              fullWidth
-              sx={{ mt: 2 }}
-            />
-          ))}
-          <Box sx={{ display: "flex", justifyContent: "space-between", mt: 2 }}>
-            <Button variant="contained" onClick={handleSaveChanges}>
-              Сохранить
-            </Button>
-            <Button variant="outlined" onClick={() => setEditModalOpen(false)}>
-              Отмена
-            </Button>
-          </Box>
-        </Box>
-      </Modal>
+            {/* Модальное окно для редактирования */}
+            <Dialog open={editModalOpen} onClose={handleCloseEditModal} fullWidth maxWidth="sm">
+                <DialogTitle>Редактировать продукт</DialogTitle>
+                <DialogContent>
+                    <EditProduct productId={Number(productId)} closeModal={handleCloseEditModal} />
+                </DialogContent>
+            </Dialog>
 
         </Container>
     )
