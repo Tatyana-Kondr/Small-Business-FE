@@ -6,6 +6,8 @@ import CreateProductCategory from "./CreateProductCategory";
 import EditProductCategory from "./EditProductCategory";
 import { ProductCategory } from "../types";
 import DeleteProductCategory from "./DeleteProductCategory";
+import { ArrowBackIos } from "@mui/icons-material";
+import { useNavigate } from "react-router-dom";
 
 const StyledTableHead = styled(TableHead)(({
     backgroundColor: "#1a3d6d",
@@ -17,22 +19,33 @@ const StyledTableHead = styled(TableHead)(({
 }));
 const StyledTableRow = styled(TableRow)({
     "&:hover": {
-      backgroundColor: "#f5f5f5", // Подсветка строки при наведении
-      cursor: "pointer",
+        backgroundColor: "#f5f5f5", // Подсветка строки при наведении
+        cursor: "pointer",
     },
-  });
+});
 
 export default function ProductCategoryList() {
     const dispatch = useAppDispatch();
     const productCategories = useAppSelector(selectProductCategories);
     const [selectedCategory, setSelectedCategory] = useState<ProductCategory | null>(null);  // Хранение выбранной категории
+    const navigate = useNavigate()
+
 
     useEffect(() => {
         dispatch(getProductCategories());
     }, [dispatch]);
 
+    const handleGoBack = () => {
+        navigate(-1)
+    }
+
     return (
         <Container>
+            <Box sx={{ position: "absolute", top: 75, left: 25 }}>
+                <Button variant="outlined" startIcon={<ArrowBackIos />} onClick={handleGoBack}>
+                    Back to Products
+                </Button>
+            </Box>
             {/* Верхняя панель */}
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
                 <Typography variant="h5">Produktkategorien</Typography>
@@ -64,9 +77,9 @@ export default function ProductCategoryList() {
                                                 color="primary"
                                                 size="small"
                                                 onClick={() => setSelectedCategory(category)}
-                                                sx={{ minWidth: "100px" }}
+                                                sx={{ minWidth: "100px", "&:hover": { backgroundColor: "#DBE7F9" } }}
                                             >
-                                                Изменить
+                                                Bearbeiten
                                             </Button>
 
                                             <Box sx={{ minWidth: "80px" }}>
@@ -82,7 +95,7 @@ export default function ProductCategoryList() {
                             ))
                         ) : (
                             <TableRow>
-                                <TableCell colSpan={4} align="center">Нет доступных категорий</TableCell>
+                                <TableCell colSpan={4} align="center">Keine Kategorien vorhanden</TableCell>
                             </TableRow>
                         )}
                     </TableBody>
