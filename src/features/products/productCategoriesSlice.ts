@@ -23,14 +23,16 @@ export const productCategoriesSlice = createAppSlice({
     
     getProductCategories: create.asyncThunk(
       async () => {
-        return await fetchProductCategories();
+        const categories = await fetchProductCategories();
+        return categories;
       },
       {
         fulfilled: (state, action) => {
-          state.productCategoriesList = action.payload;
+            state.productCategoriesList = action.payload;
         },
       }
     ),
+    
 
     
     addProductCategory: create.asyncThunk(
