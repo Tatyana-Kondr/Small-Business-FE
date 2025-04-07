@@ -31,9 +31,9 @@ export default function EditProductCategory({ category, onClose }: EditProductCa
         newProductCategoryDto: { name, artName }
       });
       dispatch(getProductCategories());  // Обновляем список категорий
-      onClose();  // Закрываем модальное окно
+      onClose();  
     } catch (error) {
-      setError("Ошибка при изменении категории");
+      setError("Fehler bei der Aktualisierung der Kategorie");
     } finally {
       setLoading(false);
     }
@@ -54,17 +54,17 @@ export default function EditProductCategory({ category, onClose }: EditProductCa
           borderRadius: 2
         }}
       >
-        <Typography variant="h6" mb={2}>Редактирование категории</Typography>
+        <Typography variant="h6" mb={2}>Aktualisierung der Kategorie</Typography>
 
         <TextField
-          label="Название категории"
+          label="Name"
           fullWidth
           value={name}
           onChange={(e) => setName(e.target.value)}
           margin="dense"
         />
         <TextField
-          label="Артикул"
+          label="ArtName"
           fullWidth
           value={artName}
           onChange={(e) => setArtName(e.target.value)}
@@ -73,14 +73,14 @@ export default function EditProductCategory({ category, onClose }: EditProductCa
         {error && <Typography color="error" mt={1}>{error}</Typography>}
 
         <Box mt={2} display="flex" justifyContent="space-between">
-          <Button onClick={onClose} color="secondary">Отмена</Button>
+          <Button onClick={onClose} variant="contained" color="error">Abbrechen</Button>
           <Button 
             onClick={handleSubmit} 
             variant="contained" 
             color="primary"
             disabled={loading}
           >
-            {loading ? <CircularProgress size={24} /> : "Сохранить"}
+            {loading ? <CircularProgress size={24} /> : "Speichern"}
           </Button>
         </Box>
       </Box>

@@ -24,7 +24,7 @@ export default function DeleteProductCategory({ categoryId, categoryName }: Dele
       dispatch(getProductCategories());  // Обновляем список после удаления
       handleClose();
     } catch (error) {
-      alert("Ошибка при удалении категории");
+      alert("Fehler beim Löschen der Kategorie");
     } finally {
       setLoading(false);
     }
@@ -32,21 +32,25 @@ export default function DeleteProductCategory({ categoryId, categoryName }: Dele
 
   return (
     <>
-      <Button variant="outlined" color="error" size="small" onClick={handleOpen}>
-        Удалить
+      <Button variant="outlined" color="error" size="small" onClick={handleOpen} sx={{
+        "&:hover": {
+          borderColor: "#d32f2f", // Темный красный цвет (или любой другой)
+        },
+      }}>
+        Löschen
       </Button>
 
       <Dialog open={open} onClose={handleClose}>
-        <DialogTitle>Удаление категории</DialogTitle>
+        <DialogTitle color="red"> Warnung! </DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Вы действительно хотите удалить категорию <strong>{categoryName}</strong>?
+            Wollen Sie die Kategorie <strong>{categoryName}</strong> wirklich löschen?
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleClose} color="primary">Отмена</Button>
+          <Button onClick={handleClose} color="primary">Abbrechen</Button>
           <Button onClick={handleDelete} color="error" disabled={loading}>
-            {loading ? "Удаление..." : "Удалить"}
+            {loading ? "Löschung..." : "Löschen"}
           </Button>
         </DialogActions>
       </Dialog>

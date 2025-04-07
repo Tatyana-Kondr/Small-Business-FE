@@ -23,7 +23,7 @@ export default function CreateProductCategory() {
 
   const handleSubmit = async () => {
     if (!name.trim() || !artName.trim()) {
-      setError("Заполните все поля");
+      setError("Bitte alle Felder ausfüllen");
       return;
     }
 
@@ -34,7 +34,7 @@ export default function CreateProductCategory() {
       dispatch(getProductCategories()); // Обновляем список категорий
       handleClose();
     } catch (error) {
-      setError("Ошибка при добавлении категории");
+      setError("Fehler beim Hinzufügen der Kategorie");
     } finally {
       setLoading(false);
     }
@@ -43,7 +43,7 @@ export default function CreateProductCategory() {
   return (
     <>
       <Button variant="contained" color="primary" onClick={handleOpen}>
-        Добавить категорию
+      Kategorie hinzufügen
       </Button>
 
       <Modal open={open} onClose={handleClose}>
@@ -60,17 +60,17 @@ export default function CreateProductCategory() {
             borderRadius: 2
           }}
         >
-          <Typography variant="h6" mb={2}>Новая категория</Typography>
+          <Typography variant="h6" mb={2}>Neue Kategorie</Typography>
 
           <TextField
-            label="Название категории"
+            label="Name"
             fullWidth
             value={name}
             onChange={(e) => setName(e.target.value)}
             margin="dense"
           />
           <TextField
-            label="Артикул"
+            label="ArtName"
             fullWidth
             value={artName}
             onChange={(e) => setArtName(e.target.value)}
@@ -79,14 +79,14 @@ export default function CreateProductCategory() {
           {error && <Typography color="error" mt={1}>{error}</Typography>}
 
           <Box mt={2} display="flex" justifyContent="space-between">
-            <Button onClick={handleClose} color="secondary">Отмена</Button>
+            <Button onClick={handleClose} variant="contained" color="error">Abbrechen</Button>
             <Button 
               onClick={handleSubmit} 
               variant="contained" 
               color="primary"
               disabled={loading}
             >
-              {loading ? <CircularProgress size={24} /> : "Добавить"}
+              {loading ? <CircularProgress size={24} /> : "Hinzufügen"}
             </Button>
           </Box>
         </Box>
