@@ -16,9 +16,11 @@ import CreateCustomer from './features/customers/CreateCustomer';
 import ProductCategoryList from './features/products/components/ProductCategoryList';
 import CreateProductCategory from './features/products/components/CreateProductCategory';
 import ProductCard from './features/products/components/ProductCard';
+import useSessionCheck from './hooks/useSessionCheck';
 
 
 function App() {
+  useSessionCheck();
   const isAuthenticated = useAppSelector(selectIsAuthenticated)
   const dispatch = useAppDispatch()
   useEffect(() => {
