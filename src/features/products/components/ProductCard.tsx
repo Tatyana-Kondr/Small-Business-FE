@@ -4,7 +4,7 @@ import { useParams, useNavigate } from "react-router-dom"
 import { useAppDispatch, useAppSelector } from "../../../redux/hooks"
 import { getProduct, selectProduct, selectLoading, selectError } from "../productsSlice"
 import { getProductFiles, uploadProductFile, deleteProductFile, selectProductFiles } from "../productFilesSlice"
-import { CircularProgress, Container, Box, Typography, Button, Paper, Grid, Modal, IconButton, Dialog, DialogTitle, DialogContent } from "@mui/material"
+import { CircularProgress, Container, Box, Typography, Button, Paper, Grid, Modal, IconButton, Dialog, DialogContent } from "@mui/material"
 import { ArrowBackIos, ArrowForwardIos, Close } from "@mui/icons-material"
 import EditProduct from "./EditProduct"
 
@@ -21,7 +21,7 @@ export default function ProductCard() {
     const [currentFileIndex, setCurrentFileIndex] = useState(0)
     const [openModal, setOpenModal] = useState(false);
     const [editModalOpen, setEditModalOpen] = useState(false);
-    
+
     const BASE_URL = "http://localhost:8080";
     const NO_IMAGE_PATH = "/media/no.jpg"; // Путь к заглушке
 
@@ -32,7 +32,15 @@ export default function ProductCard() {
         }
     }, [dispatch, productId])
 
-        const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    // Обновление данных после закрытия модального окна для редактирования
+    useEffect(() => {
+        if (!editModalOpen && productId) {
+            dispatch(getProduct(Number(productId)));
+        }
+    }, [editModalOpen, dispatch, productId]);
+
+
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         if (event.target.files && event.target.files.length > 0 && productId) {
             dispatch(
                 uploadProductFile({
@@ -80,7 +88,7 @@ export default function ProductCard() {
     const handleCloseEditModal = () => {
         setEditModalOpen(false);
     };
-  
+
     // Проверка, существует ли файл по текущему индексу
     const isValidIndex = currentFileIndex >= 0 && currentFileIndex < files.length;
     const currentFile = isValidIndex ? files[currentFileIndex] : null;
@@ -118,7 +126,7 @@ export default function ProductCard() {
         return (
             <Container>
                 <Box mt={4}>
-                    <Typography variant="h6">Product not found</Typography>
+                    <Typography variant="h6">Produkt nicht gefunden</Typography>
                     <Button variant="contained" color="primary" onClick={handleGoBack} sx={{ mt: 2 }}>
                         Go Back
                     </Button>
@@ -175,14 +183,14 @@ export default function ProductCard() {
                                 ))}
                             </Grid>
                             <Button variant="contained" sx={{ mt: 2 }} onClick={handleOpenEditModal}>
-                            Изменить данные
-                        </Button>
+                                Daten bearbeiten
+                            </Button>
                         </Box>
                     </Grid>
 
                     {/* Правая часть с окном для просмотра картинок */}
                     <Grid item xs={12} sm={6}>
-                        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", height: "100%" }}>
+                        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between", height: "100%" }}>
                             <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
                                 <IconButton onClick={handlePrevFile}>
                                     <ArrowBackIos />
@@ -205,18 +213,29 @@ export default function ProductCard() {
 
                             {/* Кнопки загрузки и удаления фото под изображением */}
                             <Box sx={{ marginTop: 2, display: "flex", justifyContent: "center", gap: 10 }}>
-                                <Button variant="contained" component="label" sx={{ backgroundColor: "#01579b" }}>
-                                    Загрузить фото
+                                <Button
+                                    variant="contained"
+                                    component="label"
+                                    sx={{
+                                        backgroundColor: "#01579b",
+                                        "&:hover": { backgroundColor: "#014378" }, // Темнее при наведении
+                                    }}
+                                >
+                                    Bild hochladen
                                     <input type="file" hidden accept="image/*" onChange={handleFileChange} />
                                 </Button>
+
                                 <Button
                                     variant="contained"
                                     color="error"
-                                    sx={{ backgroundColor: "#d32f2f" }}
+                                    sx={{
+                                        backgroundColor: "#d32f2f",
+                                        "&:hover": { backgroundColor: "#a62828" }, // Темнее при наведении
+                                    }}
                                     onClick={() => handleDeleteFile(files[currentFileIndex]?.id)}
                                     disabled={files.length === 0}
                                 >
-                                    Удалить фото
+                                    Bild löschen
                                 </Button>
                             </Box>
                         </Box>
@@ -263,7 +282,6 @@ export default function ProductCard() {
             </Modal>
             {/* Модальное окно для редактирования */}
             <Dialog open={editModalOpen} onClose={handleCloseEditModal} fullWidth maxWidth="sm">
-                <DialogTitle>Редактировать продукт</DialogTitle>
                 <DialogContent>
                     <EditProduct productId={Number(productId)} closeModal={handleCloseEditModal} />
                 </DialogContent>

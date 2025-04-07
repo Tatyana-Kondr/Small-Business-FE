@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
 import { editProduct, selectProduct } from "../productsSlice";
 import { UpdateProductDto } from "../types";
-import { selectProductCategories } from "../productCategoriesSlice";
-import { Box, Button, TextField, MenuItem, Select, SelectChangeEvent } from "@mui/material";
+import { getProductCategories, selectProductCategories } from "../productCategoriesSlice";
+import { Box, Button, TextField, MenuItem, Select, SelectChangeEvent, FormControl, InputLabel } from "@mui/material";
 
 interface EditProductProps {
     productId: number;
@@ -39,7 +39,12 @@ export default function EditProduct({ productId, closeModal }: EditProductProps)
         }
     }, [selectedProduct]);
 
+    useEffect(() => {
+        dispatch(getProductCategories());
+    }, [dispatch]);
+
     if (!productData) return <p>Loading...</p>;
+    if (!categories.length) return <p>Loading categories...</p>;
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -62,34 +67,35 @@ export default function EditProduct({ productId, closeModal }: EditProductProps)
         const categoryId = Number(e.target.value);
         const category = categories.find((cat) => cat.id === categoryId);
         if (category) {
-          setProductData((prev) => ({
-            ...prev!,
-            productCategory: category,
-          }));
+            setProductData((prev) => ({
+                ...prev!,
+                productCategory: category,
+            }));
         }
-      };
-      
-      
+    };
+
+
 
     const handleSubmit = async () => {
         try {
             if (!productData) return;
             await dispatch(editProduct({ id: productId, updateProductDto: productData }));
-            alert("Продукт успешно обновлён!");
+            alert("Das Produkt wurde erfolgreich aktualisiert!");
             closeModal();
         } catch (error) {
-            console.error("Ошибка при обновлении продукта:", error);
+            console.error("Fehler bei der Produktaktualisierung:", error);
         }
     };
+    console.log("Categories:", categories);
 
     return (
         <Box sx={{ p: 2 }}>
-            <h2>Редактировать продукт</h2>
+            <h2>Produkt bearbeiten</h2>
 
             <TextField
                 fullWidth
                 margin="normal"
-                label="Название"
+                label="Name"
                 name="name"
                 value={productData.name}
                 onChange={handleChange}
@@ -98,7 +104,7 @@ export default function EditProduct({ productId, closeModal }: EditProductProps)
             <TextField
                 fullWidth
                 margin="normal"
-                label="Артикул"
+                label="Artikel des Lieferanten"
                 name="vendorArticle"
                 value={productData.vendorArticle}
                 onChange={handleChange}
@@ -107,27 +113,27 @@ export default function EditProduct({ productId, closeModal }: EditProductProps)
             <TextField
                 fullWidth
                 margin="normal"
-                label="Цена закупки"
+                label="Kaufpreis"
                 name="purchasingPrice"
                 type="number"
                 value={productData.purchasingPrice}
                 onChange={handleChange}
             />
 
-<TextField
+            <TextField
                 fullWidth
                 margin="normal"
-                label="Цена продажи"
+                label="Verkaufspreis"
                 name="sellingPrice"
                 type="number"
                 value={productData.sellingPrice}
                 onChange={handleChange}
             />
 
-<TextField
+            <TextField
                 fullWidth
                 margin="normal"
-                label="Masseinheit"
+                label="Maßeinheit"
                 name="unitOfMeasurement"
                 value={productData.unitOfMeasurement}
                 onChange={handleChange}
@@ -135,32 +141,64 @@ export default function EditProduct({ productId, closeModal }: EditProductProps)
             <TextField
                 fullWidth
                 margin="normal"
-                label="Вес"
+                label="Gewicht (kg)"
                 name="weight"
                 type="number"
                 value={productData.weight}
                 onChange={handleChange}
             />
 
-            <h3>Размеры</h3>
-            <input name="height" type="number" value={productData.newDimensions?.height ?? ""} onChange={handleDimensionsChange} />
-
-            <input name="length" type="number" value={productData.newDimensions?.length ?? ""} onChange={handleDimensionsChange} />
-
-            <input name="width" type="number" value={productData.newDimensions?.width ?? ""} onChange={handleDimensionsChange} />
-
-            <h3>Категория</h3>
-            <Select value={productData.productCategory?.id} onChange={handleCategoryChange}>
-                {categories.map((category) => (
-                    <MenuItem key={category.id} value={category.id}>
-                        {category.name}
-                    </MenuItem>
-                ))}
-            </Select>
             <TextField
                 fullWidth
                 margin="normal"
-                label="Описание"
+                label="Breite  (mm)"
+                name="width"
+                type="number"
+                value={productData.newDimensions?.width ?? ""}
+                onChange={handleDimensionsChange}
+            />
+            <TextField
+                fullWidth
+                margin="normal"
+                label="Länge (mm)"
+                name="length"
+                type="number"
+                value={productData.newDimensions?.length ?? ""}
+                onChange={handleDimensionsChange}
+            />
+            <TextField
+                fullWidth
+                margin="normal"
+                label="Höhe (mm)"
+                name="height"
+                type="number"
+                value={productData.newDimensions?.height ?? ""}
+                onChange={handleDimensionsChange}
+            />
+
+            <FormControl fullWidth variant="outlined" sx={{ mt: 2 }}>
+                <InputLabel id="category-label">Kategorie</InputLabel>
+                <Select
+                    labelId="category-label"
+                    value={productData.productCategory?.id || ""}
+                    onChange={handleCategoryChange}
+                    displayEmpty
+                    label="Kategorie"
+                >
+                    <MenuItem disabled value="">
+                        Wählen Sie eine Kategorie
+                    </MenuItem>
+                    {categories.map((category) => (
+                        <MenuItem key={category.id} value={category.id}>
+                            {category.name}
+                        </MenuItem>
+                    ))}
+                </Select>
+            </FormControl>
+            <TextField
+                fullWidth
+                margin="normal"
+                label="Beschreibung"
                 name="description"
                 value={productData.description}
                 onChange={handleChange}
@@ -169,10 +207,10 @@ export default function EditProduct({ productId, closeModal }: EditProductProps)
 
             <Box display="flex" justifyContent="space-between" sx={{ mt: 2 }}>
                 <Button variant="contained" color="primary" onClick={handleSubmit}>
-                    Сохранить
+                    Speichern
                 </Button>
                 <Button variant="outlined" color="secondary" onClick={closeModal}>
-                    Отмена
+                    Abbrechen
                 </Button>
             </Box>
         </Box>
