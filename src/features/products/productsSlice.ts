@@ -4,10 +4,10 @@ import { NewProductDto, ProductsState, UpdateProductDto } from "./types"
 
 const initialState: ProductsState = {
   productsList: [],
-  totalPages: 1, // Количество страниц
-  currentPage: 0, // Текущая страница
+  totalPages: 1,
+  currentPage: 0,
   selectedProduct: undefined,
-  loading: false,        
+  loading: false,
   error: null,
 };
   
@@ -16,19 +16,23 @@ export const productsSlice = createAppSlice({
   initialState,
   reducers: (create) => ({
     getProducts: create.asyncThunk(
-      async ({ page, size }: { page: number; size: number }) => {
-        const response = await fetchProducts(page, size);
-        return response;
+      async ({
+        page,
+        size = 15,
+        searchTerm,
+      }: {
+        page: number;
+        size?: number;
+        searchTerm?: string;
+      }) => {
+        return await fetchProducts({ page, size, searchTerm });
       },
       {
-        pending: () => {},
         fulfilled: (state, action) => {
-          console.log("Полученные продукты:", action.payload.content);
           state.productsList = action.payload.content;
-          state.totalPages = action.payload.totalPages; // API должен возвращать totalPages
+          state.totalPages = action.payload.totalPages;
           state.currentPage = action.payload.pageable.pageNumber;
         },
-        rejected: () => {},
       }
     ),
 
@@ -104,12 +108,13 @@ export const productsSlice = createAppSlice({
      }),
 
   selectors: {
-    selectProducts: (productsState: ProductsState) => productsState.productsList,
-    selectTotalPages: (productsState: ProductsState) => productsState.totalPages,
-    selectCurrentPage: (productsState: ProductsState) => productsState.currentPage,
-    selectProduct: (productsState: ProductsState) => productsState.selectedProduct,
-    selectLoading: (productsState: ProductsState) => productsState.loading,
-    selectError: (productsState: ProductsState) => productsState.error,
+    selectProducts: (state: ProductsState) => state.productsList,
+    selectTotalPages: (state: ProductsState) => state.totalPages,
+    selectCurrentPage: (state: ProductsState) => state.currentPage,
+    selectProduct: (state: ProductsState) => state.selectedProduct,
+    selectLoading: (state: ProductsState) => state.loading,
+    selectError: (state: ProductsState) => state.error,
+
   },
 });
 

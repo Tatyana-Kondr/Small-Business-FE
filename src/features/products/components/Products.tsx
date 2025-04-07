@@ -1,15 +1,19 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import {
-    Container, Typography, MenuItem, Select, Table, TableBody, TableCell,
+    Container, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, Paper, Box, Pagination,
-    Button
+    Button,
+    TextField,
+    IconButton
 } from "@mui/material"
 import { useAppDispatch, useAppSelector } from "../../../redux/hooks"
 import { getProducts, selectProducts, addProduct } from "../productsSlice"
 import { styled } from "@mui/material/styles"
 import { useNavigate } from "react-router-dom"
 import CreateProduct from "./CreateProduct"
-import { NewProductDto } from "../types" // Убедитесь, что импортируете тип NewProductDto
+import { NewProductDto } from "../types"
+import ClearIcon from "@mui/icons-material/Clear";
+import debounce from "lodash.debounce";
 
 
 // Стили для заголовков таблицы
@@ -28,59 +32,91 @@ const formatNumber = (value: number) => (
 )
 
 export default function Products() {
-    const dispatch = useAppDispatch()
-    const products = useAppSelector(selectProducts)
-    const [page, setPage] = useState(0)
-    const [pageSize, setPageSize] = useState(5)
+    const dispatch = useAppDispatch();
+    const products = useAppSelector(selectProducts);
+    const [page, setPage] = useState(0);
+    const [searchTerm, setSearchTerm] = useState("");
     const [openCreateProductModal, setOpenCreateProductModal] = useState(false);
     const navigate = useNavigate();
 
+    // Используем debounce для оптимизации запросов
+    const debouncedSearch = useCallback(
+        debounce((searchTerm: string) => {
+            dispatch(getProducts({ page, searchTerm })); // Делаем запрос с новым searchTerm
+        }, 500), // Задержка в 500 мс
+        []
+    );
+
     useEffect(() => {
-        dispatch(getProducts({ page, size: pageSize }))
-    }, [dispatch, page, pageSize])
+        dispatch(getProducts({ page, searchTerm }));
+    }, [dispatch, page, searchTerm]);
 
-    // Открытие модального окна
-    const handleOpenCreateProductModal = () => {
-        setOpenCreateProductModal(true);
+    const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const newSearchTerm = event.target.value;
+        setSearchTerm(newSearchTerm); // Обновляем строку поиска
+        debouncedSearch(newSearchTerm); // Запускаем дебаунс для поиска
     };
 
-    // Закрытие модального окна
-    const handleCloseCreateProductModal = () => {
-        setOpenCreateProductModal(false);
+    const handlePageChange = (_: any, value: number) => {
+        setPage(value - 1); // Обновляем текущую страницу
     };
 
-    // Обработчик добавления нового продукта
+
+    const handleClearSearch = () => {
+        setSearchTerm("");
+        setPage(0);
+        dispatch(getProducts({ page: 0, size: 15 }));
+    };
+
+
+    const handleOpenCreateProductModal = () => setOpenCreateProductModal(true);
+    const handleCloseCreateProductModal = () => setOpenCreateProductModal(false);
+
     const handleCreateProduct = (newProduct: NewProductDto) => {
-        // Логика добавления нового продукта с использованием dispatch
-        dispatch(addProduct(newProduct)); // Отправляем новый продукт в слайс
-        handleCloseCreateProductModal(); // Закрываем модальное окно
+        dispatch(addProduct(newProduct));
+        handleCloseCreateProductModal();
     };
+
 
     return (
         <Container>
             {/* Верхняя панель */}
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                <Typography variant="h5">Waren</Typography>
-                <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={() => navigate("/product-categories")}
-                >
+            <Box
+                display="flex"
+                justifyContent="space-between"
+                alignItems="center"
+                mb={2}
+                sx={{
+                    position: "sticky", // Сделаем панель фиксированной
+                    top: 0, // Закрепим сверху
+                    zIndex: 1000, // Повышаем приоритет на случай, если другие элементы будут сверху
+                    padding: "10px 0", // Отступы
+                }}
+            >
+               
+                <Box display="flex" gap={1}>
+                    <TextField
+                        label="Suche"
+                        variant="outlined"
+                        size="small"
+                        value={searchTerm}
+                        onChange={handleSearchChange} // Обработчик изменения поиска
+                        sx={{ width: 300 }}
+                    />
+                    <IconButton onClick={handleClearSearch}><ClearIcon /></IconButton>
+                </Box>
+
+                <Button variant="contained" onClick={() => navigate("/product-categories")}>
                     Produktkategorien
                 </Button>
-                <Select
-                    value={pageSize}
-                    onChange={(e) => setPageSize(Number(e.target.value))}
-                >
-                    <MenuItem value={15}>15 товаров</MenuItem>
-                    <MenuItem value={20}>20 товаров</MenuItem>
-                </Select>
-                <Button variant="contained" color="primary" onClick={handleOpenCreateProductModal}>
-                    Добавить продукт
+
+                <Button variant="contained" onClick={handleOpenCreateProductModal}>
+                    Produkt hinzufügen
                 </Button>
             </Box>
 
             {/* Таблица */}
+            <Box sx={{ height: "580px" }}>
             <TableContainer component={Paper}>
                 <Table>
                     <StyledTableHead>
@@ -92,10 +128,10 @@ export default function Products() {
                             <TableCell>EKpreis</TableCell>
                             <TableCell>VKpreis</TableCell>
                             <TableCell>Maßeinheit</TableCell>
-                            <TableCell>Gewicht</TableCell>
+                            <TableCell align="center">Gewicht, kg</TableCell>
                             <TableCell>Abmessungen</TableCell>
                             <TableCell>Kategorie</TableCell>
-                            <TableCell>Дата создания</TableCell>
+                            <TableCell>Erstellungsdatum</TableCell>
                         </TableRow>
                     </StyledTableHead>
                     <TableBody>
@@ -106,12 +142,12 @@ export default function Products() {
                                     <TableCell sx={{ width: "300px", padding: "6px 12px", borderRight: "1px solid #ddd" }}
                                         onDoubleClick={() => navigate(`/product-card/${product.id}`)}>{product.name}</TableCell>
                                     <TableCell sx={{ width: "200px", padding: "6px 12px", borderRight: "1px solid #ddd" }}
-                                        >{product.article}</TableCell>
+                                    >{product.article}</TableCell>
                                     <TableCell sx={{ width: "200px", padding: "6px 12px", borderRight: "1px solid #ddd" }}>{product.vendorArticle}</TableCell>
                                     <TableCell align="right" sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{formatNumber(product.purchasingPrice)} €</TableCell>
                                     <TableCell align="right" sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{formatNumber(product.sellingPrice)} €</TableCell>
                                     <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{product.unitOfMeasurement}</TableCell>
-                                    <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{product.weight ? formatNumber(product.weight) + " kg" : ""}</TableCell>
+                                    <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{product.weight ? formatNumber(product.weight) : ""} </TableCell>
                                     <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>
                                         {product.newDimensions
                                             ? `${product.newDimensions.height} * ${product.newDimensions.length} * ${product.newDimensions.width} mm`
@@ -123,21 +159,21 @@ export default function Products() {
                             ))
                         ) : (
                             <TableRow>
-                                <TableCell colSpan={11} align="center">Нет доступных продуктов</TableCell>
+                                <TableCell colSpan={11} align="center">Keine Produkte gefunden</TableCell>
                             </TableRow>
                         )}
                     </TableBody>
                 </Table>
             </TableContainer>
+            </Box>
 
             {/* Пагинация */}
             <Box display="flex" justifyContent="center" mt={2}>
                 <Pagination
                     count={15} // Количество страниц (должно приходить с API)
                     page={page + 1}
-                    onChange={(_, value) => setPage(value - 1)}
+                    onChange={handlePageChange}
                     color="primary"
-                    
                 />
             </Box>
             <CreateProduct
@@ -145,7 +181,7 @@ export default function Products() {
                 handleClose={handleCloseCreateProductModal}
                 handleCreateProduct={handleCreateProduct}
             />
-            
+
         </Container>
     )
 }

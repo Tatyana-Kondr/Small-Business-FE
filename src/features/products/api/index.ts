@@ -1,12 +1,30 @@
 import { NewProductCategoryDto, NewProductDto, PaginatedResponse, Product, ProductCategory, UpdateProductDto } from "../types"
 
-export async function fetchProducts(page: number, size: number = 15): Promise<PaginatedResponse<Product>> {
-  const res = await fetch(`/api/products?page=${page}&size=${size}`);
+export async function fetchProducts({
+  page,
+  size = 15,
+  searchTerm = "",
+}: {
+  page: number;
+  size?: number;
+  searchTerm?: string;
+}): Promise<PaginatedResponse<Product>> {
+  const queryParams = new URLSearchParams();
+  queryParams.append("page", page.toString());
+  queryParams.append("size", size.toString());
+  if (searchTerm) {
+    queryParams.append("search", searchTerm);
+  }
+
+  const res = await fetch(`/api/products?${queryParams.toString()}`);
   if (!res.ok) {
-    throw new Error("Ошибка загрузки продуктов");
+    throw new Error("Failed to fetch products");
   }
   return res.json();
 }
+
+
+
 
 export async function fetchAddProduct(newProduct: NewProductDto): Promise<Product> {
   try {
@@ -87,6 +105,7 @@ export async function fetchDeleteProduct(id: number): Promise<void> {
     throw error;
   }
 }
+
 
 
 
@@ -171,12 +190,23 @@ export async function fetchDeleteProductCategory(id: number): Promise<void> {
 
 
 export async function fetchProductCategories(): Promise<ProductCategory[]> {
-  const res = await fetch(`api/product-categories`);
+  
+  const res = await fetch(`/api/product-categories`, { // Должен быть слеш перед API
+    headers: {
+      "Cache-Control": "no-cache",
+      "Pragma": "no-cache",
+      "Expires": "0",
+    },
+  });
+
   if (!res.ok) {
     throw new Error("Fehler beim laden product categories");
   }
-  return res.json();
+
+  const data = await res.json();
+  return data;
 }
+
 
 
 
