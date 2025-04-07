@@ -4,6 +4,7 @@ import { useAppDispatch } from "../../../redux/hooks";
 import { NewProductDto, ProductCategory } from "../types";
 import { fetchProductCategories } from "../api";
 import { addProduct } from "../productsSlice";
+import { UnitOfMeasurement, unitOfMeasurements } from "../../../constants/unitOfMeasurements";
 
 
 // Стили для модального окна
@@ -24,7 +25,8 @@ export default function CreateProduct({ open, handleClose }: any) {
     name: "",
     vendorArticle: "",
     purchasingPrice: 0,
-    productCategory: { id: 0, name: "", artName: "" }, // Убедитесь, что artName присутствует
+    productCategory: { id: 0, name: "", artName: "" }, 
+    unitOfMeasurement: "ST"
   });
 
   const [categories, setCategories] = useState<ProductCategory[]>([]); // Состояние для списка категорий
@@ -61,9 +63,15 @@ export default function CreateProduct({ open, handleClose }: any) {
     }));
   };
 
+  const handleUnitChange = (e: SelectChangeEvent<string>) => {
+    setNewProduct((prevState) => ({
+      ...prevState,
+      unitOfMeasurement: e.target.value as UnitOfMeasurement, 
+    }));
+  };
+
   const handleSubmit = async () => {
     try {
-      // Диспатчим действие для добавления продукта
       await dispatch(addProduct(newProduct));
 
       // Очистка состояния после добавления
@@ -72,12 +80,13 @@ export default function CreateProduct({ open, handleClose }: any) {
         vendorArticle: "",
         purchasingPrice: 0,
         productCategory: { id: 0, name: "", artName: "" },
+        unitOfMeasurement: "ST"
       });
 
       // Закрываем модальное окно
       handleClose();
     } catch (error) {
-      console.error("Ошибка при добавлении продукта: ", error);
+      console.error("Fehler beim Hinzufügen eines Produkts: ", error);
     }
   };
 
@@ -85,10 +94,10 @@ export default function CreateProduct({ open, handleClose }: any) {
     <Modal open={open} onClose={handleClose}>
       <Box sx={modalStyle}>
         <Typography variant="h6" component="h2">
-          Добавить новый продукт
+        Ein neues Produkt hinzufügen
         </Typography>
         <TextField
-          label="Название продукта"
+          label="Name"
           fullWidth
           name="name"
           value={newProduct.name}
@@ -96,7 +105,7 @@ export default function CreateProduct({ open, handleClose }: any) {
           sx={{ marginBottom: 2 }}
         />
         <TextField
-          label="Артикул"
+          label="Artikel des Lieferanten"
           fullWidth
           name="vendorArticle"
           value={newProduct.vendorArticle}
@@ -104,7 +113,7 @@ export default function CreateProduct({ open, handleClose }: any) {
           sx={{ marginBottom: 2 }}
         />
         <TextField
-          label="Закупочная цена"
+          label="Kaufpreis"
           fullWidth
           name="purchasingPrice"
           type="number"
@@ -113,11 +122,11 @@ export default function CreateProduct({ open, handleClose }: any) {
           sx={{ marginBottom: 2 }}
         />
         <FormControl fullWidth sx={{ marginBottom: 2 }}>
-          <InputLabel>Категория</InputLabel>
+          <InputLabel>Kategorie</InputLabel>
           <Select
             value={selectedCategory || ""}
             onChange={handleCategoryChange}
-            label="Категория"
+            label="Kategorie"
           >
             {categories.map((category) => (
               <MenuItem key={category.id} value={category.id}>
@@ -126,12 +135,26 @@ export default function CreateProduct({ open, handleClose }: any) {
             ))}
           </Select>
         </FormControl>
+        <FormControl fullWidth sx={{ mb: 2 }}>
+          <InputLabel>Maßeinheit</InputLabel>
+          <Select
+            value={newProduct.unitOfMeasurement || ""}
+            onChange={handleUnitChange}
+            label="Maßeinheit"
+          >
+            {unitOfMeasurements.map((unit) => (
+              <MenuItem key={unit} value={unit}>
+                {unit}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
         <Box display="flex" justifyContent="flex-end">
           <Button variant="contained" onClick={handleClose} sx={{ marginRight: 2 }}>
-            Отмена
+            Abbrechen
           </Button>
           <Button variant="contained" color="primary" onClick={handleSubmit}>
-            Добавить
+          Hinzufügen
           </Button>
         </Box>
       </Box>
