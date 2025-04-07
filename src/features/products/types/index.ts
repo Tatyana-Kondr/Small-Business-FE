@@ -46,6 +46,7 @@ export interface NewProductDto{
   vendorArticle: string
   purchasingPrice: number
   productCategory: ProductCategory
+  unitOfMeasurement: string
 }
 
 export interface UpdateProductDto {
