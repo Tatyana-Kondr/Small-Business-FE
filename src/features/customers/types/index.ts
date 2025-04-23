@@ -3,18 +3,10 @@ export interface Customer{
 id: number
 name: string
 customerNumber: string
-address: Address
+address: AddressDto
 phone: string
 email: string
 website: string
-}
-
-export interface Address{
-  postalCode: string
-  country: string
-  city: string
-  street: string 
-  building:string
 }
 
 export interface AddressDto{
@@ -25,14 +17,14 @@ export interface AddressDto{
     building:string
 }
 
-export interface NewCustomerDto{
-    name: string
-    customerNumber?: string | null;
-    address: AddressDto
-    phone?: string | null;
-    email?: string | null;
-    website?: string | null;
-    }
+export interface NewCustomerDto {
+  name: string;
+  customerNumber?: string | null;  // customerNumber может быть null или не передано
+  addressDto: AddressDto;  // адрес всегда обязателен
+  phone?: string | null;  // phone может быть пустым или null
+  email?: string | null;  // email может быть пустым или null
+  website?: string | null;  // website может быть пустым или null
+}
 
 export interface CustomersState {
   customersList: Customer[];
