@@ -26,7 +26,8 @@ export async function fetchCustomers(page: number, size: number = 10): Promise<P
       body: JSON.stringify(newCustomerDto),
     });
     if (!res.ok) {
-      throw new Error("Fehler beim Laden");
+      const errorDetails = await res.text(); 
+      throw new Error(`Fehler beim Laden: ${errorDetails}`);
     }
     return res.json();
   }
