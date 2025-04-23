@@ -17,6 +17,8 @@ import ProductCategoryList from './features/products/components/ProductCategoryL
 import CreateProductCategory from './features/products/components/CreateProductCategory';
 import ProductCard from './features/products/components/ProductCard';
 import useSessionCheck from './hooks/useSessionCheck';
+import CustomerWithNumberCard from './features/customers/CustomerWithNumberCard';
+import Purchases from './features/purchases/components/Purchases';
 
 
 function App() {
@@ -49,9 +51,11 @@ function App() {
           <Route path="/create-customer" element={<CreateCustomer />} />
           <Route path="kunden" element={<CustomersWithNumber />} />
           <Route path="/customer/:customerId" element={<CustomerCard />} />
+          <Route path="/kunde/:customerId" element={<CustomerWithNumberCard />} />
           <Route path="/product-card/:productId" element={<ProductCard />} />
           <Route path="/product-categories" element={<ProductCategoryList />} />
           <Route path="/create-product-category" element={<CreateProductCategory />} />
+          <Route path="/purchases" element={<Purchases />} />
           
           {/* Страница 404 */}
           <Route path="*" element={<NoSuchPage />} />
