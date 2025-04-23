@@ -1,32 +1,60 @@
-import { AppBar, Toolbar, Typography, Button } from "@mui/material";
+import { AppBar, Toolbar, Button, Box } from "@mui/material";
 import { NavLink } from "react-router-dom";
 import { styled } from "@mui/material/styles";
+import { useAppDispatch } from "../redux/hooks";
+import { logout } from "../features/auth/authSlice";
+
+const LogoImg = "/media/LogoMashCom.jpg";
 
 const StyledNavLink = styled(NavLink)(({ theme }) => ({
   textDecoration: "none",
-  color: theme.palette.common.white,
+  color: theme.palette.info.dark,
   marginRight: theme.spacing(2),
   fontSize: "1rem",
   "&:hover": {
-    color: theme.palette.secondary.main,
+    color: "#9ACBD0",
+    fontWeight: "bold",
   },
 }));
 
 export default function HeaderApp() {
+  
+  const dispatch = useAppDispatch()
+  function handleLogout() {
+    dispatch(logout())
+  }
   return (
-    <AppBar position="fixed" color="primary">
-      <Toolbar>
-        <Typography variant="h6" sx={{ flexGrow: 1 }}>
-        MyApp
-        </Typography>
+    <AppBar position="fixed" sx={{ backgroundColor: "white", boxShadow: 2 }}>
+      <Toolbar sx={{ display: "flex", justifyContent: "space-between" }}>
+      <img
+          src={LogoImg}
+          alt="Logo"
+          style={{ height: 60, marginRight: 16 }}
+        />
+        <Box sx={{ display: "flex", gap: 2 }}>
         <StyledNavLink to="/">Home</StyledNavLink>
         <StyledNavLink to="/products">Products</StyledNavLink>
         <StyledNavLink to="/sales">Sales</StyledNavLink>
         <StyledNavLink to="/purchases">Purchases</StyledNavLink>
-        <StyledNavLink to="/customs">Customs</StyledNavLink>
-        <Button color="inherit" component={NavLink} to="/login">
-          Sign In
+        <StyledNavLink to="/kunden">Kunden</StyledNavLink>
+        <StyledNavLink to="/lieferanten">Lieferanten</StyledNavLink>
+        <Button
+          variant="contained"
+          color="error"
+          onClick={handleLogout}
+          sx={{
+            
+            borderRadius: "4px",
+            backgroundColor: "#d32f2f",
+            "&:hover": {
+              fontWeight: "bold",
+              backgroundColor: "red", // Цвет при наведении
+            },
+          }}
+        >
+          Exit
         </Button>
+        </Box>
       </Toolbar>
     </AppBar>
   );
