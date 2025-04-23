@@ -64,12 +64,14 @@ export const customersSlice = createAppSlice({
 
     addCustomer: create.asyncThunk(
       async ({newCustomerDto}: {newCustomerDto: NewCustomerDto}) => {
+        console.log("New customer DTO:", newCustomerDto);
         const response = await fetchAddCustomer(newCustomerDto);
         return response;
       },
       {
         pending: () => {},
         fulfilled: (state, action) => {
+          console.log("Customer added successfully:", action.payload);
           state.customersList.push(action.payload)
         },        
         rejected: () => {},
@@ -78,7 +80,7 @@ export const customersSlice = createAppSlice({
 
 
     editCustomer: create.asyncThunk(
-      async ({id, newCustomerDto}: {id: number, newCustomerDto: NewCustomerDto}) => {
+      async ({ id, newCustomerDto }: { id: number; newCustomerDto: NewCustomerDto }) => {
         const response = await fetchEditCustomer(id, newCustomerDto);
         return response;
       },
@@ -86,15 +88,14 @@ export const customersSlice = createAppSlice({
         pending: () => {},
         fulfilled: (state, action) => {
           state.selectedCustomer = action.payload;
-          state.customersList = state.customersList.map(c=>{
-            if(c.id===action.payload.id){
-              state.customersList.push(action.payload)
-              return action.payload
-            }
-            return c;
-          })          
+          // Обновляем клиента в списке, а не добавляем его заново
+          state.customersList = state.customersList.map(c => 
+            c.id === action.payload.id ? action.payload : c
+          );
         },
-        rejected: () => {},
+        rejected: (state, action) => {
+          console.error("Error editing customer:", action.error);
+        },
       }
     ),
   }),
