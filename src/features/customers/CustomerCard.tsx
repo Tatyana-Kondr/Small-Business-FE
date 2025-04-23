@@ -1,157 +1,229 @@
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../../redux/hooks";
 import { getCustomer, selectCustomer, editCustomer } from "./customersSlice";
 import { useEffect, useState } from "react";
-import NoSuchPage from "../../components/NoSuchPage";
-import { Dialog, DialogActions, DialogContent, DialogTitle, Button, TextField } from "@mui/material";
-import { string } from "yup";
-import { selectUser } from "../auth/authSlice";
+import {
+    TextField,
+    Typography,
+    Paper,
+    Button,
+    Box,
+    Grid,
+    Container,
+    FormControl,
+    InputLabel,
+    Select,
+    MenuItem,
+    SelectChangeEvent,
+} from "@mui/material";
+import { ArrowBackIos } from "@mui/icons-material";
+import HomeIcon from "@mui/icons-material/Home";
+import ContactPhoneIcon from "@mui/icons-material/ContactPhone";
+import Flag from "react-world-flags"; // Для отображения флагов
+import { countries } from "../../utils/countries"; // Список стран
 
 export default function CustomerCard() {
     const dispatch = useAppDispatch();
     const customer = useAppSelector(selectCustomer);
     const { customerId } = useParams();
-    const currentUser = useAppSelector(selectUser);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    
-    
+    const navigate = useNavigate();
+
     const [formData, setFormData] = useState({
-        name: '',
-        customerNumber: '',
+        name: "",
+        customerNumber: "",
         address: {
-            postalCode: '',
-            country: '',
-            city: '',
-            street: '',
-            building: ''
+            postalCode: "",
+            country: "DE", // Значение по умолчанию для страны
+            city: "",
+            street: "",
+            building: "",
         },
-        phone: '',
-        email: '',
-        website: ''
+        phone: "",
+        email: "",
+        website: "",
     });
 
     useEffect(() => {
-        console.log("Current user:", currentUser);
-        console.log("CustomerId:", customerId);
         if (customerId) {
             dispatch(getCustomer(Number(customerId)));
         }
     }, [dispatch, customerId]);
 
     useEffect(() => {
-        console.log("Customer loaded:", customer);
         if (customer) {
             setFormData({
                 name: customer.name,
-                customerNumber: customer.customerNumber,
-                address: customer.address,
-                phone: customer.phone,
-                email: customer.email,
-                website: customer.website
+                customerNumber: customer.customerNumber || "",
+                address: customer.address || {
+                    postalCode: "",
+                    country: "DE", // Значение по умолчанию для страны
+                    city: "",
+                    street: "",
+                    building: "",
+                },
+                phone: customer.phone || "",
+                email: customer.email || "",
+                website: customer.website || "",
             });
         }
     }, [customer]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
-        setFormData(prevState => ({
-            ...prevState,
-            [name]: value
+        setFormData((prev) => ({
+            ...prev,
+            [name]: value,
         }));
     };
 
-    const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleAddressChange = (e: SelectChangeEvent<string>) => {
         const { name, value } = e.target;
-        setFormData(prevState => ({
-            ...prevState,
+        setFormData((prev) => ({
+            ...prev,
             address: {
-                ...prevState.address,
-                [name]: value
-            }
+                ...prev.address,
+                [name]: value,
+            },
         }));
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleSubmit = () => {
         if (customerId) {
-            dispatch(editCustomer({ id: Number(customerId), newCustomerDto: formData }));
+            dispatch(
+                editCustomer({
+                    id: Number(customerId),
+                    newCustomerDto: {
+                        name: formData.name,
+                        customerNumber: formData.customerNumber || null,
+                        addressDto: formData.address,
+                        phone: formData.phone || null,
+                        email: formData.email || null,
+                        website: formData.website || null,
+                    },
+                })
+            ).then(() => {
+                navigate("/lieferanten");
+            });
         }
-        setIsModalOpen(false); 
+    };
+
+    const handleGoBack = () => {
+        navigate(-1);
     };
 
     if (!customer) {
-        return <NoSuchPage />;
+        return (
+            <Container>
+                <Box mt={4}>
+                    <Typography variant="h6">Lieferant nicht gefunden</Typography>
+                    <Button variant="contained" color="primary" onClick={handleGoBack} sx={{ mt: 2 }}>
+                        Go Back
+                    </Button>
+                </Box>
+            </Container>
+        );
     }
 
     return (
-        <div>
-            <Button variant="contained" color="primary" onClick={() => setIsModalOpen(true)}>
-                Изменить данные
-            </Button>
-            
-            <Dialog open={isModalOpen} onClose={() => setIsModalOpen(false)} maxWidth="sm" fullWidth>
-                <DialogTitle>Изменить данные поставщика</DialogTitle>
-                <DialogContent>
-                    <form onSubmit={handleSubmit}>
+        <Container>
+            <Paper elevation={3} sx={{ p: 3 }}>
+                <Typography variant="h5" mb={3} sx={{ fontWeight: "bold", color: "#01579b" }}>
+                    Lieferanteninformation
+                </Typography>
+
+                <TextField
+                    label="Name"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    fullWidth
+                    margin="normal"
+                />
+
+                <Grid container spacing={3} mt={1}>
+                    {/* Левая колонка — Адрес */}
+                    <Grid item xs={12} md={6}>
+                        <Box display="flex" alignItems="center" mb={2}>
+                            <HomeIcon color="action" sx={{ mr: 1 }} />
+                            <Typography variant="h6" sx={{ color: "#01579b" }}>
+                                Adresse
+                            </Typography>
+                        </Box>
+                        <Grid container spacing={2}>
+                            <Grid item xs={6}>
+                                <TextField
+                                    label="Postleitzahl"
+                                    name="postalCode"
+                                    value={formData.address.postalCode}
+                                    onChange={handleInputChange}
+                                    fullWidth
+                                    margin="normal"
+                                />
+                            </Grid>
+                            <Grid item xs={6}>
+                                <FormControl fullWidth margin="normal">
+                                    <InputLabel id="country-label">Land</InputLabel>
+                                    <Select
+                                        labelId="country-label"
+                                        name="country"
+                                        value={formData.address.country}
+                                        onChange={handleAddressChange} // Здесь мы используем обновленный обработчик
+                                    >
+                                        {countries.map((country) => (
+                                            <MenuItem key={country.code} value={country.code}>
+                                                <Box sx={{ display: "flex", alignItems: "center" }}>
+                                                    <Flag
+                                                        code={country.code}
+                                                        style={{
+                                                            width: 24,
+                                                            height: 16,
+                                                            marginRight: 8,
+                                                        }}
+                                                    />
+                                                    {country.name} ({country.code})
+                                                </Box>
+                                            </MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                            </Grid>
+                        </Grid>
                         <TextField
-                            label="Название"
-                            name="name"
-                            value={formData.name}
-                            onChange={handleInputChange}
-                            fullWidth
-                            margin="normal"
-                        />
-                        <TextField
-                            label="Номер клиента"
-                            name="customerNumber"
-                            value={formData.customerNumber}
-                            onChange={handleInputChange}
-                            fullWidth
-                            margin="normal"
-                        />
-                        <h3>Адрес</h3>
-                        <TextField
-                            label="Почтовый индекс"
-                            name="postalCode"
-                            value={formData.address.postalCode}
-                            onChange={handleAddressChange}
-                            fullWidth
-                            margin="normal"
-                        />
-                        <TextField
-                            label="Страна"
-                            name="country"
-                            value={formData.address.country}
-                            onChange={handleAddressChange}
-                            fullWidth
-                            margin="normal"
-                        />
-                        <TextField
-                            label="Город"
+                            label="Stadt"
                             name="city"
                             value={formData.address.city}
-                            onChange={handleAddressChange}
+                            onChange={handleInputChange}
                             fullWidth
                             margin="normal"
                         />
                         <TextField
-                            label="Улица"
+                            label="Strasse"
                             name="street"
                             value={formData.address.street}
-                            onChange={handleAddressChange}
+                            onChange={handleInputChange}
                             fullWidth
                             margin="normal"
                         />
                         <TextField
-                            label="Здание"
+                            label="Hausnummer"
                             name="building"
                             value={formData.address.building}
-                            onChange={handleAddressChange}
+                            onChange={handleInputChange}
                             fullWidth
                             margin="normal"
                         />
+                    </Grid>
+
+                    {/* Правая колонка — Контакты и номер */}
+                    <Grid item xs={12} md={6}>
+                        <Box display="flex" alignItems="center" mb={2}>
+                            <ContactPhoneIcon color="action" sx={{ mr: 1 }} />
+                            <Typography variant="h6" sx={{ color: "#01579b" }}>
+                                Kontaktdaten
+                            </Typography>
+                        </Box>
                         <TextField
-                            label="Телефон"
+                            label="Telefonnummer"
                             name="phone"
                             value={formData.phone}
                             onChange={handleInputChange}
@@ -159,7 +231,7 @@ export default function CustomerCard() {
                             margin="normal"
                         />
                         <TextField
-                            label="Электронная почта"
+                            label="E-Mail"
                             name="email"
                             value={formData.email}
                             onChange={handleInputChange}
@@ -167,24 +239,25 @@ export default function CustomerCard() {
                             margin="normal"
                         />
                         <TextField
-                            label="Вебсайт"
+                            label="Website"
                             name="website"
                             value={formData.website}
                             onChange={handleInputChange}
                             fullWidth
                             margin="normal"
                         />
-                    </form>
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setIsModalOpen(false)} color="secondary">
-                        Отмена
+                    </Grid>
+                </Grid>
+
+                <Box mt={3} display="flex" justifyContent="space-between" flexWrap="wrap" gap={2}>
+                    <Button variant="outlined" color="secondary" startIcon={<ArrowBackIos />} onClick={handleGoBack}>
+                        Zurückgehen
                     </Button>
-                    <Button onClick={handleSubmit} color="primary">
-                        Сохранить
+                    <Button variant="contained" color="primary" onClick={handleSubmit} sx={{ width: 200 }}>
+                        Speichern
                     </Button>
-                </DialogActions>
-            </Dialog>
-        </div>
+                </Box>
+            </Paper>
+        </Container>
     );
 }
