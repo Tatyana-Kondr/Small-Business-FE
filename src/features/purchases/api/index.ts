@@ -1,4 +1,4 @@
-import { PaginatedResponse, Purchase } from "../types";
+import { NewPurchaseDto, PaginatedResponse, Purchase } from "../types";
 
 export async function fetchPurchases({
   page,
@@ -21,4 +21,26 @@ export async function fetchPurchases({
     throw new Error("Failed to fetch purchases");
   }
   return res.json();
+}
+
+export async function fetchAddPurchase(newPurchase: NewPurchaseDto): Promise<Purchase> {
+  try {
+    const response = await fetch(`/api/purchases`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(newPurchase),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text(); // безопасно читаем ошибку
+      throw new Error(`Error: ${response.status} - ${errorText}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to add purchase:', error);
+    throw error;
+  }
 }
