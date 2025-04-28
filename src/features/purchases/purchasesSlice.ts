@@ -1,16 +1,16 @@
 import { createAppSlice } from "../../redux/createAppSlice"
-import { fetchPurchases } from "./api";
-import { PurchasesState } from "./types";
+import { fetchAddPurchase, fetchPurchases } from "./api";
+import { NewPurchaseDto, PurchasesState } from "./types";
 
 const initialState: PurchasesState = {
-    purchasesList: [],
+  purchasesList: [],
   totalPages: 1,
   currentPage: 0,
   selectedPurchase: undefined,
   loading: false,
   error: null,
 };
-  
+
 export const purchasesSlice = createAppSlice({
   name: "purchases",
   initialState,
@@ -32,22 +32,53 @@ export const purchasesSlice = createAppSlice({
           state.purchasesList = action.payload.content;
           state.totalPages = action.payload.totalPages;
           state.currentPage = action.payload.pageable.pageNumber;
+          state.loading = false;
+        },
+        pending: (state) => {
+          state.loading = true;
+        },
+        rejected: (state, action) => {
+          const errorMessage = action.payload instanceof Error ? action.payload.message : "Failed to fetch purchases";
+          state.error = errorMessage;
+          state.loading = false;
         },
       }
     ),
-}),
 
-    selectors: {
-        selectPurchases: (state: PurchasesState) => state.purchasesList,
-        selectTotalPages: (state: PurchasesState) => state.totalPages,
-        selectCurrentPage: (state: PurchasesState) => state.currentPage,
-        selectPurchase: (state: PurchasesState) => state.selectedPurchase,
-        selectLoading: (state: PurchasesState) => state.loading,
-        selectError: (state: PurchasesState) => state.error,
-    
+    addPurchase: create.asyncThunk(
+      async (newPurchase: NewPurchaseDto) => {
+        return await fetchAddPurchase(newPurchase);
       },
-    });
-    
-    export const { getPurchases } = purchasesSlice.actions;
-    export const { selectPurchases, selectTotalPages, selectCurrentPage, selectPurchase, selectLoading, selectError } =
-      purchasesSlice.selectors;
+      {
+        fulfilled: (state, action) => {
+          state.selectedPurchase = action.payload;
+          state.loading = false;
+        },
+        pending: (state) => {
+          state.loading = true;
+        },
+        rejected: (state, action) => {
+          const errorMessage = action.payload instanceof Error ? action.payload.message : "Failed to add purchase";
+          state.error = errorMessage;
+          state.loading = false;
+        },
+      }
+    ),
+  }),
+
+
+
+  selectors: {
+    selectPurchases: (state: PurchasesState) => state.purchasesList,
+    selectTotalPages: (state: PurchasesState) => state.totalPages,
+    selectCurrentPage: (state: PurchasesState) => state.currentPage,
+    selectPurchase: (state: PurchasesState) => state.selectedPurchase,
+    selectLoading: (state: PurchasesState) => state.loading,
+    selectError: (state: PurchasesState) => state.error,
+
+  },
+});
+
+export const { getPurchases, addPurchase } = purchasesSlice.actions;
+export const { selectPurchases, selectTotalPages, selectCurrentPage, selectPurchase, selectLoading, selectError } =
+  purchasesSlice.selectors;
