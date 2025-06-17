@@ -1,4 +1,3 @@
-// Типы, соответствующие DTO из Java
 
 export interface NewShippingDimensionsDto {
   width: number | null;
