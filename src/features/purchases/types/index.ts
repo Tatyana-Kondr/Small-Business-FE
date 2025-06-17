@@ -1,4 +1,3 @@
-import { Product } from "../../products/types"
 
 export interface Purchase {
     id: number
@@ -21,16 +20,13 @@ export interface NewPurchaseDto {
     type: string
     document: string
     documentNumber: string
-    subtotal: number
-    taxSum: number
-    total: number
     paymentStatus: string
     purchaseItems: NewPurchaseItemDto[]
 }
 
 export interface PurchaseItem {
     id: number
-    productId: Product
+    productId: number
     productName: string
     productArticle: string
     purchaseId: number
