@@ -91,6 +91,18 @@ export async function fetchProduct(id: number): Promise<Product> {
   }
 }
 
+export async function fetchProductsByCategory(
+  categoryId: number,
+  page: number = 0,
+  size: number = 10
+): Promise<PaginatedResponse<Product>> {
+  const res = await fetch(`/api/products/category/${categoryId}?page=${page}&size=${size}`);
+  if (!res.ok) {
+    throw new Error('Fehler beim Laden der Produkte');
+  }
+  return res.json();
+}
+
 export async function fetchDeleteProduct(id: number): Promise<void> {
   try {
     const response = await fetch(`/api/products/${id}`, {
