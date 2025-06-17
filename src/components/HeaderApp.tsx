@@ -18,7 +18,7 @@ const StyledNavLink = styled(NavLink)(({ theme }) => ({
 }));
 
 export default function HeaderApp() {
-  
+
   const dispatch = useAppDispatch()
   function handleLogout() {
     dispatch(logout())
@@ -26,34 +26,33 @@ export default function HeaderApp() {
   return (
     <AppBar position="fixed" sx={{ backgroundColor: "white", boxShadow: 2 }}>
       <Toolbar sx={{ display: "flex", justifyContent: "space-between" }}>
-      <img
+        <img
           src={LogoImg}
           alt="Logo"
           style={{ height: 60, marginRight: 16 }}
         />
         <Box sx={{ display: "flex", gap: 2 }}>
-        <StyledNavLink to="/">Home</StyledNavLink>
-        <StyledNavLink to="/products">Products</StyledNavLink>
-        <StyledNavLink to="/sales">Sales</StyledNavLink>
-        <StyledNavLink to="/purchases">Purchases</StyledNavLink>
-        <StyledNavLink to="/kunden">Kunden</StyledNavLink>
-        <StyledNavLink to="/lieferanten">Lieferanten</StyledNavLink>
-        <Button
-          variant="contained"
-          color="error"
-          onClick={handleLogout}
-          sx={{
-            
-            borderRadius: "4px",
-            backgroundColor: "#d32f2f",
-            "&:hover": {
-              fontWeight: "bold",
-              backgroundColor: "red", // Цвет при наведении
-            },
-          }}
-        >
-          Exit
-        </Button>
+          <StyledNavLink to="/">Home</StyledNavLink>
+          <StyledNavLink to="/sales">Aufträge</StyledNavLink>
+          <StyledNavLink to="/purchases">Bestellungen</StyledNavLink>
+          <StyledNavLink to="/kunden">Kunden</StyledNavLink>
+          <StyledNavLink to="/lieferanten">Lieferanten</StyledNavLink>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleLogout}
+            sx={{
+
+              borderRadius: "4px",
+              backgroundColor: "#d32f2f",
+              "&:hover": {
+                fontWeight: "bold",
+                backgroundColor: "red", // Цвет при наведении
+              },
+            }}
+          >
+            Exit
+          </Button>
         </Box>
       </Toolbar>
     </AppBar>

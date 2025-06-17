@@ -1,4 +1,3 @@
-import { Product } from "../../products/types"
 
 export interface Purchase {
     id: number
@@ -15,11 +14,34 @@ export interface Purchase {
     purchaseItems: PurchaseItem[]
 }
 
+export interface NewPurchaseDto {
+    vendorId: number
+    purchasingDate: string
+    type: string
+    document: string
+    documentNumber: string
+    paymentStatus: string
+    purchaseItems: NewPurchaseItemDto[]
+}
+
 export interface PurchaseItem {
     id: number
-    productId: Product
+    productId: number
     productName: string
     productArticle: string
+    purchaseId: number
+    quantity: number
+    unitPrice: number
+    totalPrice: number
+    taxPercentage: number
+    taxAmount: number
+    totalAmount: number
+    position: number
+}
+
+export interface NewPurchaseItemDto {
+    productId: number
+    productName: string
     purchaseId: number
     quantity: number
     unitPrice: number

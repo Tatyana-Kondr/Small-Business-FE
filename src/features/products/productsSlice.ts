@@ -1,6 +1,13 @@
-import { createAppSlice } from "../../redux/createAppSlice"
-import { fetchAddProduct, fetchDeleteProduct, fetchEditProduct, fetchProduct, fetchProducts } from "./api"
-import { NewProductDto, ProductsState, UpdateProductDto } from "./types"
+import { createAppSlice } from "../../redux/createAppSlice";
+import {
+  fetchAddProduct,
+  fetchDeleteProduct,
+  fetchEditProduct,
+  fetchProduct,
+  fetchProducts,
+  fetchProductsByCategory,
+} from "./api";
+import { NewProductDto, ProductsState, UpdateProductDto } from "./types";
 
 const initialState: ProductsState = {
   productsList: [],
@@ -10,7 +17,7 @@ const initialState: ProductsState = {
   loading: false,
   error: null,
 };
-  
+
 export const productsSlice = createAppSlice({
   name: "products",
   initialState,
@@ -24,9 +31,26 @@ export const productsSlice = createAppSlice({
         page: number;
         size?: number;
         searchTerm?: string;
-      }) => {
-        return await fetchProducts({ page, size, searchTerm });
-      },
+      }) => await fetchProducts({ page, size, searchTerm }),
+      {
+        fulfilled: (state, action) => {
+          state.productsList = action.payload.content;
+          state.totalPages = action.payload.totalPages;
+          state.currentPage = action.payload.pageable.pageNumber;
+        },
+      }
+    ),
+
+    getProductsByCategory: create.asyncThunk(
+      async ({
+        categoryId,
+        page = 0,
+        size = 15,
+      }: {
+        categoryId: number;
+        page?: number;
+        size?: number;
+      }) => await fetchProductsByCategory(categoryId, page, size),
       {
         fulfilled: (state, action) => {
           state.productsList = action.payload.content;
@@ -37,75 +61,62 @@ export const productsSlice = createAppSlice({
     ),
 
     addProduct: create.asyncThunk(
-          async (newProductDto: NewProductDto) => {
-            return await fetchAddProduct(newProductDto);
-          },
-          {
-            fulfilled: (state, action) => {
-              state.productsList.push(action.payload);
-            },
-          }
-        ),
+      async (newProductDto: NewProductDto) => await fetchAddProduct(newProductDto),
+      {
+        fulfilled: (state, action) => {
+          state.productsList.push(action.payload);
+        },
+      }
+    ),
 
     editProduct: create.asyncThunk(
-         async ({
-           id,
-           updateProductDto,
-         }: {
-           id: number;
-           updateProductDto: UpdateProductDto;
-         }) => {
-           return await fetchEditProduct({ id, updateProductDto });
-         },
-         {
-           fulfilled: (state, action) => {
-             const index = state.productsList.findIndex(
-               (product) => product.id === action.payload.id
-             );
-             if (index !== -1) {
-               state.productsList[index] = action.payload;
-             }
-           },
-         }
-       ),
-   
-   
-       deleteProduct: create.asyncThunk(
-        async (id: number) => {
-          await fetchDeleteProduct(id); 
-          return id; 
+      async ({
+        id,
+        updateProductDto,
+      }: {
+        id: number;
+        updateProductDto: UpdateProductDto;
+      }) => await fetchEditProduct({ id, updateProductDto }),
+      {
+        fulfilled: (state, action) => {
+          const index = state.productsList.findIndex((product) => product.id === action.payload.id);
+          if (index !== -1) {
+            state.productsList[index] = action.payload;
+          }
         },
-        {
-          fulfilled: (state, action) => {
-            state.productsList = state.productsList.filter(
-              (product) => product.id !== action.payload 
-            );
-          },
-        }
-      ),
-   
-       
-      getProduct: create.asyncThunk(
-        async (id: number) => {
-          console.log("Fetching product with id:", id);
-          return await fetchProduct(id); // Ваш асинхронный запрос
+      }
+    ),
+
+    deleteProduct: create.asyncThunk(
+      async (id: number) => {
+        await fetchDeleteProduct(id);
+        return id;
+      },
+      {
+        fulfilled: (state, action) => {
+          state.productsList = state.productsList.filter((product) => product.id !== action.payload);
         },
-        {
-          pending: (state) => {
-            state.loading = true; // Устанавливаем загрузку в true
-            state.error = null; // Очищаем ошибку перед новым запросом
-          },
-          fulfilled: (state, action) => {
-            state.selectedProduct = action.payload; // Сохраняем продукт в состояние
-            state.loading = false; // Завершаем загрузку
-          },
-          rejected: (state, action) => {
-            state.loading = false; // Завершаем загрузку
-            state.error = action.error.message || "Произошла ошибка"; // Сохраняем ошибку
-          },
-        }
-      ),
-     }),
+      }
+    ),
+
+    getProduct: create.asyncThunk(
+      async (id: number) => await fetchProduct(id),
+      {
+        pending: (state) => {
+          state.loading = true;
+          state.error = null;
+        },
+        fulfilled: (state, action) => {
+          state.selectedProduct = action.payload;
+          state.loading = false;
+        },
+        rejected: (state, action) => {
+          state.loading = false;
+          state.error = action.error.message || "Произошла ошибка";
+        },
+      }
+    ),
+  }),
 
   selectors: {
     selectProducts: (state: ProductsState) => state.productsList,
@@ -114,10 +125,23 @@ export const productsSlice = createAppSlice({
     selectProduct: (state: ProductsState) => state.selectedProduct,
     selectLoading: (state: ProductsState) => state.loading,
     selectError: (state: ProductsState) => state.error,
-
   },
 });
 
-export const { getProducts, addProduct, editProduct, getProduct, deleteProduct } = productsSlice.actions;
-export const { selectProducts, selectTotalPages, selectCurrentPage, selectProduct, selectLoading, selectError } =
-  productsSlice.selectors;
+export const {
+  getProducts,
+  getProductsByCategory,
+  addProduct,
+  editProduct,
+  getProduct,
+  deleteProduct,
+} = productsSlice.actions;
+
+export const {
+  selectProducts,
+  selectTotalPages,
+  selectCurrentPage,
+  selectProduct,
+  selectLoading,
+  selectError,
+} = productsSlice.selectors;
