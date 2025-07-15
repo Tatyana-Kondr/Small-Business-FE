@@ -17,14 +17,18 @@ import HomeIcon from "@mui/icons-material/Home";
 import ContactPhoneIcon from "@mui/icons-material/ContactPhone";
 import { useAppDispatch } from "../../redux/hooks";
 import { addCustomer } from "./customersSlice";
-import { useNavigate } from "react-router-dom";
 import { countries } from "../../utils/countries";
 import Flag from "react-world-flags";
 import { ArrowBackIos } from "@mui/icons-material";
+import { Customer } from "./types";
 
-export default function CreateCustomer() {
+type CreateCustomerProps = {
+  onClose: () => void;
+  onCustomerCreated: (newCustomer: Customer) => void; 
+};
+
+export default function CreateCustomer({ onClose, onCustomerCreated }: CreateCustomerProps) {
   const dispatch = useAppDispatch();
-  const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
     name: "",
@@ -87,7 +91,7 @@ export default function CreateCustomer() {
       name: formData.name,
       customerNumber: formData.customerNumber || null,
       addressDto: {
-        country: formData.countryCode, // Отправляем countryCode (например "DE")
+        country: formData.countryCode,
         city: formData.city,
         street: formData.street,
         building: formData.building,
@@ -99,21 +103,23 @@ export default function CreateCustomer() {
     };
 
     try {
-      await dispatch(addCustomer({ newCustomerDto })).unwrap();
-      navigate(-1);
+      const createdCustomer = await dispatch(addCustomer({ newCustomerDto })).unwrap();
+
+      // Сообщаем родителю о создании
+      onCustomerCreated(createdCustomer);
     } catch (error) {
       console.error("Fehler beim Erstellen:", error);
     }
   };
 
   const handleCancel = () => {
-    navigate(-1);
+    onClose();
   };
 
   return (
     <Container maxWidth="md">
-      <Paper elevation={3} sx={{ p: 4, mt: 4 }}>
-        <Typography variant="h5" gutterBottom  sx={{ fontWeight: "bold", color: "#01579b", marginBottom: 3}}>
+      <Paper elevation={3} sx={{ p: 4, mt: 2 }}>
+        <Typography variant="h5" gutterBottom  sx={{ fontWeight: "bold", color: "#01579b", marginBottom: 3, textAlign: "center"}}>
           Neuer Kunde/Lieferant anlegen
         </Typography>
 
@@ -247,11 +253,11 @@ export default function CreateCustomer() {
 
           <Box mt={5} display="flex" justifyContent="space-between" flexWrap="wrap" gap={2}>
             <Button variant="outlined" color="secondary" startIcon={<ArrowBackIos />} onClick={handleCancel}>
-              Zurückgehen
-            </Button>
-            <Button variant="contained" color="primary" type="submit">
-              Speichern
-            </Button>
+            Abbrechen
+          </Button>
+          <Button variant="contained" color="primary" type="submit">
+            Speichern
+          </Button>
           </Box>
         </form>
       </Paper>

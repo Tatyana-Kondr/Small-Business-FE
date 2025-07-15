@@ -7,7 +7,9 @@ import {
     Grid,
     styled,
     Paper,
-    InputAdornment
+    InputAdornment,
+    Dialog,
+    DialogContent
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { NewPurchaseDto, NewPurchaseItemDto } from '../types';
@@ -26,6 +28,8 @@ import { useNavigate } from 'react-router-dom';
 import { addPurchase } from '../purchasesSlice';
 import { ArrowBackIos } from '@mui/icons-material';
 import { TypeOfDocument, TypesOfDocument } from '../../../constants/enums';
+import AddIcon from "@mui/icons-material/Add";
+import CreateCustomer from '../../customers/CreateCustomer';
 
 const StyledTableHead = styled(TableHead)(({
     backgroundColor: "#1a3d6d",
@@ -68,6 +72,7 @@ export default function CreatePurchasePage() {
     const products = useAppSelector(selectProducts);
     const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
+    const [openCreateCustomer, setOpenCreateCustomer] = useState(false);
 
     useEffect(() => {
         dispatch(getProductCategories());
@@ -187,7 +192,7 @@ export default function CreatePurchasePage() {
             .unwrap()
             .then(() => {
                 alert('Покупка успешно создана');
-                navigate('/purchases'); 
+                navigate('/purchases');
             })
             .catch((error) => {
                 console.error('Ошибка при создании покупки:', error);
@@ -256,22 +261,38 @@ export default function CreatePurchasePage() {
                             </FormControl>
                         </Box>
 
-                        <Autocomplete
-                            fullWidth
-                            sx={{ mb: 2 }}
-                            options={[...vendors].sort((a, b) => a.name.localeCompare(b.name))}
-                            getOptionLabel={(option) => option.name}
-                            onChange={(_, value) => {
-                                setNewPurchase(prev => ({
-                                    ...prev,
-                                    vendorId: value?.id ?? 0,
-                                }));
-                            }}
-                            value={vendors.find(v => v.id === newPurchase.vendorId) || null}
-                            renderInput={(params) => (
-                                <TextField {...params} label="Lieferant" />
-                            )}
-                        />
+                        <Grid container spacing={2} sx={{ mb: 2 }}>
+                            <Grid item xs={10}>
+                                <Autocomplete
+                                    fullWidth
+                                    sx={{ mb: 2 }}
+                                    options={[...vendors].sort((a, b) => a.name.localeCompare(b.name))}
+                                    getOptionLabel={(option) => option.name}
+                                    onChange={(_, value) => {
+                                        setNewPurchase(prev => ({
+                                            ...prev,
+                                            vendorId: value?.id ?? 0,
+                                        }));
+                                    }}
+                                    value={vendors.find(v => v.id === newPurchase.vendorId) || null}
+                                    renderInput={(params) => (
+                                        <TextField {...params} label="Lieferant" />
+                                    )}
+                                />
+                            </Grid>
+                            <Grid item xs={1}>
+                                <Button
+                                    variant="outlined"
+                                    fullWidth
+                                    onClick={() => setOpenCreateCustomer(true)}
+                                    startIcon={<AddIcon />}
+                                    sx={{ height: "80%" }}
+                                >
+                                    Neu
+                                </Button>
+                            </Grid>
+                        </Grid>
+
                         <Grid container spacing={2} sx={{ mb: 2 }}>
                             <Grid item xs={4}>
                                 <LocalizationProvider
@@ -300,12 +321,12 @@ export default function CreatePurchasePage() {
                                         label="Dokument"
                                         value={newPurchase.document}
                                         onChange={(e) => setNewPurchase(prev => ({ ...prev, document: e.target.value as TypeOfDocument }))}
-                                     >
-                                    {TypesOfDocument.map((type) => (
-                                        <MenuItem key={type} value={type}>
-                                            {type}
-                                        </MenuItem>
-                                    ))}
+                                    >
+                                        {TypesOfDocument.map((type) => (
+                                            <MenuItem key={type} value={type}>
+                                                {type}
+                                            </MenuItem>
+                                        ))}
                                     </Select>
                                 </FormControl>
                             </Grid>
@@ -474,6 +495,29 @@ export default function CreatePurchasePage() {
                     </Paper>
                 </Grid>
             </Grid>
+            <Dialog open={openCreateCustomer} onClose={() => setOpenCreateCustomer(false)}  maxWidth={false} >
+                            <DialogContent>
+                                <Box
+                                    sx={{
+                                        width: '100%',
+                                        maxWidth: {
+                                            xs: '100%',   // 100% ширины экрана на телефонах
+                                            sm: '90%',    // до 90% на маленьких экранах
+                                            md: '800px',  // фиксированная ширина на десктопе
+                                        },
+                                    }}
+                                >
+                                    <CreateCustomer
+                                        onClose={() => setOpenCreateCustomer(false)}
+                                        onCustomerCreated={(newCustomer) => {
+                                            setVendors((prev) => [...prev, newCustomer]);
+                                            setNewPurchase((prev) => ({ ...prev, customerId: newCustomer.id }));
+                                            setOpenCreateCustomer(false);
+                                        }}
+                                    />
+                                </Box>
+                            </DialogContent>
+                        </Dialog>
         </Container>
     );
 

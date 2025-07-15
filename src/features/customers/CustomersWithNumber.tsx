@@ -6,8 +6,11 @@ import {
 } from "@mui/material"
 import { useAppDispatch, useAppSelector } from "../../redux/hooks"
 import { styled } from "@mui/material/styles"
-import { getCustomersWithCustomerNumber, selectCurrentPage, selectCustomersWithCustomerNumber, selectTotalPages } from "./customersSlice"
+import { getCustomers, getCustomersWithCustomerNumber, selectCurrentPage, selectCustomersWithCustomerNumber, selectTotalPages } from "./customersSlice"
 import { useNavigate } from "react-router-dom"
+import Dialog from "@mui/material/Dialog"
+import DialogContent from "@mui/material/DialogContent"
+import CreateCustomer from "./CreateCustomer"
 
 // Стили для заголовков таблицы
 const StyledTableHead = styled(TableHead)({
@@ -36,6 +39,9 @@ export default function CustomersWithNumber() {
     const [page, setPage] = useState(currentPage); // Состояние для текущей страницы
     const [pageSize] = useState(15); // Количество элементов на странице
     const navigate = useNavigate(); // Для навигации по роутам
+    const [openDialog, setOpenDialog] = useState(false);
+  const handleOpenDialog = () => setOpenDialog(true);
+  const handleCloseDialog = () => setOpenDialog(false);
 
     useEffect(() => {
         dispatch(getCustomersWithCustomerNumber({ page, size: pageSize }))
@@ -47,6 +53,11 @@ export default function CustomersWithNumber() {
 
     const handlePaginationChange = (_: unknown, newPage: number) => {
         setPage(newPage - 1); // Обновляем страницу
+    };
+    
+     const handleCustomerCreated = () => {
+      setOpenDialog(false); // Закрыть диалог
+      dispatch(getCustomers({ page, size: pageSize })); // Обновить список
     };
 
     return (
@@ -60,16 +71,9 @@ export default function CustomersWithNumber() {
             }}>
                 <Typography variant="h4" sx={{ fontWeight: "bold", color: "#0776A0" }}>Kunden</Typography>
 
-                <Box display="flex" gap={2}>
-                    {/* Кнопка для создания нового клиента */}
-                    <Button
-                        variant="contained"
-                        color="primary"
-                        onClick={() => navigate("/create-customer")}
-                    >
-                        Neuen Kunden anlegen
-                    </Button>
-                </Box>
+                <Button variant="contained" color="primary" onClick={handleOpenDialog}>
+          Neuen Kunden anlegen
+        </Button>
             </Box>
 
             {/* Таблица */}
@@ -130,6 +134,18 @@ export default function CustomersWithNumber() {
                     color="primary"
                 />
             </Box>
+            <Dialog open={openDialog} onClose={handleCloseDialog}  maxWidth={false}>
+                    <DialogContent>
+                      <Box sx={{
+                        width: "clamp(300px, 90vw, 800px)", // 👈 адаптивная ширина
+                        maxHeight: "80vh",
+                        overflowY: "auto",
+                      }}>
+                       <CreateCustomer onClose={handleCloseDialog} onCustomerCreated={handleCustomerCreated} />
+            
+                      </Box>
+                    </DialogContent>
+                  </Dialog>
         </Container>
     );
 }
