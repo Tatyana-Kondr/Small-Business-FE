@@ -7,9 +7,10 @@ import { customersSlice } from "../features/customers/customersSlice";
 import { productCategoriesSlice } from "../features/products/productCategoriesSlice";
 import { productFilesSlice } from "../features/products/productFilesSlice";
 import { purchasesSlice } from "../features/purchases/purchasesSlice";
+import { salesSlice } from "../features/sales/salesSlice";
 
 
-const rootReducer = combineSlices(productsSlice, authSlice, customersSlice, productCategoriesSlice, productFilesSlice, purchasesSlice)
+const rootReducer = combineSlices(productsSlice, authSlice, customersSlice, productCategoriesSlice, productFilesSlice, purchasesSlice, salesSlice)
 
 // TypeScript-оператор, который позволяет получить тип возвращаемого значения функции. 
 // В данном случае, typeof rootReducer даёт тип самой функции редьюсера, 
