@@ -59,6 +59,8 @@ export async function fetchEditProduct({id, updateProductDto}: {id: number, upda
     });
     
     if (!response.ok) {
+       const errorText = await response.text();
+  console.error("❌ Backend error:", errorText);
       throw new Error(`Error: ${response.status} - ${response.statusText}`);
     }
     
