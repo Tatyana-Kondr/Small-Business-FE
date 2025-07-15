@@ -19,11 +19,13 @@ export default function EditProduct({ productId, closeModal }: EditProductProps)
 
     useEffect(() => {
         if (selectedProduct) {
+            console.log("Selected Product:", selectedProduct);
             setProductData({
                 name: selectedProduct.name,
                 article: selectedProduct.article,
                 vendorArticle: selectedProduct.vendorArticle || "",
                 purchasingPrice: selectedProduct.purchasingPrice,
+                markupPercentage: selectedProduct.markupPercentage,
                 sellingPrice: selectedProduct.sellingPrice,
                 unitOfMeasurement: selectedProduct.unitOfMeasurement || "",
                 weight: selectedProduct.weight || 0,
@@ -74,11 +76,49 @@ export default function EditProduct({ productId, closeModal }: EditProductProps)
         }
     };
 
+    // Пересчет Verkaufspreis по Kaufpreis и Aufschlag
+    const calculateSellingPrice = (purchasingPrice: number, markupPercentage: number) => {
+        return +(purchasingPrice * (1 + markupPercentage / 100)).toFixed(2);
+    };
+
+    // Пересчет Aufschlag по Kaufpreis и Verkaufspreis
+    const calculateMarkupPercentage = (purchasingPrice: number, sellingPrice: number) => {
+        if (purchasingPrice === 0) return 0;
+        return +(((sellingPrice / purchasingPrice - 1) * 100).toFixed(2));
+    };
+
+    const handlePurchasingPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const purchasingPrice = parseFloat(e.target.value) || 0;
+        setProductData((prev) => prev ? {
+            ...prev,
+            purchasingPrice,
+            sellingPrice: calculateSellingPrice(purchasingPrice, prev.markupPercentage ?? 0),
+        } : prev);
+    };
+
+    const handleMarkupPercentageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const markupPercentage = parseFloat(e.target.value) || 0;
+        setProductData((prev) => prev ? {
+            ...prev,
+            markupPercentage,
+            sellingPrice: calculateSellingPrice(prev.purchasingPrice ?? 0, markupPercentage),
+        } : prev);
+    };
+
+    const handleSellingPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const sellingPrice = parseFloat(e.target.value) || 0;
+        setProductData((prev) => prev ? {
+            ...prev,
+            sellingPrice,
+            markupPercentage: calculateMarkupPercentage(prev.purchasingPrice ?? 0, sellingPrice),
+        } : prev);
+    };
 
 
     const handleSubmit = async () => {
         try {
             if (!productData) return;
+            console.log("Product data:", productData);
             await dispatch(editProduct({ id: productId, updateProductDto: productData }));
             alert("Das Produkt wurde erfolgreich aktualisiert!");
             closeModal();
@@ -86,7 +126,7 @@ export default function EditProduct({ productId, closeModal }: EditProductProps)
             console.error("Fehler bei der Produktaktualisierung:", error);
         }
     };
-    console.log("Categories:", categories);
+   
 
     return (
         <Box sx={{ p: 2 }}>
@@ -117,7 +157,17 @@ export default function EditProduct({ productId, closeModal }: EditProductProps)
                 name="purchasingPrice"
                 type="number"
                 value={productData.purchasingPrice}
-                onChange={handleChange}
+                onChange={handlePurchasingPriceChange}
+            />
+
+            <TextField
+                fullWidth
+                margin="normal"
+                label="Aufschlag %"
+                name="markupPercentage"
+                type="number"
+                value={productData.markupPercentage}
+                onChange={handleMarkupPercentageChange}
             />
 
             <TextField
@@ -127,7 +177,7 @@ export default function EditProduct({ productId, closeModal }: EditProductProps)
                 name="sellingPrice"
                 type="number"
                 value={productData.sellingPrice}
-                onChange={handleChange}
+                onChange={handleSellingPriceChange}
             />
 
             <TextField

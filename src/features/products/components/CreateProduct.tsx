@@ -20,12 +20,14 @@ const modalStyle = {
 
 
 export default function CreateProduct({ open, handleClose }: any) {
-  const dispatch = useAppDispatch(); 
+  const dispatch = useAppDispatch();
   const [newProduct, setNewProduct] = useState<NewProductDto>({
     name: "",
     vendorArticle: "",
     purchasingPrice: 0,
-    productCategory: { id: 0, name: "", artName: "" }, 
+    markupPercentage: 20,
+    sellingPrice: 0,
+    productCategory: { id: 0, name: "", artName: "" },
     unitOfMeasurement: "ST"
   });
 
@@ -48,8 +50,8 @@ export default function CreateProduct({ open, handleClose }: any) {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setNewProduct((prevState) => ({
-      ...prevState,
+    setNewProduct((prev) => ({
+      ...prev,
       [name]: value,
     }));
   };
@@ -66,9 +68,45 @@ export default function CreateProduct({ open, handleClose }: any) {
   const handleUnitChange = (e: SelectChangeEvent<string>) => {
     setNewProduct((prevState) => ({
       ...prevState,
-      unitOfMeasurement: e.target.value as UnitOfMeasurement, 
+      unitOfMeasurement: e.target.value as UnitOfMeasurement,
     }));
   };
+
+  const calculateSellingPrice = (purchasingPrice: number, markupPercentage: number) => {
+    return +(purchasingPrice * (1 + markupPercentage / 100)).toFixed(2);
+  };
+
+  const calculateMarkupPercentage = (purchasingPrice: number, sellingPrice: number) => {
+  if (purchasingPrice === 0) return 0;
+  return +(((sellingPrice / purchasingPrice - 1) * 100).toFixed(2));
+};
+
+const handlePurchasingPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const purchasingPrice = parseFloat(e.target.value) || 0;
+  setNewProduct((prev) => ({
+    ...prev,
+    purchasingPrice,
+    sellingPrice: calculateSellingPrice(purchasingPrice, prev.markupPercentage),
+  }));
+};
+
+const handleMarkupPercentageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const markupPercentage = parseFloat(e.target.value) || 0;
+  setNewProduct((prev) => ({
+    ...prev,
+    markupPercentage,
+    sellingPrice: calculateSellingPrice(prev.purchasingPrice, markupPercentage),
+  }));
+};
+
+const handleSellingPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const sellingPrice = parseFloat(e.target.value) || 0;
+  setNewProduct((prev) => ({
+    ...prev,
+    sellingPrice,
+    markupPercentage: calculateMarkupPercentage(prev.purchasingPrice, sellingPrice),
+  }));
+};
 
   const handleSubmit = async () => {
     try {
@@ -79,6 +117,8 @@ export default function CreateProduct({ open, handleClose }: any) {
         name: "",
         vendorArticle: "",
         purchasingPrice: 0,
+        markupPercentage: 20,
+        sellingPrice: 0,
         productCategory: { id: 0, name: "", artName: "" },
         unitOfMeasurement: "ST"
       });
@@ -94,7 +134,7 @@ export default function CreateProduct({ open, handleClose }: any) {
     <Modal open={open} onClose={handleClose}>
       <Box sx={modalStyle}>
         <Typography variant="h6" component="h2">
-        Ein neues Produkt hinzufügen
+          Ein neues Produkt hinzufügen
         </Typography>
         <TextField
           label="Name"
@@ -117,10 +157,31 @@ export default function CreateProduct({ open, handleClose }: any) {
           fullWidth
           name="purchasingPrice"
           type="number"
-          value={newProduct.purchasingPrice}
-          onChange={handleChange}
+           value={String(newProduct.purchasingPrice)}
+          onChange={handlePurchasingPriceChange}
           sx={{ marginBottom: 2 }}
         />
+
+        <TextField
+          label="Aufschlag %"
+          fullWidth
+          name="markupPercentage"
+          type="number"
+           value={String(newProduct.markupPercentage)}
+          onChange={handleMarkupPercentageChange}
+          sx={{ marginBottom: 2 }}
+        />
+
+        <TextField
+          label="Verkaufspreis"
+          fullWidth
+          name="sellingPrice"
+          type="number"
+           value={String(newProduct.sellingPrice)}
+          onChange={handleSellingPriceChange}
+          sx={{ marginBottom: 2 }}
+        />
+
         <FormControl fullWidth sx={{ marginBottom: 2 }}>
           <InputLabel>Kategorie</InputLabel>
           <Select
@@ -154,7 +215,7 @@ export default function CreateProduct({ open, handleClose }: any) {
             Abbrechen
           </Button>
           <Button variant="contained" color="primary" onClick={handleSubmit}>
-          Hinzufügen
+            Hinzufügen
           </Button>
         </Box>
       </Box>

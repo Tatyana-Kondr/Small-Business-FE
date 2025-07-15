@@ -164,6 +164,7 @@ export default function ProductCard() {
                                     ["Artikel", product.article],
                                     ["Lieferantartikel", product.vendorArticle || "—"],
                                     ["Kaufpreis", `${product.purchasingPrice} €`],
+                                    ["Aufschlag", `${product.markupPercentage} %`],
                                     ["Verkaufspreis", `${product.sellingPrice} €`],
                                     ["Maßeinheit", product.unitOfMeasurement || "—"],
                                     ["Gewicht", product.weight ? `${product.weight} kg` : "—"],
