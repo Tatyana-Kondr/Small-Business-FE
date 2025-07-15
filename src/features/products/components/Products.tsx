@@ -112,7 +112,7 @@ export default function Products() {
       </Box>
 
       {/* Таблица */}
-      <Box sx={{ height: "580px" }}>
+      <Box sx={{ minHeight: "600px" }}>
         <TableContainer component={Paper}>
           <Table>
             <StyledTableHead>
@@ -135,9 +135,9 @@ export default function Products() {
                 products.map((product) => (
                   <TableRow key={product.id}>
                     <TableCell style={{ display: "none", padding: "6px 12px" }}>{product.id}</TableCell>
-                    <TableCell sx={{ width: "300px", padding: "6px 12px", borderRight: "1px solid #ddd" }}
+                    <TableCell sx={{ minWidth: "300px", padding: "6px 12px", borderRight: "1px solid #ddd" }}
                       onDoubleClick={() => navigate(`/product-card/${product.id}`)}>{product.name}</TableCell>
-                    <TableCell sx={{ width: "200px", padding: "6px 12px", borderRight: "1px solid #ddd" }}
+                    <TableCell sx={{ padding: "6px 12px", borderRight: "1px solid #ddd" }}
                     >{product.article}</TableCell>
                     <TableCell sx={{ width: "200px", padding: "6px 12px", borderRight: "1px solid #ddd" }}>{product.vendorArticle}</TableCell>
                     <TableCell align="right" sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{formatNumber(product.purchasingPrice)} €</TableCell>
