@@ -21,6 +21,8 @@ import CustomerWithNumberCard from './features/customers/CustomerWithNumberCard'
 import Purchases from './features/purchases/components/Purchases';
 import CreatePurchasePage from './features/purchases/components/CreatePurchasePage';
 import PurchaseCard from './features/purchases/components/PurchaseCard';
+import CreateSalePage from './features/sales/components/CreateSalePage';
+import Sales from './features/sales/components/Sales';
 
 
 function App() {
@@ -60,7 +62,8 @@ function App() {
           <Route path="/purchases" element={<Purchases />} />
           <Route path="/purchases/create" element={<CreatePurchasePage />} />
           <Route path="/purchases/:purchaseId" element={<PurchaseCard />} />
-
+          <Route path="/sales" element={<Sales />} />
+          <Route path="/sales/create" element={<CreateSalePage />} />
           
           {/* Страница 404 */}
           <Route path="*" element={<NoSuchPage />} />
