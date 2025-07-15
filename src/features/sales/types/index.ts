@@ -33,9 +33,9 @@ export interface Sale {
   shipping: string;
   shippingDimensions: NewShippingDimensionsDto;
   termsOfPayment: string;
-  salesDate: string; 
+  salesDate: string;
+  paymentDate: string; 
   paymentStatus: string;
-  paymentDate: string;
   orderNumber: string;
   orderType: string;
   deliveryDate: string;
