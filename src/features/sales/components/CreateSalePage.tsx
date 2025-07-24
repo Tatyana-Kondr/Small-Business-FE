@@ -237,7 +237,7 @@ export default function CreateSalePage() {
         const newSaleToSend: NewSaleDto = {
             ...newSale,
             salesItems: updatedSaleItems,
-            paymentStatus: 'NICHT_BEZAHLT',
+            paymentStatus: 'AUSSTEHEND',
         };
 
         dispatch(addSale(newSaleToSend))
@@ -784,10 +784,8 @@ export default function CreateSalePage() {
                     </Box>
                 </DialogContent>
             </Dialog>
-
         </Container >
     );
-
 }
 
 
