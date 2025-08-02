@@ -11,15 +11,12 @@ import {
   Paper,
   Box,
   Pagination,
-  Button,
 } from "@mui/material";
 import { useAppDispatch, useAppSelector } from "../../redux/hooks";
 import { styled } from "@mui/material/styles";
 import { getCustomers, selectCustomers, selectTotalPages, selectCurrentPage } from "./customersSlice"; // Подключаем необходимые селекторы
 import { useNavigate } from "react-router-dom";
-import Dialog from "@mui/material/Dialog";
-import DialogContent from "@mui/material/DialogContent";
-import CreateCustomer from "./CreateCustomer";
+
 
 // Стили для заголовков таблицы
 const StyledTableHead = styled(TableHead)({
@@ -47,9 +44,6 @@ export default function Customers() {
   const currentPage = useAppSelector(selectCurrentPage); // Получаем текущую страницу
   const [page, setPage] = useState(currentPage); // Состояние для текущей страницы
   const [pageSize] = useState(15); // Количество элементов на странице
-  const [openDialog, setOpenDialog] = useState(false);
-  const handleOpenDialog = () => setOpenDialog(true);
-  const handleCloseDialog = () => setOpenDialog(false);
 
   useEffect(() => {
     dispatch(getCustomers({ page, size: pageSize })); // Загружаем данные на основе текущей страницы
@@ -63,26 +57,17 @@ export default function Customers() {
     setPage(newPage - 1); // Обновляем страницу
   };
 
-  const handleCustomerCreated = () => {
-  setOpenDialog(false); // Закрыть диалог
-  dispatch(getCustomers({ page, size: pageSize })); // Обновить список
-};
-
   return (
     <Container>
       {/* Верхняя панель */}
        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-        <Typography variant="h4" sx={{ fontWeight: "bold", color: "#0776A0" }}>
+        <Typography variant="h5" sx={{ fontWeight: "bold", color: "#0776A0" }}>
           Lieferanten
         </Typography>
-
-        <Button variant="contained" color="primary" onClick={handleOpenDialog}>
-          Neuen Lieferanten anlegen
-        </Button>
       </Box>
 
       {/* Таблица */}
-      <Box sx={{ height: "550px" }}>
+      <Box sx={{ height: "100%" }}>
         <TableContainer component={Paper}>
           <Table>
             <StyledTableHead>
@@ -137,18 +122,6 @@ export default function Customers() {
           color="primary"
         />
       </Box>
-      <Dialog open={openDialog} onClose={handleCloseDialog}  maxWidth={false}>
-        <DialogContent>
-          <Box sx={{
-            width: "clamp(300px, 90vw, 800px)", // 👈 адаптивная ширина
-            maxHeight: "80vh",
-            overflowY: "auto",
-          }}>
-           <CreateCustomer onClose={handleCloseDialog} onCustomerCreated={handleCustomerCreated} />
-
-          </Box>
-        </DialogContent>
-      </Dialog>
     </Container>
   );
 }
