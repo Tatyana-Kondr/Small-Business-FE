@@ -1,10 +1,11 @@
 
 export interface NewShippingDimensionsDto {
-  width: number | null;
-  height: number | null;
-  length: number | null;
-  weight: number | null;
+  width?: number | null;
+  height?: number | null;
+  length?: number | null;
+  weight?: number | null;
 }
+
 
 export interface SaleItem {
   id: number;
@@ -25,24 +26,32 @@ export interface SaleItem {
 export interface Sale {
   id: number;
   customerId: number;
+  customerName: string;
   invoiceNumber: string;
   accountObject: string;
   typeOfOperation: string;
   shipping: string;
   shippingDimensions: NewShippingDimensionsDto;
   termsOfPayment: string;
-  salesDate: string; 
-  paymentDate: string;
+  salesDate: string;
+  paymentDate: string; 
   paymentStatus: string;
+  orderNumber: string;
+  orderType: string;
+  deliveryDate: string;
+  deliveryBill: string;
   discountAmount: number;
   totalPrice: number;
+  defaultTax: number;
   taxAmount: number;
   totalAmount: number;
-  salesItems: SaleItem[];
+  defaultDiscount: number;
+  saleItems: SaleItem[];
 }
 
 export interface NewSaleItemDto {
   position: number;
+  saleId: number
   productId: number;
   productName: string;
   quantity: number;
@@ -64,8 +73,14 @@ export interface NewSaleDto {
   shippingDimensions?: NewShippingDimensionsDto;
   termsOfPayment?: string;
   salesDate?: string;
-  paymentDate?: string;
   paymentStatus: string;
+  paymentDate?: string;
+  orderNumber?: string;
+  orderType?: string;
+  deliveryDate?: string;
+  deliveryBill: string;
+  defaultTax: number;
+  defaultDiscount: number;
   salesItems: NewSaleItemDto[];
 }
 

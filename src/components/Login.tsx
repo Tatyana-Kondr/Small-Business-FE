@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { TextField, Button, Box, Typography, Alert} from "@mui/material";
+import { TextField, Button, Box, Typography, Alert, Link} from "@mui/material";
 import { useSelector } from "react-redux";
 import { RootState } from "../redux/store";
 import { useAppDispatch } from "../redux/hooks";
@@ -22,7 +22,7 @@ const LoginForm = () => {
 
   return (
     <Box sx={{ maxWidth: 400, mx: "auto", mt: 5, p: 3, bgcolor: "white", boxShadow: 3, borderRadius: 2 }}>
-      <Typography variant="h5" align="center" gutterBottom>
+      <Typography variant="h5" sx={{ fontWeight: "bold",  color: "#0277bd"}} align="center" gutterBottom>
         SIGN IN
       </Typography>
       {loginErrorMessage && <Alert severity="error">{loginErrorMessage}</Alert>}
@@ -47,14 +47,22 @@ const LoginForm = () => {
         />
         
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-          <Typography variant="body2" color="primary" component="a" href="#" sx={{ textDecoration: "none" }}>
-            Forgot Password?
-          </Typography>
+          <Link  color="primary"  href="#" underline="hover" sx={{marginTop: 1, fontSize: 14, transition: "color 0.2s", "&:hover": { color: "#1e88e5" } }}>
+            Passwort vergessen?
+          </Link>
         </Box>
-        <Button type="submit" variant="contained" color="success" fullWidth disabled={status === "loading"}>
+        <Button type="submit" variant="contained" sx={{  backgroundImage: "linear-gradient(to right, #006064, #4dd0e1)"}}  fullWidth disabled={status === "loading"}>
           Login
         </Button>
       </form>
+      <Box mt={2} textAlign="center">
+        <Typography variant="body2">
+          Noch nicht registriert?{" "}
+          <Link href="/register" color="primary" underline="hover" sx={{ transition: "color 0.2s", "&:hover": { color: "#1e88e5" } }} >
+            Jetzt registrieren
+          </Link>
+        </Typography>
+      </Box>
     </Box>
   );
 };

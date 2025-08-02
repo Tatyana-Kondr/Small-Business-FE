@@ -7,6 +7,7 @@ import { getProductFiles, uploadProductFile, deleteProductFile, selectProductFil
 import { CircularProgress, Container, Box, Typography, Button, Paper, Grid, Modal, IconButton, Dialog, DialogContent } from "@mui/material"
 import { ArrowBackIos, ArrowForwardIos, Close } from "@mui/icons-material"
 import EditProduct from "./EditProduct"
+import KeyboardDoubleArrowLeftOutlinedIcon from '@mui/icons-material/KeyboardDoubleArrowLeftOutlined';
 
 
 export default function ProductCard() {
@@ -142,21 +143,24 @@ export default function ProductCard() {
     return (
 
         <Container>
-            {/* Кнопка "Back to Products" в левом верхнем углу */}
-            <Box sx={{ position: "absolute", top: 75, left: 25 }}>
-                <Button variant="outlined" startIcon={<ArrowBackIos />} onClick={handleGoBack}>
-                    Back to Products
-                </Button>
-            </Box>
-
             <Paper elevation={3} sx={{ borderRadius: 2, overflow: "hidden", p: 3 }}>
                 {/* Основная сетка с двумя частями: таблица слева и просмотр картинок справа */}
-                <Box sx={{ backgroundColor: "#01579b", color: "#fff", padding: "12px 20px", textAlign: "left", marginBottom: "20px" }}>
-                    <Typography variant="h4">{product.name}</Typography>
+                <Box
+                    sx={{
+                        backgroundImage: "linear-gradient(to right, #003c8f, #0288d1)",
+                        color: "#fff",
+                        padding: "12px 20px",
+                        textAlign: "left",
+                        marginBottom: "20px",
+                        borderRadius: "8px",
+                        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
+                    }}
+                >
+                    <Typography variant="h5">{product.name}</Typography>
                 </Box>
                 <Grid container spacing={3}>
                     {/* Левая часть с таблицей */}
-                    <Grid item xs={12} sm={6}>
+                    <Grid item xs={12} sm={5}>
                         {/* Таблица с данными */}
                         <Box sx={{ p: 3, display: "flex", flexDirection: "column", justifyContent: "space-around", height: "100%", marginBottom: "10px" }}>
                             <Grid container spacing={2}>
@@ -164,6 +168,7 @@ export default function ProductCard() {
                                     ["Artikel", product.article],
                                     ["Lieferantartikel", product.vendorArticle || "—"],
                                     ["Kaufpreis", `${product.purchasingPrice} €`],
+                                    ["Aufschlag", `${product.markupPercentage} %`],
                                     ["Verkaufspreis", `${product.sellingPrice} €`],
                                     ["Maßeinheit", product.unitOfMeasurement || "—"],
                                     ["Gewicht", product.weight ? `${product.weight} kg` : "—"],
@@ -173,25 +178,54 @@ export default function ProductCard() {
                                     ["Erstellungsdatum", formattedDate],
                                 ].map(([label, value]) => (
                                     <Grid container key={label} spacing={2} alignItems="center" sx={{ height: '50px' }}>
-                                        <Grid item xs={4} sx={{ display: 'flex', alignItems: 'center' }}>
-                                            <Typography variant="body1" sx={{ fontWeight: "bold", textAlign: "left", color: "#01579b" }}>{label}:</Typography>
+                                        <Grid item xs={4} >
+                                            <Typography variant="body1" sx={{ fontWeight: "bold", textAlign: "left", color: "#01579b", fontSize: 14 }}>{label}:</Typography>
                                         </Grid>
-                                        <Grid item xs={8} sx={{ display: 'flex', alignItems: 'center' }}>
-                                            <Typography variant="body1">{value}</Typography>
+                                        <Grid item xs={8}>
+                                            <Typography variant="body1" sx={{textAlign: "right", fontSize: 14 }}>{value}</Typography>
                                         </Grid>
                                     </Grid>
                                 ))}
                             </Grid>
-                            <Button variant="contained" sx={{ mt: 2 }} onClick={handleOpenEditModal}>
+                             <Box sx={{ display: "flex", flexDirection: "column", gap: 1, marginTop: 2 }}> 
+                                <Button variant="contained" onClick={handleOpenEditModal}>
                                 Daten bearbeiten
+                            </Button>                           
+                            <Button
+                                onClick={handleGoBack}
+                                sx={{
+                                    fontSize: 12,
+                                    minWidth: 40,
+                                    minHeight: 40,
+                                    padding: 0,
+                                    display: "flex",
+                                    justifyContent: "left",
+                                    alignItems: "center",
+                                    borderRadius: 1,
+                                    backgroundColor: "transparent",
+                                    "&:hover": {
+                                        backgroundColor: "transparent", // фон не меняется при ховере
+                                        color: "#00838f",
+                                        "& .MuiSvgIcon-root": {
+                                            color: "#00838f", // цвет иконки при наведении
+                                        },
+                                    },
+                                    "& .MuiSvgIcon-root": {
+                                        transition: "color 0.3s ease", // плавный переход цвета
+                                    },
+                                }}
+                            >
+                                <KeyboardDoubleArrowLeftOutlinedIcon fontSize="large" /> ZURÜCK
                             </Button>
+                            
+                            </Box>
                         </Box>
                     </Grid>
 
                     {/* Правая часть с окном для просмотра картинок */}
-                    <Grid item xs={12} sm={6}>
-                        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between", height: "100%" }}>
-                            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+                    <Grid item xs={12} sm={7}>
+                        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, height: "100%" }}>
+                            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", mb: 0.5 }}>
                                 <IconButton onClick={handlePrevFile}>
                                     <ArrowBackIos />
                                 </IconButton>
@@ -202,7 +236,6 @@ export default function ProductCard() {
                                         maxWidth: "100%",
                                         maxHeight: "400px",
                                         objectFit: "contain",
-                                        marginBottom: "6px",
                                     }}
                                     onClick={() => currentFile && handleOpenModal(currentFileIndex)}
                                 />
@@ -212,26 +245,14 @@ export default function ProductCard() {
                             </Box>
 
                             {/* Кнопки загрузки и удаления фото под изображением */}
-                            <Box sx={{ marginTop: 2, display: "flex", justifyContent: "center", gap: 10 }}>
-                                <Button
-                                    variant="contained"
-                                    component="label"
-                                    sx={{
-                                        backgroundColor: "#01579b",
-                                        "&:hover": { backgroundColor: "#014378" }, // Темнее при наведении
-                                    }}
-                                >
+                            <Box sx={{ display: "flex", justifyContent: "center", gap: 8, mt: 0 }}>
+                                <Button >
                                     Bild hochladen
                                     <input type="file" hidden accept="image/*" onChange={handleFileChange} />
                                 </Button>
 
                                 <Button
-                                    variant="contained"
                                     color="error"
-                                    sx={{
-                                        backgroundColor: "#d32f2f",
-                                        "&:hover": { backgroundColor: "#a62828" }, // Темнее при наведении
-                                    }}
                                     onClick={() => handleDeleteFile(files[currentFileIndex]?.id)}
                                     disabled={files.length === 0}
                                 >

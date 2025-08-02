@@ -6,11 +6,11 @@ import { AuthState, UserCreateDto, UserLoginDto } from "./types";
 const initialState: AuthState = {
   user: null,
   isAuthenticated: false,
-  token: localStorage.getItem("token") || null,
   status: "idle",
   error: null,
-  loginErrorMessage: undefined, 
+  loginErrorMessage: undefined,
   registerErrorMessage: undefined,
+  isSessionChecked: false,
 };
 
 export const authSlice = createAppSlice({
@@ -19,8 +19,8 @@ export const authSlice = createAppSlice({
   reducers: (create) => ({
     register: create.asyncThunk(
       async (user: UserCreateDto) => {
-        const response = await fetchRegister(user)
-        return response
+        const response = await fetchRegister(user);
+        return response;
       },
       {
         pending: (state) => {
@@ -31,7 +31,6 @@ export const authSlice = createAppSlice({
           state.status = "idle";
           state.user = action.payload;
           state.isAuthenticated = true;
-          state.token = null; // Возможно, нужно сохранять токен, если API возвращает его при регистрации
         },
         rejected: (state, action) => {
           state.status = "failed";
@@ -42,7 +41,9 @@ export const authSlice = createAppSlice({
 
     login: create.asyncThunk(
       async (user: UserLoginDto) => {
-        return await fetchLogin(user);
+        await fetchLogin(user); // 🔐 просто логинимся — сервер создаст сессию
+        const userData = await fetchCurrentUser(); // 🧠 затем получаем user из сессии
+        return userData;
       },
       {
         pending: (state) => {
@@ -52,13 +53,12 @@ export const authSlice = createAppSlice({
         fulfilled: (state, action) => {
           state.status = "idle";
           state.isAuthenticated = true;
-          state.token = action.payload.accessToken;
-          localStorage.setItem("token", action.payload.accessToken);
+          state.user = action.payload;
         },
         rejected: (state, action) => {
           state.status = "failed";
           state.isAuthenticated = false;
-          state.token = null;
+          state.user = null;
           state.loginErrorMessage = action.error?.message || "Login failed";
         },
       }
@@ -66,39 +66,47 @@ export const authSlice = createAppSlice({
 
     user: create.asyncThunk(
       async () => {
-        const response = await fetchCurrentUser();
-        return response;
+        return await fetchCurrentUser(); // ⚙️ просто получаем текущего пользователя из сессии
       },
       {
         pending: () => {},
         fulfilled: (state, action) => {
-          state.user = action.payload
+          state.user = action.payload;
+          state.isAuthenticated = true;
+          state.isSessionChecked = true;
         },
-        rejected: state => {
+        rejected: (state) => {
+          state.user = null;
           state.isAuthenticated = false;
-          state.token = null;
+          state.isSessionChecked = true;
         },
-      },
+      }
     ),
 
-    logout: create.reducer(state => {
-      state.user = null;
-      state.token = null;
-      state.isAuthenticated = false;
-    }),
-    
+    logout: create.asyncThunk(
+      async () => {
+        await fetch("/api/auth/logout", {
+          method: "POST",
+          credentials: "include", // обязательно для удаления сессии
+        });
+      },
+      {
+        fulfilled: (state) => {
+          state.user = null;
+          state.isAuthenticated = false;
+        },
+      }
+    ),
   }),
 
   selectors: {
-    selectUser: userState => userState.user,
-    selectRoles: userState => userState.user?.role,
-    selectIsAuthenticated: userState => userState.isAuthenticated,
-    selectLoginError: userState => userState.loginErrorMessage,
-    selectRegisterError: userState => userState.registerErrorMessage,
-    selectToken: userState => userState.token,
+    selectUser: (userState) => userState.user,
+    selectRoles: (userState) => userState.user?.role,
+    selectIsAuthenticated: (userState) => userState.isAuthenticated,
+    selectLoginError: (userState) => userState.loginErrorMessage,
+    selectRegisterError: (userState) => userState.registerErrorMessage,
   },
 });
 
 export const { register, login, user, logout } = authSlice.actions;
-export const { selectUser, selectRoles, selectIsAuthenticated, selectLoginError, selectRegisterError, selectToken } = authSlice.selectors;
-
+export const { selectUser, selectRoles, selectIsAuthenticated, selectLoginError, selectRegisterError } = authSlice.selectors;

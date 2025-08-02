@@ -7,9 +7,26 @@ import { customersSlice } from "../features/customers/customersSlice";
 import { productCategoriesSlice } from "../features/products/productCategoriesSlice";
 import { productFilesSlice } from "../features/products/productFilesSlice";
 import { purchasesSlice } from "../features/purchases/purchasesSlice";
+import { salesSlice } from "../features/sales/salesSlice";
+import { paymentsSlice } from "../features/payments/paymentsSlice";
+import { paymentMethodsSlice } from "../features/payments/paymentMethodsSlice";
+import { paymentProcessesSlice } from "../features/payments/paymentProcessesSlice";
+import { modalSlice } from "../modal/modalSlice";
 
 
-const rootReducer = combineSlices(productsSlice, authSlice, customersSlice, productCategoriesSlice, productFilesSlice, purchasesSlice)
+
+const rootReducer = combineSlices(productsSlice, 
+                                  authSlice,
+                                  customersSlice, 
+                                  productCategoriesSlice,       
+                                  productFilesSlice, 
+                                  purchasesSlice, 
+                                  salesSlice,
+                                  paymentsSlice,
+                                  paymentMethodsSlice,
+                                  paymentProcessesSlice,
+                                  modalSlice
+)
 
 // TypeScript-оператор, который позволяет получить тип возвращаемого значения функции. 
 // В данном случае, typeof rootReducer даёт тип самой функции редьюсера, 
@@ -24,11 +41,16 @@ export const makeStore = (preloadedState?: Partial<RootState>) => {
     reducer: rootReducer,
     // Добавление промежуточного программного обеспечения api позволяет выполнять кэширование,
     //  аннулирование, опрос и другие полезные функции "rtk-запроса".
-    middleware: getDefaultMiddleware => {
-      return getDefaultMiddleware().concat()
-    },
+   middleware: (getDefaultMiddleware) =>
+      getDefaultMiddleware({
+        serializableCheck: {
+          ignoredPaths: ["modal.props"],
+          ignoredActionPaths: ["payload.props"],
+        },
+      }),
     preloadedState,
-  })
+  });
+
   // configure listeners using the provided defaults
   // optional, but required for `refetchOnFocus`/`refetchOnReconnect` behaviors
   setupListeners(store.dispatch)

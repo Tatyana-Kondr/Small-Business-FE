@@ -18,17 +18,15 @@ export const OperationTypes: TypeOfOperation[] = [
 
 // Статусы оплаты
 export type PaymentStatus =
-  | "NICHT_BEZAHLT"
-  | "TEILWEISEBEZAHLT"
+  | "AUSSTEHEND"
+  | "ANZAHLUNG"
   | "BEZAHLT"
-  | "PENDING"
   | "CANCELLED";
 
 export const PaymentStatuses: PaymentStatus[] = [
-  "NICHT_BEZAHLT",
-  "TEILWEISEBEZAHLT",
+  "AUSSTEHEND",
+  "ANZAHLUNG",
   "BEZAHLT",
-  "PENDING",
   "CANCELLED",
 ];
 
@@ -53,7 +51,7 @@ export type Shipping  =
   | "ABHOLUNG";
 
 export const Shipping: Shipping[] = [
- "DHL_PAKET",
+  "DHL_PAKET",
   "POST_MAXI_BRIEF",
   "HERMES",
   "ASH_LOGISTIK_LUFTFRACHT_TRANSPORTE_ZOLLSERVICE",

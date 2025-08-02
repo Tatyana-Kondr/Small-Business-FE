@@ -31,7 +31,7 @@ export default function CreateProductCategory() {
 
     try {
       await fetchAddProductCategory({ name, artName });
-      dispatch(getProductCategories()); // Обновляем список категорий
+      dispatch(getProductCategories()); 
       handleClose();
     } catch (error) {
       setError("Fehler beim Hinzufügen der Kategorie");
@@ -60,7 +60,7 @@ export default function CreateProductCategory() {
             borderRadius: 2
           }}
         >
-          <Typography variant="h6" mb={2}>Neue Kategorie</Typography>
+          <Typography variant="h6" sx={{ textAlign:"left", fontWeight: "bold", textDecoration: 'underline', color: "#0277bd"}} mb={2}>Neue Kategorie</Typography>
 
           <TextField
             label="Name"
@@ -79,14 +79,13 @@ export default function CreateProductCategory() {
           {error && <Typography color="error" mt={1}>{error}</Typography>}
 
           <Box mt={2} display="flex" justifyContent="space-between">
-            <Button onClick={handleClose} variant="contained" color="error">Abbrechen</Button>
+            <Button onClick={handleClose} >Abbrechen</Button>
             <Button 
               onClick={handleSubmit} 
               variant="contained" 
-              color="primary"
               disabled={loading}
             >
-              {loading ? <CircularProgress size={24} /> : "Hinzufügen"}
+              {loading ? <CircularProgress size={24} /> : "Speichern"}
             </Button>
           </Box>
         </Box>

@@ -2,7 +2,6 @@ import { useEffect, useState } from "react"
 import {
     Container, Typography, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, Paper, Box, Pagination,
-    Button
 } from "@mui/material"
 import { useAppDispatch, useAppSelector } from "../../redux/hooks"
 import { styled } from "@mui/material/styles"
@@ -58,20 +57,9 @@ export default function CustomersWithNumber() {
                 zIndex: 1000, // Повышаем приоритет на случай, если другие элементы будут сверху
                 padding: "10px 0", // Отступы
             }}>
-                <Typography variant="h4" sx={{ fontWeight: "bold", color: "#0776A0" }}>Kunden</Typography>
+                <Typography variant="h5" sx={{ fontWeight: "bold", color: "#0776A0" }}>Kunden</Typography>
 
-                <Box display="flex" gap={2}>
-                    {/* Кнопка для создания нового клиента */}
-                    <Button
-                        variant="contained"
-                        color="primary"
-                        onClick={() => navigate("/create-customer")}
-                    >
-                        Neuen Kunden anlegen
-                    </Button>
-                </Box>
             </Box>
-
             {/* Таблица */}
             <Box sx={{ height: "550px" }}>
                 <TableContainer component={Paper}>

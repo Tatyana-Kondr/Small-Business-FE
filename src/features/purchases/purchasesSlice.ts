@@ -1,5 +1,5 @@
 import { createAppSlice } from "../../redux/createAppSlice"
-import { fetchAddPurchase, fetchDeletePurchase, fetchPurchaseById, fetchPurchases, fetchPurchasesByFilter, fetchSearchPurchases, fetchUpdatePurchase, } from "./api";
+import { fetchAddPurchase, fetchDeletePurchase, fetchPurchaseById, fetchPurchases, fetchPurchasesByFilter, fetchSearchPurchases, fetchUpdatePurchase, fetchUpdatePurchasePaymentStatus, } from "./api";
 import { NewPurchaseDto, PurchasesState } from "./types";
 
 const initialState: PurchasesState = {
@@ -202,6 +202,33 @@ export const purchasesSlice = createAppSlice({
         },
       }
     ),
+
+    updatePurchasePaymentStatus: create.asyncThunk(
+  async (id: number) => {
+    return await fetchUpdatePurchasePaymentStatus(id); 
+  },
+  {
+    fulfilled: (state, action) => {
+      const updatedPurchase = action.payload; 
+      const index = state.purchasesList.findIndex(p => p.id === updatedPurchase.id);
+      if (index !== -1) {
+        state.purchasesList[index] = updatedPurchase;
+      }
+      state.loading = false;
+    },
+    pending: (state) => {
+      state.loading = true;
+    },
+    rejected: (state, action) => {
+      const errorMessage =
+        action.payload instanceof Error ? action.payload.message : "Failed to update payment status";
+      state.error = errorMessage;
+      state.loading = false;
+    },
+  }
+),
+
+
   }),
 
   selectors: {
@@ -222,6 +249,7 @@ export const { getPurchases,
   searchPurchases,
   getPurchasesByFilter,
   updatePurchase,
-  deletePurchase, } = purchasesSlice.actions;
+  deletePurchase,
+  updatePurchasePaymentStatus, } = purchasesSlice.actions;
 export const { selectPurchases, selectTotalPages, selectCurrentPage, selectPurchase, selectLoading, selectError, selectPurchaseById } =
   purchasesSlice.selectors;

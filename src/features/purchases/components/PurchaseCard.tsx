@@ -66,13 +66,14 @@ export default function PurchaseCard() {
   const { purchaseId } = useParams<{ purchaseId: string }>();
   const id = Number(purchaseId);
 
-  const [purchase, setPurchase] = useState<Omit<NewPurchaseDto, 'paymentStatus'>>({
+  const [purchase, setPurchase] = useState<NewPurchaseDto>({
     vendorId: 0,
     purchasingDate: '',
     type: 'EINKAUF',
     document: '',
     documentNumber: '',
     purchaseItems: [],
+    paymentStatus: '',
   });
   const [dateValue, setDateValue] = useState<Dayjs | null>(null);
   const [vendors, setVendors] = useState<Customer[]>([]);
@@ -94,6 +95,7 @@ export default function PurchaseCard() {
           document: p.document,
           documentNumber: p.documentNumber,
           purchaseItems: p.purchaseItems,
+          paymentStatus: p.paymentStatus
         });
         setDateValue(p.purchasingDate ? dayjs(p.purchasingDate) : null);
       })
@@ -241,13 +243,13 @@ export default function PurchaseCard() {
       !purchase.purchasingDate ||
       purchase.purchaseItems.length === 0
     ) {
-      alert("Пожалуйста, заполните все обязательные поля корректно.");
+      alert("Bitte füllen Sie alle Pflichtfelder korrekt aus.");
       return;
     }
 
     const updatedPurchaseItems = purchase.purchaseItems.map((item, index) => ({
       ...item,
-      taxPercentage: item.taxPercentage ?? 0, // <-- вот ключевая строка
+      taxPercentage: item.taxPercentage ?? 0,
       taxAmount: ((item.unitPrice ?? 0) * (item.quantity ?? 0)) * ((item.taxPercentage ?? 0) / 100),
       totalAmount: (item.unitPrice ?? 0) * (item.quantity ?? 0) + (((item.unitPrice ?? 0) * (item.quantity ?? 0)) * ((item.taxPercentage ?? 0) / 100)),
       position: index + 1,
@@ -256,19 +258,18 @@ export default function PurchaseCard() {
 
     const updatedPurchaseToSend: NewPurchaseDto = {
       ...purchase,
-      purchaseItems: updatedPurchaseItems,
-      paymentStatus: 'NICHT_BEZAHLT', // Или оставить прежний статус, если есть
+      purchaseItems: updatedPurchaseItems
     };
 
     dispatch(updatePurchase({ id, updatedPurchase: updatedPurchaseToSend }))
       .unwrap()
       .then(() => {
-        alert('Покупка успешно обновлена');
+        alert('Bestellung erfolgreich aktualisiert');
         navigate('/purchases');
       })
       .catch(error => {
-        console.error('Ошибка при обновлении покупки:', error);
-        alert('Не удалось обновить покупку');
+        console.error('Fehler beim Aktualisieren der Bestellung:', error);
+        alert('Die Bestellung konnte nicht aktualisiert werden.');
       });
   };
 
@@ -553,7 +554,6 @@ export default function PurchaseCard() {
                 Aktualisieren
               </Button>
             </Box>
-
           </Paper>
         </Grid>
       </Grid>

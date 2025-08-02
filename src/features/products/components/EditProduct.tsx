@@ -3,7 +3,7 @@ import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
 import { editProduct, selectProduct } from "../productsSlice";
 import { UpdateProductDto } from "../types";
 import { getProductCategories, selectProductCategories } from "../productCategoriesSlice";
-import { Box, Button, TextField, MenuItem, Select, SelectChangeEvent, FormControl, InputLabel } from "@mui/material";
+import { Box, Button, TextField, MenuItem, Select, SelectChangeEvent, FormControl, InputLabel, Typography } from "@mui/material";
 
 interface EditProductProps {
     productId: number;
@@ -19,11 +19,13 @@ export default function EditProduct({ productId, closeModal }: EditProductProps)
 
     useEffect(() => {
         if (selectedProduct) {
+            console.log("Selected Product:", selectedProduct);
             setProductData({
                 name: selectedProduct.name,
                 article: selectedProduct.article,
                 vendorArticle: selectedProduct.vendorArticle || "",
                 purchasingPrice: selectedProduct.purchasingPrice,
+                markupPercentage: selectedProduct.markupPercentage,
                 sellingPrice: selectedProduct.sellingPrice,
                 unitOfMeasurement: selectedProduct.unitOfMeasurement || "",
                 weight: selectedProduct.weight || 0,
@@ -74,11 +76,49 @@ export default function EditProduct({ productId, closeModal }: EditProductProps)
         }
     };
 
+    // Пересчет Verkaufspreis по Kaufpreis и Aufschlag
+    const calculateSellingPrice = (purchasingPrice: number, markupPercentage: number) => {
+        return +(purchasingPrice * (1 + markupPercentage / 100)).toFixed(2);
+    };
+
+    // Пересчет Aufschlag по Kaufpreis и Verkaufspreis
+    const calculateMarkupPercentage = (purchasingPrice: number, sellingPrice: number) => {
+        if (purchasingPrice === 0) return 0;
+        return +(((sellingPrice / purchasingPrice - 1) * 100).toFixed(2));
+    };
+
+    const handlePurchasingPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const purchasingPrice = parseFloat(e.target.value) || 0;
+        setProductData((prev) => prev ? {
+            ...prev,
+            purchasingPrice,
+            sellingPrice: calculateSellingPrice(purchasingPrice, prev.markupPercentage ?? 0),
+        } : prev);
+    };
+
+    const handleMarkupPercentageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const markupPercentage = parseFloat(e.target.value) || 0;
+        setProductData((prev) => prev ? {
+            ...prev,
+            markupPercentage,
+            sellingPrice: calculateSellingPrice(prev.purchasingPrice ?? 0, markupPercentage),
+        } : prev);
+    };
+
+    const handleSellingPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const sellingPrice = parseFloat(e.target.value) || 0;
+        setProductData((prev) => prev ? {
+            ...prev,
+            sellingPrice,
+            markupPercentage: calculateMarkupPercentage(prev.purchasingPrice ?? 0, sellingPrice),
+        } : prev);
+    };
 
 
     const handleSubmit = async () => {
         try {
             if (!productData) return;
+            console.log("Product data:", productData);
             await dispatch(editProduct({ id: productId, updateProductDto: productData }));
             alert("Das Produkt wurde erfolgreich aktualisiert!");
             closeModal();
@@ -86,11 +126,11 @@ export default function EditProduct({ productId, closeModal }: EditProductProps)
             console.error("Fehler bei der Produktaktualisierung:", error);
         }
     };
-    console.log("Categories:", categories);
+   
 
     return (
         <Box sx={{ p: 2 }}>
-            <h2>Produkt bearbeiten</h2>
+             <Typography variant="h6" sx={{ textAlign:"left", fontWeight: "bold", textDecoration: 'underline', color: "#0277bd"}} mb={2}>Produktaktualisierung</Typography>
 
             <TextField
                 fullWidth
@@ -117,7 +157,17 @@ export default function EditProduct({ productId, closeModal }: EditProductProps)
                 name="purchasingPrice"
                 type="number"
                 value={productData.purchasingPrice}
-                onChange={handleChange}
+                onChange={handlePurchasingPriceChange}
+            />
+
+            <TextField
+                fullWidth
+                margin="normal"
+                label="Aufschlag %"
+                name="markupPercentage"
+                type="number"
+                value={productData.markupPercentage}
+                onChange={handleMarkupPercentageChange}
             />
 
             <TextField
@@ -127,7 +177,7 @@ export default function EditProduct({ productId, closeModal }: EditProductProps)
                 name="sellingPrice"
                 type="number"
                 value={productData.sellingPrice}
-                onChange={handleChange}
+                onChange={handleSellingPriceChange}
             />
 
             <TextField
@@ -206,11 +256,11 @@ export default function EditProduct({ productId, closeModal }: EditProductProps)
 
 
             <Box display="flex" justifyContent="space-between" sx={{ mt: 2 }}>
-                <Button variant="contained" color="primary" onClick={handleSubmit}>
-                    Speichern
-                </Button>
-                <Button variant="outlined" color="secondary" onClick={closeModal}>
+                <Button onClick={closeModal}>
                     Abbrechen
+                </Button>
+                <Button variant="contained" onClick={handleSubmit}>
+                    Speichern
                 </Button>
             </Box>
         </Box>

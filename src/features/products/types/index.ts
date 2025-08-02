@@ -5,6 +5,7 @@ export interface Product{
     article: string
     vendorArticle: string
     purchasingPrice: number
+    markupPercentage: number
     sellingPrice: number
     unitOfMeasurement: string
     weight: number
@@ -45,6 +46,8 @@ export interface NewProductDto{
   name: string;
   vendorArticle: string
   purchasingPrice: number
+  markupPercentage: number
+  sellingPrice: number
   productCategory: ProductCategory
   unitOfMeasurement: string
 }
@@ -54,6 +57,7 @@ export interface UpdateProductDto {
   article?: string;
   vendorArticle?: string;
   purchasingPrice?: number;
+  markupPercentage?: number;
   sellingPrice?: number;
   unitOfMeasurement?: string;
   weight?: number;
