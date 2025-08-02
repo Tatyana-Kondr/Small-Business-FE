@@ -1,5 +1,12 @@
-import { User, UserCreateDto, UserLoginDto, LoginResponse } from "../types";
+import { handleFetchError } from "../../../utils/handleFetchError";
+import {
+  SessionUserDto,
+  User,
+  UserCreateDto,
+  UserLoginDto,
+} from "../types";
 
+// 📌 Регистрация
 export async function fetchRegister(userCreateDto: UserCreateDto): Promise<User> {
   const res = await fetch("/api/users/register", {
     method: "POST",
@@ -11,54 +18,48 @@ export async function fetchRegister(userCreateDto: UserCreateDto): Promise<User>
   });
 
   if (res.status === 409) {
-    throw new Error("Conflict: User already exists.")
+    throw new Error("Conflict: User already exists.");
   }
-
   if (!res.ok) {
-    const errorData = await res.json()
-    throw new Error(errorData.message || "Failed to register user.")
+    await handleFetchError(res, "Failed to register user.");
   }
-
-  return res.json()
+  return res.json();
 }
 
-export async function fetchLogin(userLoginDto: UserLoginDto): Promise<LoginResponse> {
+// 📌 Логин
+export async function fetchLogin(userLoginDto: UserLoginDto): Promise<void> {
   const res = await fetch("/api/auth/login", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      accept: "application/json", // Лучше явно указывать application/json
+      accept: "application/json",
     },
+    credentials: "include",
     body: JSON.stringify(userLoginDto),
   });
-  
-  let data;
-  try {
-    data = await res.json(); // Парсим JSON один раз
-  } catch (error) {
-    throw new Error("Ошибка парсинга ответа от сервера");
-  }
 
   if (!res.ok) {
-    throw new Error(data?.message || "Login failed");
+    await handleFetchError(res, "Ошибка входа");
   }
-
-  return data;
 }
 
-
-export async function fetchCurrentUser(): Promise<User> {
-
+// 📌 Получить текущего пользователя из сессии
+export async function fetchCurrentUser(): Promise<SessionUserDto> {
   const res = await fetch("/api/auth/me", {
+    method: "GET",
     headers: {
       "Content-Type": "application/json",
       accept: "*/*",
-      authorization: `Bearer ${localStorage.getItem("token")}`,
     },
+    credentials: "include", // 💡 Критично — тянем сессию
   });
 
+  if (res.status === 401) {
+    throw new Error("Not authenticated");
+  }
+
   if (!res.ok) {
-    throw new Error("Login failed")
+    throw new Error("Failed to fetch user");
   }
 
   return res.json();
