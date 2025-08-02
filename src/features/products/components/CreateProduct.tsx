@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Modal, Box, Typography, TextField, Button, FormControl, InputLabel, Select, MenuItem, SelectChangeEvent } from "@mui/material";
+import { Box, Typography, TextField, Button, FormControl, InputLabel, Select, MenuItem, SelectChangeEvent, Dialog } from "@mui/material";
 import { useAppDispatch } from "../../../redux/hooks";
 import { NewProductDto, ProductCategory } from "../types";
 import { fetchProductCategories } from "../api";
@@ -7,19 +7,12 @@ import { addProduct } from "../productsSlice";
 import { UnitOfMeasurement, unitOfMeasurements } from "../../../constants/unitOfMeasurements";
 
 
-// Стили для модального окна
-const modalStyle = {
-  position: "absolute" as "absolute",
-  top: "50%",
-  left: "50%",
-  transform: "translate(-50%, -50%)",
-  bgcolor: "background.paper",
-  boxShadow: 24,
-  p: 4,
+type CreateProductProps = {
+  onClose: () => void;
 };
 
 
-export default function CreateProduct({ open, handleClose }: any) {
+export default function CreateProduct({ onClose }: CreateProductProps) {
   const dispatch = useAppDispatch();
   const [newProduct, setNewProduct] = useState<NewProductDto>({
     name: "",
@@ -56,14 +49,24 @@ export default function CreateProduct({ open, handleClose }: any) {
     }));
   };
 
-  const handleCategoryChange = (e: SelectChangeEvent<number>) => {
-    const categoryId = Number(e.target.value); // Преобразуем значение в число
-    setSelectedCategory(categoryId); // Устанавливаем в состояние
-    setNewProduct((prevState) => ({
-      ...prevState,
-      productCategory: categories.find((category) => category.id === categoryId) || { id: 0, name: "", artName: "" },
+  const handleCategoryChange = (e: SelectChangeEvent) => {
+    const categoryId = Number(e.target.value);
+    setSelectedCategory(categoryId);
+    setNewProduct(prev => ({
+      ...prev,
+      productCategory: categories.find(cat => cat.id === categoryId) ?? { id: 0, name: '', artName: '' }
     }));
   };
+
+  useEffect(() => {
+    if (categories.length > 0) {
+      setSelectedCategory(categories[0].id);
+      setNewProduct(prev => ({
+        ...prev,
+        productCategory: categories[0],
+      }));
+    }
+  }, [categories]);
 
   const handleUnitChange = (e: SelectChangeEvent<string>) => {
     setNewProduct((prevState) => ({
@@ -77,42 +80,40 @@ export default function CreateProduct({ open, handleClose }: any) {
   };
 
   const calculateMarkupPercentage = (purchasingPrice: number, sellingPrice: number) => {
-  if (purchasingPrice === 0) return 0;
-  return +(((sellingPrice / purchasingPrice - 1) * 100).toFixed(2));
-};
+    if (purchasingPrice === 0) return 0;
+    return +(((sellingPrice / purchasingPrice - 1) * 100).toFixed(2));
+  };
 
-const handlePurchasingPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-  const purchasingPrice = parseFloat(e.target.value) || 0;
-  setNewProduct((prev) => ({
-    ...prev,
-    purchasingPrice,
-    sellingPrice: calculateSellingPrice(purchasingPrice, prev.markupPercentage),
-  }));
-};
+  const handlePurchasingPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const purchasingPrice = parseFloat(e.target.value) || 0;
+    setNewProduct((prev) => ({
+      ...prev,
+      purchasingPrice,
+      sellingPrice: calculateSellingPrice(purchasingPrice, prev.markupPercentage),
+    }));
+  };
 
-const handleMarkupPercentageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-  const markupPercentage = parseFloat(e.target.value) || 0;
-  setNewProduct((prev) => ({
-    ...prev,
-    markupPercentage,
-    sellingPrice: calculateSellingPrice(prev.purchasingPrice, markupPercentage),
-  }));
-};
+  const handleMarkupPercentageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const markupPercentage = parseFloat(e.target.value) || 0;
+    setNewProduct((prev) => ({
+      ...prev,
+      markupPercentage,
+      sellingPrice: calculateSellingPrice(prev.purchasingPrice, markupPercentage),
+    }));
+  };
 
-const handleSellingPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-  const sellingPrice = parseFloat(e.target.value) || 0;
-  setNewProduct((prev) => ({
-    ...prev,
-    sellingPrice,
-    markupPercentage: calculateMarkupPercentage(prev.purchasingPrice, sellingPrice),
-  }));
-};
+  const handleSellingPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const sellingPrice = parseFloat(e.target.value) || 0;
+    setNewProduct((prev) => ({
+      ...prev,
+      sellingPrice,
+      markupPercentage: calculateMarkupPercentage(prev.purchasingPrice, sellingPrice),
+    }));
+  };
 
   const handleSubmit = async () => {
     try {
       await dispatch(addProduct(newProduct));
-
-      // Очистка состояния после добавления
       setNewProduct({
         name: "",
         vendorArticle: "",
@@ -120,83 +121,88 @@ const handleSellingPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         markupPercentage: 20,
         sellingPrice: 0,
         productCategory: { id: 0, name: "", artName: "" },
-        unitOfMeasurement: "ST"
+        unitOfMeasurement: "ST",
       });
-
-      // Закрываем модальное окно
-      handleClose();
+      onClose();
     } catch (error) {
-      console.error("Fehler beim Hinzufügen eines Produkts: ", error);
+      console.error("Fehler beim Hinzufügen eines Produkts:", error);
     }
   };
 
   return (
-    <Modal open={open} onClose={handleClose}>
-      <Box sx={modalStyle}>
-        <Typography variant="h6" component="h2">
-          Ein neues Produkt hinzufügen
+    <Dialog open={true} onClose={onClose} maxWidth="sm" fullWidth>
+      <Box
+        sx={{
+          bgcolor: "#fafafa",
+          borderRadius: 2,
+          p: 4,
+          boxShadow: 4,
+          display: "flex",
+          flexDirection: "column",
+          gap: 2,
+        }}
+      >
+        <Typography variant="h6" sx={{ textAlign:"left", fontWeight: "bold", textDecoration: 'underline', color: "#0277bd"}} fontWeight={600} gutterBottom>
+          Neues Produkt hinzufügen
         </Typography>
-        <TextField
-          label="Name"
-          fullWidth
-          name="name"
-          value={newProduct.name}
-          onChange={handleChange}
-          sx={{ marginBottom: 2 }}
-        />
-        <TextField
-          label="Artikel des Lieferanten"
-          fullWidth
-          name="vendorArticle"
-          value={newProduct.vendorArticle}
-          onChange={handleChange}
-          sx={{ marginBottom: 2 }}
-        />
-        <TextField
-          label="Kaufpreis"
-          fullWidth
-          name="purchasingPrice"
-          type="number"
-           value={String(newProduct.purchasingPrice)}
-          onChange={handlePurchasingPriceChange}
-          sx={{ marginBottom: 2 }}
-        />
 
-        <TextField
-          label="Aufschlag %"
-          fullWidth
-          name="markupPercentage"
-          type="number"
-           value={String(newProduct.markupPercentage)}
-          onChange={handleMarkupPercentageChange}
-          sx={{ marginBottom: 2 }}
-        />
+        <Box display="grid" gap={2}>
+          <TextField
+            label="Name"
+            fullWidth
+            name="name"
+            value={newProduct.name}
+            onChange={handleChange}
+          />
+          <TextField
+            label="Artikel des Lieferanten"
+            fullWidth
+            name="vendorArticle"
+            value={newProduct.vendorArticle}
+            onChange={handleChange}
+          />
+          <TextField
+            label="Kaufpreis"
+            fullWidth
+            name="purchasingPrice"
+            type="number"
+            value={String(newProduct.purchasingPrice)}
+            onChange={handlePurchasingPriceChange}
+          />
+          <TextField
+            label="Aufschlag %"
+            fullWidth
+            name="markupPercentage"
+            type="number"
+            value={String(newProduct.markupPercentage)}
+            onChange={handleMarkupPercentageChange}
+          />
+          <TextField
+            label="Verkaufspreis"
+            fullWidth
+            name="sellingPrice"
+            type="number"
+            value={String(newProduct.sellingPrice)}
+            onChange={handleSellingPriceChange}
+          />
+        </Box>
 
-        <TextField
-          label="Verkaufspreis"
-          fullWidth
-          name="sellingPrice"
-          type="number"
-           value={String(newProduct.sellingPrice)}
-          onChange={handleSellingPriceChange}
-          sx={{ marginBottom: 2 }}
-        />
-
-        <FormControl fullWidth sx={{ marginBottom: 2 }}>
+        <FormControl fullWidth>
           <InputLabel>Kategorie</InputLabel>
           <Select
-            value={selectedCategory || ""}
+            value={selectedCategory !== null ? String(selectedCategory) : ""}
             onChange={handleCategoryChange}
             label="Kategorie"
           >
             {categories.map((category) => (
-              <MenuItem key={category.id} value={category.id}>
+              <MenuItem key={category.id} value={String(category.id)}>
                 {category.name}
               </MenuItem>
             ))}
           </Select>
         </FormControl>
-        <FormControl fullWidth sx={{ mb: 2 }}>
+
+        <FormControl fullWidth>
           <InputLabel>Maßeinheit</InputLabel>
           <Select
             value={newProduct.unitOfMeasurement || ""}
@@ -210,15 +216,16 @@ const handleSellingPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
             ))}
           </Select>
         </FormControl>
-        <Box display="flex" justifyContent="flex-end">
-          <Button variant="contained" onClick={handleClose} sx={{ marginRight: 2 }}>
+
+        <Box display="flex" justifyContent="flex-end" gap={2} mt={1}>
+          <Button onClick={onClose}>
             Abbrechen
           </Button>
-          <Button variant="contained" color="primary" onClick={handleSubmit}>
-            Hinzufügen
+          <Button variant="contained" onClick={handleSubmit}>
+            Speichern
           </Button>
         </Box>
       </Box>
-    </Modal>
+    </Dialog>
   );
 }
