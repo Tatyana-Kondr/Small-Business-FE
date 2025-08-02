@@ -32,16 +32,24 @@ export default function DeleteProductCategory({ categoryId, categoryName }: Dele
 
   return (
     <>
-      <Button variant="outlined" color="error" size="small" onClick={handleOpen} sx={{
-        "&:hover": {
-          borderColor: "#d32f2f", // Темный красный цвет (или любой другой)
-        },
-      }}>
+       <Button
+        variant="outlined"
+        color="error"
+        size="small"
+        onClick={handleOpen}
+        sx={{
+          "&:hover": {
+            borderColor: "#d32f2f",
+            backgroundColor: "#fddede",
+          },
+        }}
+      >
         Löschen
       </Button>
 
+
       <Dialog open={open} onClose={handleClose}>
-        <DialogTitle color="red"> Warnung! </DialogTitle>
+         <DialogTitle sx={{ color: "error.main", fontWeight: "bold" }}>⚠️ WARNUNG!</DialogTitle>
         <DialogContent>
           <DialogContentText>
             Wollen Sie die Kategorie <strong>{categoryName}</strong> wirklich löschen?

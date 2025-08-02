@@ -54,7 +54,7 @@ export default function EditProductCategory({ category, onClose }: EditProductCa
           borderRadius: 2
         }}
       >
-        <Typography variant="h6" mb={2}>Aktualisierung der Kategorie</Typography>
+        <Typography variant="h6" sx={{ textAlign:"left", fontWeight: "bold", textDecoration: 'underline', color: "#0277bd"}} mb={2}>Kategorienaktualisierung</Typography>
 
         <TextField
           label="Name"
@@ -73,11 +73,10 @@ export default function EditProductCategory({ category, onClose }: EditProductCa
         {error && <Typography color="error" mt={1}>{error}</Typography>}
 
         <Box mt={2} display="flex" justifyContent="space-between">
-          <Button onClick={onClose} variant="contained" color="error">Abbrechen</Button>
+          <Button onClick={onClose}>Abbrechen</Button>
           <Button 
             onClick={handleSubmit} 
             variant="contained" 
-            color="primary"
             disabled={loading}
           >
             {loading ? <CircularProgress size={24} /> : "Speichern"}

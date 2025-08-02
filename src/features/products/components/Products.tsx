@@ -1,17 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import {
-  Container, Table, TableBody, TableCell,
+  Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, Paper, Box, Pagination,
-  Button,
   TextField,
   IconButton
 } from "@mui/material";
 import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
-import { getProducts, selectProducts, selectTotalPages, addProduct } from "../productsSlice";
+import { getProducts, selectProducts, selectTotalPages } from "../productsSlice";
 import { styled } from "@mui/material/styles";
 import { useNavigate } from "react-router-dom";
-import CreateProduct from "./CreateProduct";
-import { NewProductDto } from "../types";
 import ClearIcon from "@mui/icons-material/Clear";
 import debounce from "lodash.debounce";
 
@@ -36,7 +33,6 @@ export default function Products() {
   const totalPages = useAppSelector(selectTotalPages);  // Получаем количество страниц
   const [page, setPage] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
-  const [openCreateProductModal, setOpenCreateProductModal] = useState(false);
   const navigate = useNavigate();
 
   // Используем debounce для оптимизации запросов
@@ -67,16 +63,9 @@ export default function Products() {
     dispatch(getProducts({ page: 0, size: 15 }));
   };
 
-  const handleOpenCreateProductModal = () => setOpenCreateProductModal(true);
-  const handleCloseCreateProductModal = () => setOpenCreateProductModal(false);
-
-  const handleCreateProduct = (newProduct: NewProductDto) => {
-    dispatch(addProduct(newProduct));
-    handleCloseCreateProductModal();
-  };
-
   return (
-    <Container>
+    <Box sx={{ p: 0, m: 0, width: "100%" }}>
+
       {/* Верхняя панель */}
       <Box
         display="flex"
@@ -92,23 +81,22 @@ export default function Products() {
       >
         <Box display="flex" gap={1}>
           <TextField
+            id="search-input"
             label="Suche"
             variant="outlined"
             size="small"
             value={searchTerm}
-            onChange={handleSearchChange} // Обработчик изменения поиска
+            onChange={handleSearchChange}
             sx={{ width: 400, backgroundColor: "white" }}
           />
-          <IconButton onClick={handleClearSearch}><ClearIcon /></IconButton>
+          <IconButton
+            aria-label="Suche zurücksetzen"
+            onClick={handleClearSearch}
+          >
+            <ClearIcon />
+          </IconButton>
         </Box>
 
-        <Button variant="contained" onClick={() => navigate("/product-categories")}>
-          Produktkategorien
-        </Button>
-
-        <Button variant="contained" onClick={handleOpenCreateProductModal}>
-          Produkt hinzufügen
-        </Button>
       </Box>
 
       {/* Таблица */}
@@ -127,7 +115,6 @@ export default function Products() {
                 <TableCell align="center">Gewicht, kg</TableCell>
                 <TableCell>Abmessungen</TableCell>
                 <TableCell>Kategorie</TableCell>
-                <TableCell>Erstellungsdatum</TableCell>
               </TableRow>
             </StyledTableHead>
             <TableBody>
@@ -150,7 +137,6 @@ export default function Products() {
                         : ""}
                     </TableCell>
                     <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{product.productCategory?.name}</TableCell>
-                    <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{new Date(product.createdDate).toLocaleDateString()}</TableCell>
                   </TableRow>
                 ))
               ) : (
@@ -172,13 +158,6 @@ export default function Products() {
           color="primary"
         />
       </Box>
-
-      {/* Модальное окно для создания продукта */}
-      <CreateProduct
-        open={openCreateProductModal}
-        handleClose={handleCloseCreateProductModal}
-        handleCreateProduct={handleCreateProduct}
-      />
-    </Container>
+    </Box>
   );
 }

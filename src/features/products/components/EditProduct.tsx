@@ -3,7 +3,7 @@ import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
 import { editProduct, selectProduct } from "../productsSlice";
 import { UpdateProductDto } from "../types";
 import { getProductCategories, selectProductCategories } from "../productCategoriesSlice";
-import { Box, Button, TextField, MenuItem, Select, SelectChangeEvent, FormControl, InputLabel } from "@mui/material";
+import { Box, Button, TextField, MenuItem, Select, SelectChangeEvent, FormControl, InputLabel, Typography } from "@mui/material";
 
 interface EditProductProps {
     productId: number;
@@ -130,7 +130,7 @@ export default function EditProduct({ productId, closeModal }: EditProductProps)
 
     return (
         <Box sx={{ p: 2 }}>
-            <h2>Produkt bearbeiten</h2>
+             <Typography variant="h6" sx={{ textAlign:"left", fontWeight: "bold", textDecoration: 'underline', color: "#0277bd"}} mb={2}>Produktaktualisierung</Typography>
 
             <TextField
                 fullWidth
@@ -256,11 +256,11 @@ export default function EditProduct({ productId, closeModal }: EditProductProps)
 
 
             <Box display="flex" justifyContent="space-between" sx={{ mt: 2 }}>
-                <Button variant="contained" color="primary" onClick={handleSubmit}>
-                    Speichern
-                </Button>
-                <Button variant="outlined" color="secondary" onClick={closeModal}>
+                <Button onClick={closeModal}>
                     Abbrechen
+                </Button>
+                <Button variant="contained" onClick={handleSubmit}>
+                    Speichern
                 </Button>
             </Box>
         </Box>
