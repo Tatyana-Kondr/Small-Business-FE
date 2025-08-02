@@ -3,7 +3,6 @@ import {
     Box, TextField, Button, Typography, IconButton,
     FormControl, Select, MenuItem, Table, TableHead,
     TableRow, TableCell, TableBody, Autocomplete,
-    Container,
     Grid,
     styled,
     Paper,
@@ -23,12 +22,10 @@ import 'dayjs/locale/de';
 import { deDE } from '@mui/x-date-pickers/locales';
 import { getProducts, getProductsByCategory, selectProducts } from '../../products/productsSlice';
 import { getProductCategories, selectProductCategories } from '../../products/productCategoriesSlice';
-import { useNavigate } from 'react-router-dom';
-import { ArrowBackIos } from '@mui/icons-material';
 import { NewSaleDto, NewSaleItemDto, NewShippingDimensionsDto } from '../types';
 import { addSale } from '../salesSlice';
 import { Shipping, TermsOfPayment } from '../../../constants/enums';
-import { Dialog, DialogContent } from "@mui/material";
+import { Dialog } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import CreateCustomer from '../../customers/CreateCustomer';
 
@@ -54,9 +51,13 @@ const StyledTableRow = styled(TableRow)({
 const typeOptions = ['VERKAUF', 'KUNDENERSTATTUNG'] as const;
 type SaleType = typeof typeOptions[number];
 
-export default function CreateSalePage() {
+type CreateSaleModalProps = {
+    onClose: () => void;
+    onSubmitSuccess?: () => void;
+};
+
+export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSaleModalProps) {
     const dispatch = useAppDispatch();
-    const navigate = useNavigate();
 
     const [newSale, setNewSale] = useState<Omit<NewSaleDto, 'paymentStatus'>>({
         customerId: 0,
@@ -83,10 +84,10 @@ export default function CreateSalePage() {
     const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [weightInput, setWeightInput] = useState<string>('');
-    const [openCreateCustomer, setOpenCreateCustomer] = useState(false);
     const [deliveryDateValue, setDeliveryDateValue] = useState<Dayjs | null>(
         newSale.deliveryDate ? dayjs(newSale.deliveryDate) : null
     );
+    const [showCreateCustomer, setShowCreateCustomer] = useState(false);
 
 
     useEffect(() => {
@@ -219,13 +220,18 @@ export default function CreateSalePage() {
         }));
     };
 
+    const handleCreateNewCustomer = () => {
+        setShowCreateCustomer(true);
+    };
+
+
     const handleSubmit = () => {
         if (
             !newSale.customerId ||
             !newSale.salesDate ||
             newSale.salesItems.length === 0
         ) {
-            alert("Пожалуйста, заполните все обязательные поля корректно.");
+            alert("Bitte füllen Sie alle Pflichtfelder korrekt aus.");
             return;
         }
 
@@ -243,15 +249,15 @@ export default function CreateSalePage() {
         dispatch(addSale(newSaleToSend))
             .unwrap()
             .then(() => {
-                alert('Продажа успешно создана');
-                navigate('/sales');
+                alert('Auftrag erfolgreich erstellt.');
+                onSubmitSuccess?.();
+                onClose();
             })
             .catch((error) => {
-                console.error('Ошибка при создании покупки:', error);
-                alert('Не удалось создать покупку');
+                console.error('Fehler beim Erstellen:', error);
+                alert('Der Auftrag konnte nicht erstellt werden.');
             });
     };
-
     const updateShippingDimension = (
         field: keyof NewShippingDimensionsDto,
         value: string
@@ -294,26 +300,17 @@ export default function CreateSalePage() {
         });
     };
 
-    const handleGoBack = () => {
-        navigate(-1)
-    }
+
 
     return (
-        <Container maxWidth="xl" sx={{ mt: 3 }}>
-            <Grid container spacing={3}>
-
-                <Box sx={{ position: "absolute", top: 75, left: 20 }}>
-                    <Button variant="outlined" startIcon={<ArrowBackIos />} onClick={handleGoBack}>
-                        Zurück
-                    </Button>
-                </Box>
-
+        <Dialog open onClose={onClose} maxWidth="lg" fullWidth scroll="paper" >
+            <Grid container spacing={3} sx={{ p: 2 }}>
                 {/* форма и добавленные товары */}
                 <Grid item xs={12} md={12}>
                     <Paper elevation={3} sx={{ p: 3 }}>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                            <Typography variant="h5" sx={{ color: "#1a3d6d", fontWeight: "bold" }}>
-                                Neuer Auftrag
+                            <Typography variant="h6" sx={{ textAlign: "left", fontWeight: "bold", textDecoration: 'underline', color: "#0277bd" }}>
+                                NEUER AUFTRAG
                             </Typography>
                             <FormControl sx={{ minWidth: 200 }}>
                                 <Select
@@ -352,9 +349,9 @@ export default function CreateSalePage() {
                                 <Button
                                     variant="outlined"
                                     fullWidth
-                                    onClick={() => setOpenCreateCustomer(true)}
+                                    onClick={handleCreateNewCustomer}
                                     startIcon={<AddIcon />}
-                                    sx={{ height: "100%" }}
+                                    sx={{ height: "100%", "&:hover": { borderColor: "#00acc1" } }}
                                 >
                                     Neu
                                 </Button>
@@ -391,9 +388,11 @@ export default function CreateSalePage() {
                         </Grid>
 
                         <Grid container spacing={2} sx={{ mb: 2 }}>
-                            <Grid item xs={5}>
+                            <Grid item xs={4}>
                                 <FormControl fullWidth>
                                     <TextField
+                                        id="account-object"
+                                        name="accountObject"
                                         label="Objekt"
                                         value={newSale.accountObject}
                                         onChange={(e) => setNewSale({ ...newSale, accountObject: e.target.value })}
@@ -401,10 +400,13 @@ export default function CreateSalePage() {
                                     />
                                 </FormControl>
                             </Grid>
-                            <Grid item xs={5}>
+
+                            <Grid item xs={4}>
                                 <FormControl fullWidth>
-                                    <InputLabel>Zahlbedinung</InputLabel>
+                                    <InputLabel id="terms-of-payment-label" htmlFor="terms-of-payment-select">Zahlbedinung</InputLabel>
                                     <Select
+                                        id="terms-of-payment-select"
+                                        labelId="terms-of-payment-label"
                                         label="Zahlbedinung"
                                         value={newSale.termsOfPayment}
                                         onChange={(e) => setNewSale(prev => ({ ...prev, termsOfPayment: e.target.value as TermsOfPayment }))}
@@ -417,15 +419,15 @@ export default function CreateSalePage() {
                                     </Select>
                                 </FormControl>
                             </Grid>
-                            <Grid item xs={1}>
+
+                            <Grid item xs={2}>
                                 <FormControl fullWidth>
-                                    <InputLabel id="default-tax-label">MWSt %</InputLabel>
+                                    <InputLabel id="default-tax-label" htmlFor="default-tax-select">MWSt %</InputLabel>
                                     <Select
-                                        fullWidth
-                                        labelId="default-tax-label"
                                         id="default-tax-select"
-                                        value={newSale.defaultTax}
+                                        labelId="default-tax-label"
                                         label="MWSt %"
+                                        value={newSale.defaultTax}
                                         onChange={(e) =>
                                             setNewSale(prev => ({
                                                 ...prev,
@@ -441,15 +443,15 @@ export default function CreateSalePage() {
                                     </Select>
                                 </FormControl>
                             </Grid>
-                            <Grid item xs={1}>
+
+                            <Grid item xs={2}>
                                 <FormControl fullWidth>
-                                    <InputLabel id="default-tax-label">Rabatt %</InputLabel>
+                                    <InputLabel id="default-discount-label" htmlFor="default-discount-select">Rabatt %</InputLabel>
                                     <Select
-                                        fullWidth
-                                        labelId="default-discount-label"
                                         id="default-discount-select"
-                                        value={newSale.defaultDiscount}
+                                        labelId="default-discount-label"
                                         label="Rabatt %"
+                                        value={newSale.defaultDiscount}
                                         onChange={(e) =>
                                             setNewSale(prev => ({
                                                 ...prev,
@@ -469,17 +471,21 @@ export default function CreateSalePage() {
                             </Grid>
                         </Grid>
 
+
                         {/* 📦 Versand & Maße Block */}
                         <Grid item xs={12}>
                             <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
-                                <Typography gutterBottom sx={{ color: "#1a3d6d", fontWeight: 'bold', mb: 2, textAlign: 'left', }}>
+                                <Typography gutterBottom sx={{ color: "#00acc1", mb: 2, textAlign: 'left' }}>
                                     Versand & Maße
                                 </Typography>
+
                                 <Grid container spacing={2}>
                                     <Grid item xs={4}>
                                         <FormControl fullWidth>
-                                            <InputLabel>Versand</InputLabel>
+                                            <InputLabel id="shipping-label" htmlFor="shipping-select">Versand</InputLabel>
                                             <Select
+                                                id="shipping-select"
+                                                labelId="shipping-label"
                                                 label="Versand"
                                                 value={newSale.shipping}
                                                 onChange={(e) => setNewSale(prev => ({ ...prev, shipping: e.target.value as Shipping }))}
@@ -492,10 +498,12 @@ export default function CreateSalePage() {
                                             </Select>
                                         </FormControl>
                                     </Grid>
+
                                     <Grid item xs={8}>
                                         <Grid container spacing={2}>
                                             <Grid item xs={3}>
                                                 <TextField
+                                                    id="shipping-width"
                                                     label="Breite (cm)"
                                                     value={newSale.shippingDimensions?.width ?? ''}
                                                     onChange={(e) => updateShippingDimension('width', e.target.value)}
@@ -504,6 +512,7 @@ export default function CreateSalePage() {
                                             </Grid>
                                             <Grid item xs={3}>
                                                 <TextField
+                                                    id="shipping-length"
                                                     label="Länge (cm)"
                                                     value={newSale.shippingDimensions?.length ?? ''}
                                                     onChange={(e) => updateShippingDimension('length', e.target.value)}
@@ -512,6 +521,7 @@ export default function CreateSalePage() {
                                             </Grid>
                                             <Grid item xs={3}>
                                                 <TextField
+                                                    id="shipping-height"
                                                     label="Höhe (cm)"
                                                     value={newSale.shippingDimensions?.height ?? ''}
                                                     onChange={(e) => updateShippingDimension('height', e.target.value)}
@@ -520,6 +530,7 @@ export default function CreateSalePage() {
                                             </Grid>
                                             <Grid item xs={3}>
                                                 <TextField
+                                                    id="shipping-weight"
                                                     label="Gewicht (kg)"
                                                     value={weightInput}
                                                     onChange={(e) => {
@@ -539,34 +550,39 @@ export default function CreateSalePage() {
                                             </Grid>
                                         </Grid>
                                     </Grid>
-
                                 </Grid>
                             </Paper>
                         </Grid>
 
+
                         {/* 📝 Bestellung Block */}
                         <Grid item xs={12}>
                             <Paper elevation={2} sx={{ p: 2, mb: 5 }}>
-                                <Typography gutterBottom sx={{ color: "#1a3d6d", fontWeight: 'bold', mb: 2, textAlign: 'left', }}>
+                                <Typography gutterBottom sx={{ color: "#00acc1", mb: 2, textAlign: 'left' }}>
                                     Bestellung
                                 </Typography>
+
                                 <Grid container spacing={2}>
                                     <Grid item xs={4}>
                                         <TextField
+                                            id="order-number"
                                             label="Bestell-Nr"
                                             value={newSale.orderNumber}
                                             onChange={(e) => setNewSale({ ...newSale, orderNumber: e.target.value })}
                                             fullWidth
                                         />
                                     </Grid>
+
                                     <Grid item xs={4}>
                                         <TextField
+                                            id="order-type"
                                             label="Bestellart"
                                             value={newSale.orderType}
                                             onChange={(e) => setNewSale({ ...newSale, orderType: e.target.value })}
                                             fullWidth
                                         />
                                     </Grid>
+
                                     <Grid item xs={4}>
                                         <LocalizationProvider
                                             dateAdapter={AdapterDayjs}
@@ -583,14 +599,15 @@ export default function CreateSalePage() {
                                                         deliveryDate: newValue ? newValue.format('YYYY-MM-DD') : '',
                                                     }));
                                                 }}
-                                                slotProps={{ textField: { fullWidth: true } }}
+                                                slotProps={{
+                                                    textField: { id: 'delivery-date', fullWidth: true },
+                                                }}
                                             />
                                         </LocalizationProvider>
                                     </Grid>
                                 </Grid>
                             </Paper>
                         </Grid>
-
 
 
                         <Box sx={{ minHeight: 200, overflowY: 'auto', mb: 2, border: "1px solid #ddd" }}>
@@ -614,58 +631,96 @@ export default function CreateSalePage() {
                                             <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", borderLeft: "1px solid #ddd" }}>{item.position}</TableCell>
                                             <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd" }}>
                                                 <TextField
+                                                    id={`product-name-${index}`}
+                                                    aria-label="Produktname"
                                                     variant="standard"
                                                     value={item.productName}
                                                     size="small"
                                                     onChange={(e) => handleItemChange(index, 'productName', e.target.value)}
-                                                    InputProps={{ disableUnderline: true, }}
-                                                    sx={{ fontSize: '0.875rem', '& .MuiInputBase-root': { border: 'none', }, '& .MuiInputBase-input': { fontSize: '0.875rem', padding: 0 } }}
+                                                    InputProps={{ disableUnderline: true }}
+                                                    sx={{
+                                                        fontSize: '0.875rem',
+                                                        '& .MuiInputBase-root': { border: 'none' },
+                                                        '& .MuiInputBase-input': { fontSize: '0.875rem', padding: 0 },
+                                                    }}
                                                 />
                                             </TableCell>
+
                                             <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd" }}>
                                                 <TextField
+                                                    id={`quantity-${index}`}
+                                                    aria-label="Menge"
                                                     variant="standard"
                                                     type="number"
                                                     value={item.quantity}
                                                     size="small"
                                                     onChange={(e) => handleItemChange(index, 'quantity', parseFloat(e.target.value))}
-                                                    InputProps={{ disableUnderline: true, }}
-                                                    sx={{ fontSize: '0.875rem', '& .MuiInputBase-root': { border: 'none', }, '& .MuiInputBase-input': { fontSize: '0.875rem', padding: 0 }, min: 0, step: 0.01 }}
+                                                    InputProps={{ disableUnderline: true }}
+                                                    sx={{
+                                                        fontSize: '0.875rem',
+                                                        '& .MuiInputBase-root': { border: 'none' },
+                                                        '& .MuiInputBase-input': { fontSize: '0.875rem', padding: 0 },
+                                                    }}
+                                                    inputProps={{ min: 0, step: 0.01 }}
                                                 />
                                             </TableCell>
+
                                             <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd" }}>
                                                 <TextField
+                                                    id={`unit-price-${index}`}
+                                                    aria-label="Stückpreis"
                                                     variant="standard"
                                                     type="number"
                                                     value={item.unitPrice}
                                                     size="small"
                                                     onChange={(e) => handleItemChange(index, 'unitPrice', parseFloat(e.target.value))}
-                                                    InputProps={{ disableUnderline: true, }}
-                                                    sx={{ fontSize: '0.875rem', '& .MuiInputBase-root': { border: 'none', }, '& .MuiInputBase-input': { fontSize: '0.875rem', padding: 0 }, min: 0, step: 0.01 }}
+                                                    InputProps={{ disableUnderline: true }}
+                                                    sx={{
+                                                        fontSize: '0.875rem',
+                                                        '& .MuiInputBase-root': { border: 'none' },
+                                                        '& .MuiInputBase-input': { fontSize: '0.875rem', padding: 0 },
+                                                    }}
+                                                    inputProps={{ min: 0, step: 0.01 }}
                                                 />
                                             </TableCell>
+
                                             <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd" }}>
                                                 <TextField
+                                                    id={`discount-${index}`}
+                                                    aria-label="Rabatt"
                                                     variant="standard"
                                                     type="number"
                                                     value={item.discount}
                                                     size="small"
                                                     fullWidth
                                                     onChange={(e) => handleItemChange(index, 'discount', parseFloat(e.target.value))}
-                                                    InputProps={{ disableUnderline: true, }}
-                                                    sx={{ fontSize: '0.875rem', '& .MuiInputBase-root': { border: 'none', }, '& .MuiInputBase-input': { fontSize: '0.875rem', padding: 0 }, min: 0, step: 1 }}
+                                                    InputProps={{ disableUnderline: true }}
+                                                    sx={{
+                                                        fontSize: '0.875rem',
+                                                        '& .MuiInputBase-root': { border: 'none' },
+                                                        '& .MuiInputBase-input': { fontSize: '0.875rem', padding: 0 },
+                                                    }}
+                                                    inputProps={{ min: 0, step: 1 }}
                                                 />
                                             </TableCell>
+
                                             <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd" }}>
                                                 <TextField
+                                                    id={`tax-${index}`}
+                                                    aria-label="MwSt"
                                                     variant="standard"
                                                     type="number"
                                                     value={item.tax}
                                                     size="small"
                                                     fullWidth
                                                     onChange={(e) => handleItemChange(index, 'tax', parseFloat(e.target.value))}
-                                                    InputProps={{ disableUnderline: true, }}
-                                                    sx={{ fontSize: '0.875rem', '& .MuiInputBase-root': { border: 'none', }, '& .MuiInputBase-input': { fontSize: '0.875rem', padding: 0 }, min: 0, step: 1 }}
+                                                    InputProps={{ disableUnderline: true }}
+                                                    sx={{
+                                                        fontSize: '0.875rem',
+                                                        '& .MuiInputBase-root': { border: 'none' },
+                                                        '& .MuiInputBase-input': { fontSize: '0.875rem', padding: 0 },
+                                                    }}
+                                                    inputProps={{ min: 0, step: 1 }}
                                                 />
                                             </TableCell>
                                             <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd" }}>{item.totalPrice.toFixed(2)}</TableCell>
@@ -681,17 +736,24 @@ export default function CreateSalePage() {
                             </Table>
                         </Box>
 
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-                            <Button variant="contained" color="primary" onClick={handleSubmit}>
-                                Speichern
-                            </Button>
-                            <Box sx={{ textAlign: 'right' }}>
+                        <Grid container spacing={2}>
+                            <Grid item xs={2}>
+                                <Button onClick={onClose} sx={{ marginTop: 7, width: "100%", "&:hover": { borderColor: "#00acc1" } }}>
+                                    Abbrechen
+                                </Button>
+                            </Grid>
+                            <Grid item xs={2}>
+                                <Button variant="contained" color="primary" onClick={handleSubmit} sx={{ marginTop: 7, width: "100%" }}>
+                                    Speichern
+                                </Button>
+                            </Grid>
+                            <Grid item xs={8} sx={{ textAlign: 'right' }}>
                                 <Typography>Netto: {subtotal.toFixed(2)}</Typography>
                                 <Typography>Rabatt: {discountSum.toFixed(2)}</Typography>
                                 <Typography>MWSt: {taxSum.toFixed(2)}</Typography>
                                 <Typography variant="h6">Gesamtbetrag: {total.toFixed(2)}</Typography>
-                            </Box>
-                        </Box>
+                            </Grid>
+                        </Grid>
                     </Paper>
                 </Grid>
 
@@ -699,11 +761,14 @@ export default function CreateSalePage() {
 
                 <Grid item xs={12} md={12}>
                     <Paper elevation={3} sx={{ p: 3 }}>
+                        <Typography gutterBottom sx={{ color: "#00acc1", mb: 2, textAlign: 'left' }}>
+                            Artikel zum Warenkorb hinzufügen
+                        </Typography>
                         <Grid container spacing={2} sx={{ mb: 2 }}>
                             <Grid item xs={6}>
                                 <Autocomplete
                                     fullWidth
-                                    sx={{ mb: 2 }}
+                                    sx={{ mb: 2, mt: 1 }}
                                     options={categories}
                                     getOptionLabel={(option) => option.name}
                                     onChange={(_, newCategory) => {
@@ -711,20 +776,31 @@ export default function CreateSalePage() {
                                     }}
                                     value={categories.find(c => c.id === selectedCategory) || null}
                                     renderInput={(params) => (
-                                        <TextField {...params} label="Kategorie" />
+                                        <TextField
+                                            {...params}
+                                            id="category-autocomplete"
+                                            label="Kategorie"
+                                            aria-label="Kategorie"
+                                        />
                                     )}
                                 />
 
                                 <TextField
+                                    id="product-filter"
                                     fullWidth
                                     sx={{ mb: 2 }}
                                     label="Suchen und filtern"
+                                    aria-label="Suchen und filtern"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     InputProps={{
                                         endAdornment: searchTerm && (
                                             <InputAdornment position="end">
-                                                <IconButton onClick={() => setSearchTerm('')} size="small">
+                                                <IconButton
+                                                    onClick={() => setSearchTerm('')}
+                                                    size="small"
+                                                    aria-label="Suche zurücksetzen"
+                                                >
                                                     <ClearIcon />
                                                 </IconButton>
                                             </InputAdornment>
@@ -732,6 +808,7 @@ export default function CreateSalePage() {
                                     }}
                                 />
                             </Grid>
+
                             <Grid item xs={6}>
                                 <Box sx={{ height: 200, overflowY: 'auto', mb: 2, border: "1px solid #ddd" }}>
                                     <Table size="small" stickyHeader>
@@ -761,30 +838,22 @@ export default function CreateSalePage() {
                     </Paper>
                 </Grid>
             </Grid >
-            <Dialog open={openCreateCustomer} onClose={() => setOpenCreateCustomer(false)}  maxWidth={false} >
-                <DialogContent>
-                    <Box
-                        sx={{
-                            width: '100%',
-                            maxWidth: {
-                                xs: '100%',   // 100% ширины экрана на телефонах
-                                sm: '90%',    // до 90% на маленьких экранах
-                                md: '800px',  // фиксированная ширина на десктопе
-                            },
-                        }}
-                    >
-                        <CreateCustomer
-                            onClose={() => setOpenCreateCustomer(false)}
-                            onCustomerCreated={(newCustomer) => {
-                                setCustomers((prev) => [...prev, newCustomer]);
-                                setNewSale((prev) => ({ ...prev, customerId: newCustomer.id }));
-                                setOpenCreateCustomer(false);
-                            }}
-                        />
-                    </Box>
-                </DialogContent>
-            </Dialog>
-        </Container >
+            {showCreateCustomer && (
+                <CreateCustomer
+                    onClose={() => setShowCreateCustomer(false)}
+                    onSubmitSuccess={(createdCustomer) => {
+                        setShowCreateCustomer(false);
+                        // Добавим нового поставщика
+                        setCustomers(prev => [...prev, createdCustomer]);
+                        // Выберем его как активного
+                        setNewSale(prev => ({
+                            ...prev,
+                            customerId: createdCustomer.id,
+                        }));
+                    }}
+                />
+            )}
+        </Dialog >
     );
 }
 
