@@ -34,7 +34,7 @@ export async function fetchAddPurchase(newPurchase: NewPurchaseDto): Promise<Pur
     });
 
     if (!response.ok) {
-      const errorText = await response.text(); // безопасно читаем ошибку
+      const errorText = await response.text(); 
       throw new Error(`Error: ${response.status} - ${errorText}`);
     }
 
@@ -151,4 +151,17 @@ export async function fetchPurchasesByFilter({
     throw new Error("Failed to fetch purchases by filter");
   }
   return res.json();
+}
+
+export async function fetchUpdatePurchasePaymentStatus(id: number): Promise<Purchase> {
+  const response = await fetch(`/api/purchases/${id}/update-payment-status`, {
+     method: 'PATCH',
+     credentials: 'include',
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to update payment status for purchase ${id}: ${response.status} - ${errorText}`);
+  }
+  return await response.json();
 }
