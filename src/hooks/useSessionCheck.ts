@@ -1,19 +1,16 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import Cookies from "js-cookie"; 
+import { useEffect } from "react"; 
+import { useAppDispatch, useAppSelector } from "../redux/hooks";
+import { RootState } from "../redux/store";
+import { user } from "../features/auth/authSlice";
 
-const useSessionCheck = () => {
-  const navigate = useNavigate();
-  const [redirected, setRedirected] = useState(false);
+export const useSessionCheck = () => {
+  const dispatch = useAppDispatch();
+  const isSessionChecked = useAppSelector((state: RootState) => state.auth.isSessionChecked);
 
   useEffect(() => {
-    const token = Cookies.get("token");
-
-    if (!token && !redirected) {
-      setRedirected(true); // Запрещаем повторный редирект
-      navigate("/login");
+    if (!isSessionChecked) {
+      dispatch(user());
     }
-  }, [navigate, redirected]);
+  }, [dispatch, isSessionChecked]);
 };
 
-export default useSessionCheck;
