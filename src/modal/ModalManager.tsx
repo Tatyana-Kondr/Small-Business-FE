@@ -3,7 +3,6 @@ import { useAppDispatch, useAppSelector } from "../redux/hooks";
 import { modalRegistry } from "./modalRegistry";
 import { closeModal } from "./modalSlice";
 
-
 export const ModalManager = () => {
   const dispatch = useAppDispatch();
   const { name, props } = useAppSelector((state) => state.modal);
@@ -25,3 +24,4 @@ export const ModalManager = () => {
     />
   );
 };
+
