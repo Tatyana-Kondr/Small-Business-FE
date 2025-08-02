@@ -1,5 +1,5 @@
 import { createAppSlice } from "../../redux/createAppSlice";
-import { fetchAddSale, fetchDeleteSale, fetchSaleById, fetchSales, fetchSalesByFilter, fetchSearchSales, fetchUpdateSale } from "./api";
+import { fetchAddSale, fetchDeleteSale, fetchSaleById, fetchSales, fetchSalesByFilter, fetchSearchSales, fetchUpdateSale, fetchUpdateSalePaymentStatus } from "./api";
 import { NewSaleDto, SalesState } from "./types";
 
 const initialState: SalesState = {
@@ -201,6 +201,32 @@ export const salesSlice = createAppSlice({
         },
       }
     ),
+
+        updateSalePaymentStatus: create.asyncThunk(
+      async (id: number) => {
+       return await fetchUpdateSalePaymentStatus(id); 
+      },
+      {
+        fulfilled: (state, action) => {
+      const updatedSale = action.payload; 
+      const index = state.salesList.findIndex(p => p.id === updatedSale.id);
+      if (index !== -1) {
+        state.salesList[index] = updatedSale;
+      }
+      state.loading = false;
+    },
+        pending: (state) => {
+          state.loading = true;
+        },
+        rejected: (state, action) => {
+          const errorMessage =
+            action.payload instanceof Error ? action.payload.message : "Failed to update payment status";
+          state.error = errorMessage;
+          state.loading = false;
+        },
+      }
+    ),
+
   }),
 
   selectors: {
@@ -221,6 +247,7 @@ export const { getSales,
   searchSales,
   getSalesByFilter,
   updateSale,
-  deleteSale, } = salesSlice.actions;
+  deleteSale,
+  updateSalePaymentStatus, } = salesSlice.actions;
 export const { selectSales, selectTotalPages, selectCurrentPage, selectSale, selectLoading, selectError, selectSaleById } =
   salesSlice.selectors;

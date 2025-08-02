@@ -1,4 +1,4 @@
-import { Box, Button, Collapse, Container, debounce, FormControl, IconButton, InputLabel, MenuItem, Pagination, Paper, Select, SelectChangeEvent, styled, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from "@mui/material";
+import { Box, Button, Collapse, Container, debounce, FormControl, IconButton, InputLabel, MenuItem, Pagination, Paper, Select, SelectChangeEvent, styled, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Tooltip, Typography } from "@mui/material";
 import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
 import { getSales, getSalesByFilter, searchSales, selectSales, selectTotalPages } from "../salesSlice";
 import { useCallback, useEffect, useState } from "react";
@@ -9,6 +9,8 @@ import { PaymentStatuses } from "../../../constants/enums";
 import React from "react";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
+import PaymentsIcon from '@mui/icons-material/Payments';
+import CreatePayment from "../../payments/components/CreatePayment";
 
 
 const StyledTableHead = styled(TableHead)({
@@ -34,8 +36,10 @@ export default function Sales() {
   const totalPages = useAppSelector(selectTotalPages);
   const [page, setPage] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filtersVisible, setFiltersVisible] = useState(true);
+  const [filtersVisible, setFiltersVisible] = useState(false);
   const [openRows, setOpenRows] = useState<{ [key: string]: boolean }>({});
+  const [openPaymentDialogId, setOpenPaymentDialogId] = useState<number | null>(null);
+  const [selectedOperationType, setSelectedOperationType] = useState<string | null>(null);
 
   const [filters, setFilters] = useState({
     invoiceNumber: "",
@@ -127,10 +131,6 @@ export default function Sales() {
 
   const navigate = useNavigate();
 
-  const handleOpenCreatePurchase = () => {
-    navigate("/sales/create");
-  };
-
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const newSearchTerm = event.target.value;
     setSearchTerm(newSearchTerm);
@@ -182,6 +182,9 @@ export default function Sales() {
 
   return (
     <Container>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+        <Typography variant="h6" sx={{ textAlign: "left", fontWeight: "bold", textDecoration: 'underline', color: "#0277bd" }}>AUFTRÄGE</Typography>
+      </Box>
       {/* Верхняя панель */}
       <Box
         display="flex"
@@ -198,6 +201,7 @@ export default function Sales() {
         {/* Поиск */}
         <Box display="flex" gap={1}>
           <TextField
+            id="search-input"
             label="Suche"
             variant="outlined"
             size="small"
@@ -205,7 +209,9 @@ export default function Sales() {
             onChange={handleSearchChange}
             sx={{ width: 400, backgroundColor: "white" }}
           />
-          <IconButton onClick={handleClearSearch}>
+          <IconButton
+            aria-label="Suche zurücksetzen"
+            onClick={handleClearSearch}>
             <ClearIcon />
           </IconButton>
         </Box>
@@ -213,12 +219,10 @@ export default function Sales() {
         <Box display="flex" gap={1}>
           <Button
             variant="outlined"
+            sx={{ "&:hover": { borderColor: "#00acc1" } }}
             onClick={() => setFiltersVisible((prev) => !prev)}
           >
             {filtersVisible ? "Filter ausblenden" : "Filter anzeigen"}
-          </Button>
-          <Button variant="contained" onClick={handleOpenCreatePurchase}>
-            Neu Aufttrag
           </Button>
         </Box>
       </Box>
@@ -241,32 +245,42 @@ export default function Sales() {
           <Box display="flex" flexWrap="wrap" gap={2} mb={2}>
             {/* Дата от */}
             <TextField
+              id="filter-start-date"
               label="Von"
               type="date"
               size="small"
               value={filters.startDate}
               onChange={(e) => handleFilterChange("startDate", e.target.value)}
               InputLabelProps={{ shrink: true }}
+              aria-label="Startdatum"
+              fullWidth
             />
+
             {/* Дата до */}
             <TextField
+              id="filter-end-date"
               label="Bis"
               type="date"
               size="small"
               value={filters.endDate}
               onChange={(e) => handleFilterChange("endDate", e.target.value)}
               InputLabelProps={{ shrink: true }}
+              aria-label="Enddatum"
+              fullWidth
             />
 
             {/* PaymentStatus */}
-            <FormControl size="small" sx={{ minWidth: 160 }}>
-              <InputLabel>Zahlungsstatus</InputLabel>
+            <FormControl size="small" sx={{ minWidth: 160 }} fullWidth>
+              <InputLabel id="payment-status-label">Zahlungsstatus</InputLabel>
               <Select
+                labelId="payment-status-label"
+                id="payment-status-select"
                 value={filters.paymentStatus}
                 onChange={(e: SelectChangeEvent) =>
                   handleFilterChange("paymentStatus", e.target.value)
                 }
-                label="PaymentStatus"
+                label="Zahlungsstatus"
+                aria-label="Zahlungsstatus"
               >
                 <MenuItem value="">ALLE</MenuItem>
                 {PaymentStatuses.map((status) => (
@@ -277,7 +291,7 @@ export default function Sales() {
               </Select>
             </FormControl>
 
-            <Button onClick={handleClearFilters} variant="outlined">
+            <Button onClick={handleClearFilters} variant="outlined" sx={{ "&:hover": { borderColor: "#00acc1" } }}>
               Filter zurücksetzen
             </Button>
           </Box>
@@ -323,34 +337,67 @@ export default function Sales() {
                       <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{sale.invoiceNumber}</TableCell>
                       <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{sale.paymentStatus}</TableCell>
                       <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>
-                        <IconButton
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const year = sale.invoiceNumber.split("-")[1];
-                            const url = `${import.meta.env.VITE_API_URL}/invoices/${year}/${sale.invoiceNumber}.pdf`;
-                            window.open(url, "_blank");
-                          }}
-                        >
-                          <Typography variant="button" sx={{ fontWeight: "bold" }}>RE</Typography>
-                        </IconButton>
-                        <IconButton
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const year = sale.deliveryBill.split("-")[1];
-                            const url = `${import.meta.env.VITE_API_URL}/delivery-bill/${year}/${sale.deliveryBill}.pdf`;
-                            window.open(url, "_blank");
-                          }}
-                        >
-                          <Typography variant="button" sx={{ fontWeight: "bold" }}>LF</Typography>
-                        </IconButton>
+                        <Tooltip title="Rechnung" arrow>
+                          <IconButton
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const year = sale.invoiceNumber.split("-")[1];
+                              const url = `${import.meta.env.VITE_API_URL}/invoices/${year}/${sale.invoiceNumber}.pdf`;
+                              window.open(url, "_blank");
+                            }}
+                          >
+                            <Typography variant="button"
+                              sx={{ fontWeight: "bold", transition: 'transform 0.2s ease-in-out', "&:hover": { color: "#bdbdbd", transform: 'scale(1.2)', backgroundColor: "transparent" } }}>
+                              RE
+                            </Typography>
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Lieferschein" arrow>
+                          <IconButton
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const year = sale.deliveryBill.split("-")[1];
+                              const url = `${import.meta.env.VITE_API_URL}/delivery-bill/${year}/${sale.deliveryBill}.pdf`;
+                              window.open(url, "_blank");
+                            }}
+                          >
+                            <Typography variant="button"
+                              sx={{ fontWeight: "bold", transition: 'transform 0.2s ease-in-out', "&:hover": { color: "#bdbdbd", transform: 'scale(1.2)', backgroundColor: "transparent" } }}>
+                              LF
+                            </Typography>
+                          </IconButton>
+                        </Tooltip>
                       </TableCell>
                       <TableCell>
-                        <IconButton onClick={(e) => { e.stopPropagation(); navigate(`/sales/${sale.id}`) }}>
-                          <EditIcon />
-                        </IconButton>
-                        <IconButton onClick={(e) => { e.stopPropagation(); handleDeleteClick(sale.id) }}>
-                          <DeleteIcon />
-                        </IconButton>
+                        <Box display="flex" gap={1}>
+                          <Tooltip title="Bearbeiten" arrow>
+                            <IconButton onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/sales/${sale.id}`);
+                            }}
+                              sx={{ transition: 'transform 0.2s ease-in-out', "&:hover": { color: "#bdbdbd", transform: 'scale(1.2)', backgroundColor: "transparent" } }}>
+                              <EditIcon />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Löschen" arrow>
+                            <IconButton onClick={(e) => { e.stopPropagation(); handleDeleteClick(sale.id) }}
+                              sx={{ transition: 'transform 0.2s ease-in-out', "&:hover": { color: "#bdbdbd", transform: 'scale(1.2)', backgroundColor: "transparent" } }}>
+                              <DeleteIcon />
+                            </IconButton>
+                          </Tooltip>
+                          {sale.paymentStatus !== "BEZAHLT" && (
+                            <Tooltip title="Bezahlen" arrow>
+                              <IconButton onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenPaymentDialogId(sale.id);
+                                setSelectedOperationType(sale.typeOfOperation);
+                              }}
+                                sx={{ transition: 'transform 0.2s ease-in-out', "&:hover": { color: "#bdbdbd", transform: 'scale(1.2)', backgroundColor: "transparent" } }}>
+                                <PaymentsIcon />
+                              </IconButton>
+                            </Tooltip>
+                          )}
+                        </Box>
                       </TableCell>
                     </TableRow>
                     {/* Подтаблица */}
@@ -403,6 +450,18 @@ export default function Sales() {
           </Table>
         </TableContainer>
       </Box>
+
+      {openPaymentDialogId !== null && selectedOperationType && (
+        <CreatePayment
+          prefillType="sale"
+          prefillId={openPaymentDialogId}
+          typeOfOperation={selectedOperationType}
+          onClose={() => {
+            setOpenPaymentDialogId(null);
+            setSelectedOperationType(null);
+          }}
+        />
+      )}
 
       {/* Пагинация */}
       <Box display="flex" justifyContent="center" mt={2}>

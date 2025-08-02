@@ -149,3 +149,16 @@ export async function fetchSalesByFilter({
   }
   return res.json();
 }
+
+export async function fetchUpdateSalePaymentStatus(id: number): Promise<Sale> {
+  const response = await fetch(`/api/sales/${id}/update-payment-status`, {
+    method: 'PATCH',
+     credentials: 'include',
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to update payment status for sale ${id}: ${response.status} - ${errorText}`);
+  }
+  return await response.json();
+}
