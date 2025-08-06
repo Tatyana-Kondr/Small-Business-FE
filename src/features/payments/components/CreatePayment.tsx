@@ -24,7 +24,7 @@ import { updateSalePaymentStatus } from "../../sales/salesSlice";
 import { TypesOfDocument } from "../../../constants/enums";
 import { getCustomers } from "../../customers/customersSlice";
 import { Customer } from "../../customers/types";
-import CreateCustomer from "../../customers/CreateCustomer";
+import CreateCustomer from "../../customers/components/CreateCustomer";
 
 
 interface CreatePaymentProps {
