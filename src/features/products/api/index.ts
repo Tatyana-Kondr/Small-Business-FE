@@ -106,22 +106,25 @@ export async function fetchProductsByCategory(
 }
 
 export async function fetchDeleteProduct(id: number): Promise<void> {
-  try {
-    const response = await fetch(`/api/products/${id}`, {
-      method: "DELETE",
-    });
+  const response = await fetch(`/api/products/${id}`, {
+    method: "DELETE",
+  });
 
-    if (!response.ok) {
-      throw new Error(`Ошибка: ${response.status} - ${response.statusText}`);
+  if (!response.ok) {
+    let errorMessage = `Fehler: ${response.status} - ${response.statusText}`;
+
+    try {
+      const errorBody = await response.json();
+      if (errorBody?.message) {
+        errorMessage = errorBody.message;
+      }
+    } catch {
+      // если тело не JSON — оставляем стандартное сообщение
     }
-  } catch (error) {
-    console.error("Ошибка при удалении продукта:", error);
-    throw error;
+
+    throw new Error(errorMessage);
   }
 }
-
-
-
 
 //Фичи для категории продукта
 export async function fetchAddProductCategory(newCategory: NewProductCategoryDto): Promise<ProductCategory> {

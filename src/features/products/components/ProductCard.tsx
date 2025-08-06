@@ -4,10 +4,11 @@ import { useParams, useNavigate } from "react-router-dom"
 import { useAppDispatch, useAppSelector } from "../../../redux/hooks"
 import { getProduct, selectProduct, selectLoading, selectError } from "../productsSlice"
 import { getProductFiles, uploadProductFile, deleteProductFile, selectProductFiles } from "../productFilesSlice"
-import { CircularProgress, Container, Box, Typography, Button, Paper, Grid, Modal, IconButton, Dialog, DialogContent } from "@mui/material"
+import { CircularProgress, Container, Box, Typography, Button, Paper, Grid, Modal, IconButton, Dialog, DialogContent, Tooltip } from "@mui/material"
 import { ArrowBackIos, ArrowForwardIos, Close } from "@mui/icons-material"
 import EditProduct from "./EditProduct"
-import KeyboardDoubleArrowLeftOutlinedIcon from '@mui/icons-material/KeyboardDoubleArrowLeftOutlined';
+import ClearIcon from '@mui/icons-material/Clear';
+import DeleteProduct from "./DeleteProduct"
 
 
 export default function ProductCard() {
@@ -153,10 +154,39 @@ export default function ProductCard() {
                         textAlign: "left",
                         marginBottom: "20px",
                         borderRadius: "8px",
-                        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
+                        boxShadow: "0 2px 6px rgba(0, 0, 0, 0.3)",
+                        display: "flex",
+                        justifyContent: "space-between"
                     }}
                 >
                     <Typography variant="h5">{product.name}</Typography>
+                    <Tooltip title="Schliessen" arrow>
+                        <IconButton
+                            onClick={handleGoBack}
+                            sx={{
+                                width: 40,
+                                height: 40,
+                                backgroundColor: "#d32f2f", 
+                                color: "white",
+                                borderRadius: "50%",
+                                transition: "background-color 0.3s ease",
+
+                                "&:hover": {
+                                    backgroundColor: "red", 
+                                },
+
+                                "& .MuiSvgIcon-root": {
+                                    transition: "transform 0.3s ease, color 0.3s ease",
+                                },
+
+                                "&:hover .MuiSvgIcon-root": {
+                                    transform: "scale(1.2)", // увеличение при наведении
+                                },
+                            }}
+                        >
+                            <ClearIcon fontSize="medium" />
+                        </IconButton>
+                    </Tooltip>
                 </Box>
                 <Grid container spacing={3}>
                     {/* Левая часть с таблицей */}
@@ -182,42 +212,21 @@ export default function ProductCard() {
                                             <Typography variant="body1" sx={{ fontWeight: "bold", textAlign: "left", color: "#01579b", fontSize: 14 }}>{label}:</Typography>
                                         </Grid>
                                         <Grid item xs={8}>
-                                            <Typography variant="body1" sx={{textAlign: "right", fontSize: 14 }}>{value}</Typography>
+                                            <Typography variant="body1" sx={{ textAlign: "right", fontSize: 14 }}>{value}</Typography>
                                         </Grid>
                                     </Grid>
                                 ))}
                             </Grid>
-                             <Box sx={{ display: "flex", flexDirection: "column", gap: 1, marginTop: 2 }}> 
+                            <Box sx={{ display: "flex", flexDirection: "column", gap: 1, marginTop: 2 }}>
                                 <Button variant="contained" onClick={handleOpenEditModal}>
-                                Daten bearbeiten
-                            </Button>                           
-                            <Button
-                                onClick={handleGoBack}
-                                sx={{
-                                    fontSize: 12,
-                                    minWidth: 40,
-                                    minHeight: 40,
-                                    padding: 0,
-                                    display: "flex",
-                                    justifyContent: "left",
-                                    alignItems: "center",
-                                    borderRadius: 1,
-                                    backgroundColor: "transparent",
-                                    "&:hover": {
-                                        backgroundColor: "transparent", // фон не меняется при ховере
-                                        color: "#00838f",
-                                        "& .MuiSvgIcon-root": {
-                                            color: "#00838f", // цвет иконки при наведении
-                                        },
-                                    },
-                                    "& .MuiSvgIcon-root": {
-                                        transition: "color 0.3s ease", // плавный переход цвета
-                                    },
-                                }}
-                            >
-                                <KeyboardDoubleArrowLeftOutlinedIcon fontSize="large" /> ZURÜCK
-                            </Button>
-                            
+                                    Daten bearbeiten
+                                </Button>
+                                <DeleteProduct
+                                    productId={product.id}
+                                    productName={product.name}
+                                    productArticle={product.article}
+                                    onSuccessDelete={() => navigate("/")} 
+                                />
                             </Box>
                         </Box>
                     </Grid>
