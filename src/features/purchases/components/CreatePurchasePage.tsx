@@ -26,7 +26,7 @@ import { addPurchase } from '../purchasesSlice';
 import { TypeOfDocument, TypesOfDocument } from '../../../constants/enums';
 import AddIcon from "@mui/icons-material/Add";
 import { useReloadOnSuccess } from '../../../hooks/useReloadOnSuccess';
-import CreateCustomer from '../../customers/CreateCustomer';
+import CreateCustomer from '../../customers/components/CreateCustomer';
 
 const StyledTableHead = styled(TableHead)(({
     backgroundColor: "#1a3d6d",

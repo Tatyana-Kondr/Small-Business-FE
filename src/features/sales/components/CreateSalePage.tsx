@@ -27,7 +27,7 @@ import { addSale } from '../salesSlice';
 import { Shipping, TermsOfPayment } from '../../../constants/enums';
 import { Dialog } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
-import CreateCustomer from '../../customers/CreateCustomer';
+import CreateCustomer from '../../customers/components/CreateCustomer';
 
 const StyledTableHead = styled(TableHead)(({
     backgroundColor: "#1a3d6d",

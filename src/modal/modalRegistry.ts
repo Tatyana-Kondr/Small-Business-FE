@@ -1,4 +1,4 @@
-import CreateCustomer from "../features/customers/CreateCustomer";
+import CreateCustomer from "../features/customers/components/CreateCustomer";
 import CreatePayment from "../features/payments/components/CreatePayment";
 import CreateProduct from "../features/products/components/CreateProduct";
 import CreatePurchasePage from "../features/purchases/components/CreatePurchasePage";
