@@ -1,5 +1,5 @@
 import { createAppSlice } from "../../redux/createAppSlice";
-import { fetchAddCustomer, fetchCustomer, fetchCustomers, fetchCustomerswithCustomerNumber, fetchEditCustomer } from "./api";
+import { fetchAddCustomer, fetchCustomer, fetchCustomers, fetchCustomerswithCustomerNumber, fetchDeleteCustomer, fetchEditCustomer } from "./api";
 import { CustomersState, NewCustomerDto } from "./types";
 
 const initialState: CustomersState = {
@@ -98,6 +98,22 @@ export const customersSlice = createAppSlice({
         },
       }
     ),
+
+    deleteCustomer: create.asyncThunk(
+          async (id: number) => {
+            await fetchDeleteCustomer(id);
+            return id;
+          },
+          {
+            fulfilled: (state, action) => {
+              state.customersList = state.customersList.filter((customer) => customer.id !== action.payload);
+            },
+            pending: () => {},
+            rejected: (state, action) => {
+              console.error("Error remote customer:", action.error);
+            },
+          }
+        ),
   }),
   selectors: {
     selectCustomers: (customersState: CustomersState) => customersState.customersList,
@@ -108,6 +124,6 @@ export const customersSlice = createAppSlice({
   },
 });
 
-export const { getCustomers, getCustomersWithCustomerNumber, getCustomer, addCustomer, editCustomer } = customersSlice.actions;
+export const { getCustomers, getCustomersWithCustomerNumber, getCustomer, addCustomer, editCustomer, deleteCustomer } = customersSlice.actions;
 export const { selectCustomers, selectCustomersWithCustomerNumber, selectTotalPages, selectCurrentPage, selectCustomer } =
   customersSlice.selectors;

@@ -58,3 +58,14 @@ export async function fetchCustomers(page: number, size: number = 10): Promise<P
   
     return res.json(); 
   }
+
+  export async function fetchDeleteCustomer(id: number): Promise<void> {
+  const response = await fetch(`/api/customers/${id}`, {
+    method: 'DELETE',
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Error deleting customer ${id}: ${response.status} - ${errorText}`);
+  }
+}
