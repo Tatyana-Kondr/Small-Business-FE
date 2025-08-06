@@ -8,13 +8,12 @@ import LoginForm from './components/Login';
 import { useAppDispatch, useAppSelector } from './redux/hooks';
 import { selectIsAuthenticated, user } from './features/auth/authSlice';
 import { useEffect } from 'react';
-import Customers from './features/customers/Customers';
-import CustomersWithNumber from './features/customers/CustomersWithNumber';
-import CustomerCard from './features/customers/CustomerCard';
-import ProductCategoryList from './features/products/components/ProductCategoryList';
-import CreateProductCategory from './features/products/components/CreateProductCategory';
+import Customers from './features/customers/components/Customers';
+import CustomersWithNumber from './features/customers/components/CustomersWithNumber';
+import CustomerCard from './features/customers/components/CustomerCard';
+import ProductCategoryList from './features/products/components/category/ProductCategoryList';
 import ProductCard from './features/products/components/ProductCard';
-import CustomerWithNumberCard from './features/customers/CustomerWithNumberCard';
+import CustomerWithNumberCard from './features/customers/components/CustomerWithNumberCard';
 import Purchases from './features/purchases/components/Purchases';
 import PurchaseCard from './features/purchases/components/PurchaseCard';
 import Sales from './features/sales/components/Sales';
@@ -25,6 +24,7 @@ import { ModalManager } from './modal/ModalManager';
 import PrivateRoute from './components/PrivateRoute';
 import Register from './components/Register';
 import { useSessionCheck } from './hooks/useSessionCheck';
+import CreateProductCategory from './features/products/components/category/CreateProductCategory';
 
 
 function App() {
