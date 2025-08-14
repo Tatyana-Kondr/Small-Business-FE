@@ -36,10 +36,10 @@ export const salesSlice = createAppSlice({
         },
         pending: (state) => {
           state.loading = true;
+          state.error = null;
         },
         rejected: (state, action) => {
-          const errorMessage = action.payload instanceof Error ? action.payload.message : "Failed to fetch sales";
-          state.error = errorMessage;
+          state.error = action.error.message || "Fehler beim Laden der Produkts.";
           state.loading = false;
         },
       }

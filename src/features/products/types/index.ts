@@ -74,6 +74,7 @@ export interface ProductsState {
   selectedProduct: Product | undefined;
   totalPages: number;
   currentPage: number;
+  currentSort: string,
   loading: boolean;          
   error: string | null;
 }
