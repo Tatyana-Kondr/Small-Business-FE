@@ -27,6 +27,8 @@ import { TypeOfDocument, TypesOfDocument } from '../../../constants/enums';
 import AddIcon from "@mui/icons-material/Add";
 import { useReloadOnSuccess } from '../../../hooks/useReloadOnSuccess';
 import CreateCustomer from '../../customers/components/CreateCustomer';
+import { handleApiError } from '../../../utils/handleApiError';
+import { showSuccessToast } from '../../../utils/toast';
 
 const StyledTableHead = styled(TableHead)(({
     backgroundColor: "#1a3d6d",
@@ -81,7 +83,7 @@ export default function CreatePurchasePage({ onClose, onSubmitSuccess }: CreateP
         dispatch(getCustomers({ page: 0, size: 100 }))
             .unwrap()
             .then(customers => setVendors(customers.content))
-            .catch(error => console.error("Fehler beim Laden von Lieferanten", error));
+            .catch(error => handleApiError(error, "Fehler beim Laden von Lieferanten"));
     }, [dispatch]);
 
     useEffect(() => {
@@ -174,12 +176,13 @@ export default function CreatePurchasePage({ onClose, onSubmitSuccess }: CreateP
     };
 
     const handleSubmit = () => {
-        if (
-            !newPurchase.vendorId ||
-            !newPurchase.purchasingDate ||
-            newPurchase.purchaseItems.length === 0
-        ) {
-            alert("Bitte füllen Sie alle Pflichtfelder korrekt aus.");
+        if (!newPurchase.purchaseItems.length) {
+            handleApiError(new Error("Die Bestellung enthält keine Artikel."));
+            return;
+        }
+
+        if (!newPurchase.vendorId || !newPurchase.purchasingDate) {
+            handleApiError(new Error("Bitte füllen Sie alle Pflichtfelder korrekt aus."));
             return;
         }
 
@@ -197,15 +200,12 @@ export default function CreatePurchasePage({ onClose, onSubmitSuccess }: CreateP
         dispatch(addPurchase(newPurchaseToSend))
             .unwrap()
             .then(() => {
-                alert('Bestellung erfolgreich erstellt.');
+                showSuccessToast("Erfolg", "Bestellung erfolgreich erstellt.");
                 reload();
                 onSubmitSuccess?.();
                 onClose();
             })
-            .catch((error) => {
-                console.error('Fehler beim Erstellen:', error);
-                alert('Die Bestellung konnte nicht erstellt werden.');
-            });
+            .catch(error => handleApiError(error, "Die Bestellung konnte nicht erstellt werden."));
     };
 
 
