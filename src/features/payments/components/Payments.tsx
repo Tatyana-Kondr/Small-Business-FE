@@ -42,6 +42,7 @@ const StyledTableHead = styled(TableHead)({
         color: "white",
         fontWeight: "bold",
         borderRight: "1px solid #ddd",
+        textAlign: "center"
     },
 });
 
