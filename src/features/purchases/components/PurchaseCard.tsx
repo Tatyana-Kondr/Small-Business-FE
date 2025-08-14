@@ -21,7 +21,7 @@ import {
   InputLabel
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import { ArrowBackIos, Delete as DeleteIcon, Clear as ClearIcon } from '@mui/icons-material';
+import { Delete as DeleteIcon, Clear as ClearIcon } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
 import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -36,6 +36,9 @@ import { getPurchaseById, updatePurchase } from '../purchasesSlice';
 import { getCustomers } from '../../customers/customersSlice';
 import { Product } from '../../products/types';
 import { TypeOfDocument, TypesOfDocument } from '../../../constants/enums';
+import KeyboardDoubleArrowLeftOutlinedIcon from '@mui/icons-material/KeyboardDoubleArrowLeftOutlined';
+import { handleApiError } from '../../../utils/handleApiError';
+import { showSuccessToast } from '../../../utils/toast';
 
 const StyledTableHead = styled(TableHead)(({
   backgroundColor: "#1a3d6d",
@@ -99,13 +102,13 @@ export default function PurchaseCard() {
         });
         setDateValue(p.purchasingDate ? dayjs(p.purchasingDate) : null);
       })
-      .catch(console.error);
+      .catch(error => handleApiError(error, "Fehler beim Laden der Bestellung."));
 
     // Загрузка поставщиков
     dispatch(getCustomers({ page: 0, size: 100 }))
       .unwrap()
       .then(c => setVendors(c.content))
-      .catch(console.error);
+      .catch(error => handleApiError(error, "Fehler beim Laden den Lieferanten."));
 
     // Загрузка категорий и продуктов
     dispatch(getProductCategories());
@@ -238,14 +241,15 @@ export default function PurchaseCard() {
   };
 
   const handleSubmit = () => {
-    if (
-      !purchase.vendorId ||
-      !purchase.purchasingDate ||
-      purchase.purchaseItems.length === 0
-    ) {
-      alert("Bitte füllen Sie alle Pflichtfelder korrekt aus.");
-      return;
-    }
+    if (!purchase.purchaseItems.length) {
+            handleApiError(new Error("Die Bestellung enthält keine Artikel."));
+            return;
+        }
+
+        if (!purchase.vendorId || !purchase.purchasingDate) {
+            handleApiError(new Error("Bitte füllen Sie alle Pflichtfelder korrekt aus."));
+            return;
+        }
 
     const updatedPurchaseItems = purchase.purchaseItems.map((item, index) => ({
       ...item,
@@ -264,13 +268,10 @@ export default function PurchaseCard() {
     dispatch(updatePurchase({ id, updatedPurchase: updatedPurchaseToSend }))
       .unwrap()
       .then(() => {
-        alert('Bestellung erfolgreich aktualisiert');
+        showSuccessToast("Erfolg", "Bestellung erfolgreich aktualisiert");
         navigate('/purchases');
       })
-      .catch(error => {
-        console.error('Fehler beim Aktualisieren der Bestellung:', error);
-        alert('Die Bestellung konnte nicht aktualisiert werden.');
-      });
+      .catch(error => handleApiError(error, "Die Bestellung konnte nicht aktualisiert werden."));
   };
 
   const handleGoBack = () => {
@@ -281,16 +282,10 @@ export default function PurchaseCard() {
     <Container maxWidth="xl" sx={{ mt: 3 }}>
       <Grid container spacing={3}>
 
-        <Box sx={{ position: "absolute", top: 75, left: 20 }}>
-          <Button variant="outlined" startIcon={<ArrowBackIos />} onClick={handleGoBack}>
-            Zurück
-          </Button>
-        </Box>
-
         <Grid item xs={12} md={12}>
           <Paper elevation={3} sx={{ p: 3 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h5" sx={{ color: "#1a3d6d", fontWeight: "bold" }}>
+              <Typography variant="h5" sx={{ color: "#0277bd", fontWeight: "bold" }}>
                 {`Bestellung Nr ${id} `}
               </Typography>
 
@@ -490,7 +485,7 @@ export default function PurchaseCard() {
                     </Select>
                   </FormControl>
                 </Grid>
-                <Grid item xs={7}>
+                <Grid item xs={8}>
                   <TextField
                     fullWidth
                     placeholder="Produktname, Artikel, Lieferanten-Artikel suchen..."
@@ -509,7 +504,7 @@ export default function PurchaseCard() {
                 </Grid>
               </Grid>
 
-              <Box sx={{ maxHeight: 250, overflowY: 'auto', mt: 1, border: "1px solid #ddd" }}>
+              <Box sx={{ maxHeight: 263, overflowY: 'auto', mt: 1, border: "1px solid #ddd" }}>
                 <Table size="small">
                   <StyledTableHead>
                     <TableRow>
@@ -544,7 +539,32 @@ export default function PurchaseCard() {
               </Box>
             </Box>
 
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
+            <Box sx={{ display: 'flex', justifyContent: "space-between", mt: 3 }}>
+              <Button
+                onClick={handleGoBack}
+                sx={{
+                  fontSize: 12,
+                  minWidth: 40,
+                  minHeight: 40,
+                  padding: 0,
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  borderRadius: 1,
+                  backgroundColor: "transparent",
+                  "&:hover": {
+                    backgroundColor: "transparent", // фон не меняется при ховере
+                    "& .MuiSvgIcon-root": {
+                      color: "#00838f", // цвет иконки при наведении
+                    },
+                  },
+                  "& .MuiSvgIcon-root": {
+                    transition: "color 0.3s ease", // плавный переход цвета
+                  },
+                }}>
+                <KeyboardDoubleArrowLeftOutlinedIcon fontSize="large" />
+                ZURÜCK
+              </Button>
               <Button
                 variant="contained"
                 color="primary"
