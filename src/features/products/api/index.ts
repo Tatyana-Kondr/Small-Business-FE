@@ -1,283 +1,167 @@
+import { apiFetch } from "../../../utils/apiFetch";
 import { NewProductCategoryDto, NewProductDto, PaginatedResponse, Product, ProductCategory, UpdateProductDto } from "../types"
 
-export async function fetchProducts({
-  page,
-  size = 15,
-  searchTerm = "",
-}: {
-  page: number;
-  size?: number;
-  searchTerm?: string;
-}): Promise<PaginatedResponse<Product>> {
+export async function fetchProducts(page: number, size: number, sort = "name", searchTerm = ""): Promise<PaginatedResponse<Product>> {
   const queryParams = new URLSearchParams();
   queryParams.append("page", page.toString());
   queryParams.append("size", size.toString());
+  queryParams.append("sort", sort);
   if (searchTerm) {
     queryParams.append("search", searchTerm);
   }
 
-  const res = await fetch(`/api/products?${queryParams.toString()}`);
-  if (!res.ok) {
-    throw new Error("Failed to fetch products");
-  }
-  return res.json();
+  return apiFetch<PaginatedResponse<Product>>(
+    `/api/products?${queryParams.toString()}`,
+    undefined,
+    "Fehler beim Laden der Produktiste."
+  );
 }
-
-
-
 
 export async function fetchAddProduct(newProduct: NewProductDto): Promise<Product> {
-  try {
-    const response = await fetch(`/api/products`, {
+   return apiFetch<Product>(`/api/products`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json', },
       body: JSON.stringify(newProduct),
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(`Error: ${response.status} - ${errorData.message || response.statusText}`);
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error('Failed to add product:', error);
-    throw error;
-  }
+    },
+  "Fehler beim Hinzufügen des Produkt."
+);
 }
 
-export async function fetchEditProduct({id, updateProductDto}: {id: number, updateProductDto: UpdateProductDto}): Promise<Product> {
-  try {
-    const response = await fetch(`/api/products/${id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(updateProductDto)
-    });
-    
-    if (!response.ok) {
-       const errorText = await response.text();
-  console.error("❌ Backend error:", errorText);
-      throw new Error(`Error: ${response.status} - ${response.statusText}`);
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error('Failed to update product:', error);
-    throw error;
-  }
+export async function fetchEditProduct({ id, updateProductDto }: { id: number, updateProductDto: UpdateProductDto }): Promise<Product> {
+  return apiFetch<Product>(
+    `/api/products/${id}`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updateProductDto),
+    },
+    "Fehler beim Aktualisieren des Produkt."
+  );
 }
 
 export async function fetchProduct(id: number): Promise<Product> {
-  try {
-    const url = `/api/products/${id}`;
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Error: ${response.status} - ${response.statusText}`);
-    }
-
-    const product = await response.json();
-    return product;
-  } catch (error) {
-    console.error('Failed to fetch product by ID:', error);
-    throw error;
-  }
+  return apiFetch<Product>(
+    `/api/products/${id}`,
+    undefined,
+    "Fehler beim Laden der Produkt."
+  );
 }
 
 export async function fetchProductsByCategory(
   categoryId: number,
-  page: number = 0,
-  size: number = 10
+  page: number,
+  size: number,
+  sort = "name"
 ): Promise<PaginatedResponse<Product>> {
-  const res = await fetch(`/api/products/category/${categoryId}?page=${page}&size=${size}`);
-  if (!res.ok) {
-    throw new Error('Fehler beim Laden der Produkte');
-  }
-  return res.json();
+  const queryParams = new URLSearchParams();
+  queryParams.append("page", page.toString());
+  queryParams.append("size", size.toString());
+  queryParams.append("sort", sort);
+
+  return apiFetch<PaginatedResponse<Product>>(
+    `/api/products/category/${categoryId}?${queryParams.toString()}`,
+    undefined,
+    "Fehler beim Laden der Produktkategorien."
+  );
 }
 
 export async function fetchDeleteProduct(id: number): Promise<void> {
-  const response = await fetch(`/api/products/${id}`, {
-    method: "DELETE",
-  });
-
-  if (!response.ok) {
-    let errorMessage = `Fehler: ${response.status} - ${response.statusText}`;
-
-    try {
-      const errorBody = await response.json();
-      if (errorBody?.message) {
-        errorMessage = errorBody.message;
-      }
-    } catch {
-      // если тело не JSON — оставляем стандартное сообщение
-    }
-
-    throw new Error(errorMessage);
-  }
+  return apiFetch<void>(
+    `/api/products/${id}`,
+    { method: "DELETE" },
+    `Fehler beim Löschen des Produkt mit ID ${id}.`
+  );
 }
 
-//Фичи для категории продукта
+
+// === ProductCategory ===
 export async function fetchAddProductCategory(newCategory: NewProductCategoryDto): Promise<ProductCategory> {
-  try {
-    const response = await fetch('/api/product-categories', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(newCategory)
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Error: ${response.status} - ${response.statusText}`);
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error('Failed to add product category:', error);
-    throw error;
-  }
+  return apiFetch<ProductCategory>(
+    `/api/product-categories`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newCategory),
+    },
+    "Fehler beim Hinzufügen des Produktkategorie."
+  );
 }
 
 export async function fetchProductCategory(id: number): Promise<ProductCategory> {
-  try {
-    const response = await fetch(`/api/product-categories/${id}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Error: ${response.status} - ${response.statusText}`);
-    }
-
-    return await response.json(); // Получаем JSON-ответ с категорией
-  } catch (error) {
-    console.error('Failed to fetch product category by ID:', error);
-    throw error;
-  }
+   return apiFetch<ProductCategory>(
+    `/api/product-categories/${id}`,
+    undefined,
+    "Fehler beim Laden der Produktkategorie."
+  );
 }
 
-export async function fetchEditProductCategory({id, newProductCategoryDto}: {id: number, newProductCategoryDto: NewProductCategoryDto}): Promise<ProductCategory> {
-  try {
-    const response = await fetch(`/api/product-categories/${id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(newProductCategoryDto)
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Error: ${response.status} - ${response.statusText}`);
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error('Failed to update product category:', error);
-    throw error;
-  }
+export async function fetchEditProductCategory({ id, newProductCategoryDto }: { id: number, newProductCategoryDto: NewProductCategoryDto }): Promise<ProductCategory> {
+  return apiFetch<ProductCategory>(
+    `/api/product-categories/${id}`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newProductCategoryDto),
+    },
+    "Fehler beim Aktualisieren des Produktkategorie."
+  );
 }
 
 
 export async function fetchDeleteProductCategory(id: number): Promise<void> {
-  try {
-    const response = await fetch(`/api/product-categories/${id}`, {
-      method: "DELETE",
-    });
-
-    if (!response.ok) {
-      throw new Error(`Ошибка: ${response.status} - ${response.statusText}`);
-    }
-  } catch (error) {
-    console.error("Ошибка при удалении категории:", error);
-    throw error;
-  }
+  return apiFetch<void>(
+    `/api/product-categories/${id}`,
+    { method: "DELETE" },
+    `Fehler beim Löschen des Produktkategorie mit ID ${id}.`
+  );
 }
 
 
 export async function fetchProductCategories(): Promise<ProductCategory[]> {
-  
-  const res = await fetch(`/api/product-categories`, { // Должен быть слеш перед API
-    headers: {
-      "Cache-Control": "no-cache",
-      "Pragma": "no-cache",
-      "Expires": "0",
+return apiFetch<ProductCategory[]>(
+    `/api/product-categories`,
+    {
+      headers: {
+        "Cache-Control": "no-cache",
+        Pragma: "no-cache",
+        Expires: "0",
+      },
     },
-  });
-
-  if (!res.ok) {
-    throw new Error("Fehler beim laden product categories");
-  }
-
-  const data = await res.json();
-  return data;
+    "Fehler beim Laden der Produktkategorieiste."
+  );
 }
 
 
-
-
-// Фичи для Фото и файлов
-export async function fetchProductFiles(productId: number) {
-  try {
-    const response = await fetch(`/api/products/${productId}/photos`, {
+// Photos and Files
+export async function fetchProductFiles(productId: number): Promise<any> {
+  return apiFetch<any>(
+    `/api/products/${productId}/photos`,
+    {
       method: "GET",
       headers: { "Content-Type": "application/json" },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Fehler: ${response.status} - ${response.statusText}`);
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error("Fehler beim Abrufen von Produktdateien:", error);
-    throw error;
-  }
+    },
+    "Fehler beim Abrufen von Produktdateien"
+  );
 }
 
-export async function fetchUploadProductFile(productId: number, file: File) {
-  try {
-    const formData = new FormData();
-    formData.append("file", file);
+export async function fetchUploadProductFile(productId: number, file: File): Promise<any> {
+ const formData = new FormData();
+  formData.append("file", file);
 
-    const response = await fetch(`/api/products/${productId}/files`, {
+  return apiFetch<any>(
+    `/api/products/${productId}/files`,
+    {
       method: "POST",
       body: formData,
-    });
-
-    if (!response.ok) {
-      throw new Error(`Fehler: ${response.status} - ${response.statusText}`);
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error("Fehler beim Hochladen der Datei:", error);
-    throw error;
-  }
+    },
+    "Fehler beim Hochladen der Datei"
+  );
 }
 
-export async function fetchDeleteProductFile(fileId: number) {
-  try {
-    const response = await fetch(`/api/products/photos/${fileId}`, {
-      method: "DELETE",
-    });
-
-    if (!response.ok) {
-      throw new Error(`Fehler: ${response.status} - ${response.statusText}`);
-    }
-  } catch (error) {
-    console.error("Fehler beim Löschen der Datei:", error);
-    throw error;
-  }
+export async function fetchDeleteProductFile(fileId: number): Promise<void> {
+  return apiFetch<void>(
+    `/api/products/photos/${fileId}`,
+    { method: "DELETE" },
+    "Fehler beim Löschen der Datei."
+  );
 }

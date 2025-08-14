@@ -1,109 +1,145 @@
+import { apiFetch } from "../../../utils/apiFetch";
 import { NewPaymentDto, NewPaymentMethodDto, NewPaymentProcessDto, PaginatedResponse, Payment, PaymentMethod, PaymentPrefillDto, PaymentProcess } from "../types";
 
 // === Payment ===
 export async function fetchAllPayments({
   page,
   size = 15,
+  sort = "paymentDate",
 }: {
   page: number;
   size?: number;
+  sort?: string;
 }): Promise<PaginatedResponse<Payment>> {
-  const queryParams = new URLSearchParams();
-  queryParams.append("page", page.toString());
-  queryParams.append("size", size.toString());
+   const queryParams = new URLSearchParams({
+    page: page.toString(),
+    size: size.toString(),
+    sort,
+  });
 
-  const res = await fetch(`/api/payments?${queryParams.toString()}`);
-  return handleResponse<PaginatedResponse<Payment>>(res);
+  return apiFetch<PaginatedResponse<Payment>>(
+    `/api/payments?${queryParams.toString()}`,
+    undefined,
+    "Fehler beim Laden der Zahlungsiste."
+  );
 }
 
 export async function fetchAddPayment(newPayment: NewPaymentDto): Promise<Payment> {
-  const response = await fetch(`/api/payments`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
+  return apiFetch<Payment>(
+    `/api/payments`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newPayment),
     },
-    body: JSON.stringify(newPayment),
-  });
-
-  return handleResponse<Payment>(response);
+    "Fehler beim Hinzufügen der Zahlung."
+  );
 }
 
-export async function fetchUpdatePayment(id: number, updatedPayment: NewPaymentDto): Promise<Payment> {
-  const response = await fetch(`/api/payments/${id}`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
+export async function fetchUpdatePayment(id: number, updatePaymentDto: NewPaymentDto): Promise<Payment> {
+  return apiFetch<Payment>(
+    `/api/payments/${id}`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updatePaymentDto),
     },
-    body: JSON.stringify(updatedPayment),
-  });
-
-  return handleResponse<Payment>(response);
+    "Fehler beim Aktualisieren der Zahlung."
+  );
 }
 
 export async function fetchDeletePayment(id: number): Promise<void> {
-  const response = await fetch(`/api/payments/${id}`, {
-    method: 'DELETE',
-  });
-  await handleResponse<void>(response);
+  await apiFetch<void>(
+    `/api/payments/${id}`,
+    { method: "DELETE" },
+    "Fehler beim Löschen der Zahlung."
+  );
+}
+
+export async function fetchGetAllSaleIds(): Promise<number[]> {
+  return apiFetch<number[]>(
+    `/api/payments/all-sale-ids`,
+    undefined,
+    "Fehler beim Laden aller Sale IDs."
+  );
+}
+
+export async function fetchGetAllPurchaseIds(): Promise<number[]> {
+  return apiFetch<number[]>(
+    `/api/payments/all-purchase-ids`,
+    undefined,
+    "Fehler beim Laden aller Purchase IDs."
+  );
 }
 
 export async function fetchPaymentById(id: number): Promise<Payment> {
-  const res = await fetch(`/api/payments/${id}`);
-  return handleResponse<Payment>(res);
+  return apiFetch<Payment>(`/api/payments/${id}`, undefined, "Fehler beim Laden der Zahlung.");
 }
 
 export async function fetchSearchPayments({
   query,
   page,
-  size = 10,
+  size = 15,
+  sort = "paymentDate",
 }: {
   query: string;
   page: number;
   size?: number;
   sort?: string;
 }): Promise<PaginatedResponse<Payment>> {
-  const queryParams = new URLSearchParams();
-  queryParams.append("page", page.toString());
-  queryParams.append("size", size.toString());
-  queryParams.append("sort", "paymentDate,DESC");
+  const queryParams = new URLSearchParams({
+    page: page.toString(),
+    size: size.toString(),
+    sort,
+  });
 
-  const res = await fetch(`/api/payments/search/${encodeURIComponent(query)}?${queryParams.toString()}`);
-  return handleResponse<PaginatedResponse<Payment>>(res);
+  return apiFetch<PaginatedResponse<Payment>>(
+    `/api/payments/search/${encodeURIComponent(query)}?${queryParams.toString()}`,
+    undefined,
+    "Fehler bei der Suche nach Zahlungen."
+  );
 }
 
 export async function fetchPaymentsByFilter({
   page,
-  size = 10,
+  size = 15,
   sort = "paymentDate",
   id,
   customerId,
+  saleId,
+  purchaseId,
   document,
   documentNumber,
   amount,
   startDate,
   endDate,
-  searchQuery,  
+  searchQuery,
 }: {
   page: number;
   size?: number;
   sort?: string;
   id?: number;
   customerId?: number;
+  saleId?: number;
+  purchaseId?: number;
   document?: string;
   documentNumber?: string;
   amount?: number;
-  startDate?: string; 
-  endDate?: string;  
-  searchQuery?: string;  
+  startDate?: string;
+  endDate?: string;
+  searchQuery?: string;
 }): Promise<PaginatedResponse<Payment>> {
-  const queryParams = new URLSearchParams();
-  queryParams.append("page", page.toString());
-  queryParams.append("size", size.toString());
-  queryParams.append("sort", sort);
+  const queryParams = new URLSearchParams({
+    page: page.toString(),
+    size: size.toString(),
+    sort,
+  });
 
-   const filters: Record<string, string | number | undefined> = {
+  const filters: Record<string, string | number | undefined> = {
     id,
     customerId,
+    saleId,
+    purchaseId,
     document,
     documentNumber,
     amount,
@@ -118,106 +154,131 @@ export async function fetchPaymentsByFilter({
     }
   });
 
-  const res = await fetch(`/api/payments/filter?${queryParams.toString()}`);
-  return handleResponse<PaginatedResponse<Payment>>(res);
+  return apiFetch<PaginatedResponse<Payment>>(
+    `/api/payments/filter?${queryParams.toString()}`,
+    undefined,
+    "Fehler beim Filtern der Zahlungen."
+  );
 }
 
 export async function fetchPrefillDataForSale(saleId: number): Promise<PaymentPrefillDto> {
-  const res = await fetch(`/api/payments/prefill/sale/${saleId}`);
-  return handleResponse<PaymentPrefillDto>(res);
+  return apiFetch<PaymentPrefillDto>(
+    `/api/payments/prefill/sale/${saleId}`,
+    undefined,
+    "Fehler beim Laden der Vorausfüll-Daten für Verkauf."
+  );
 }
 
 export async function fetchPrefillDataForPurchase(purchaseId: number): Promise<PaymentPrefillDto> {
-  const res = await fetch(`/api/payments/prefill/purchase/${purchaseId}`);
-  return handleResponse<PaymentPrefillDto>(res);
+  return apiFetch<PaymentPrefillDto>(
+    `/api/payments/prefill/purchase/${purchaseId}`,
+    undefined,
+    "Fehler beim Laden der Vorausfüll-Daten für Einkauf."
+  );
 }
-
 
 // === PaymentMethod ===
 
 export async function fetchAllPaymentMethods(): Promise<PaymentMethod[]> {
-  const res = await fetch(`/api/payment-methods`);
-  return handleResponse<PaymentMethod[]>(res);
+  return apiFetch<PaymentMethod[]>(
+    `/api/payment-methods`,
+    undefined,
+    "Fehler beim Laden der Zahlungsmethoden."
+  );
 }
 
 export async function fetchPaymentMethodById(id: number): Promise<PaymentMethod> {
-  const res = await fetch(`/api/payment-methods/${id}`);
-  return handleResponse<PaymentMethod>(res);
+  return apiFetch<PaymentMethod>(
+    `/api/payment-methods/${id}`,
+    undefined,
+    "Fehler beim Laden der Zahlungsmethode."
+  );
 }
 
 export async function fetchCreatePaymentMethod(data: NewPaymentMethodDto): Promise<PaymentMethod> {
-  const res = await fetch(`/api/payment-methods`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  return handleResponse<PaymentMethod>(res);
+  return apiFetch<PaymentMethod>(
+    `/api/payment-methods`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    },
+    "Fehler beim Erstellen der Zahlungsmethode."
+  );
 }
 
-export async function fetchUpdatePaymentMethod(id: number, data: NewPaymentMethodDto): Promise<PaymentMethod> {
-  const res = await fetch(`/api/payment-methods/${id}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  return handleResponse<PaymentMethod>(res);
+export async function fetchUpdatePaymentMethod(
+  id: number,
+  data: NewPaymentMethodDto
+): Promise<PaymentMethod> {
+  return apiFetch<PaymentMethod>(
+    `/api/payment-methods/${id}`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    },
+    "Fehler beim Aktualisieren der Zahlungsmethode."
+  );
 }
 
 export async function fetchDeletePaymentMethod(id: number): Promise<void> {
-  const res = await fetch(`/api/payment-methods/${id}`, {
-    method: "DELETE",
-  });
-  if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(`Error deleting purchase ${id}: ${res.status} - ${errorText}`);
-  }
+  await apiFetch<void>(
+    `/api/payment-methods/${id}`,
+    { method: "DELETE" },
+    "Fehler beim Löschen der Zahlungsmethode."
+  );
 }
 
 // === PaymentProcess ===
 
 export async function fetchAllPaymentProcesses(): Promise<PaymentProcess[]> {
-  const res = await fetch(`/api/payment-processes`);
-  return handleResponse<PaymentProcess[]>(res);
+  return apiFetch<PaymentProcess[]>(
+    `/api/payment-processes`,
+    undefined,
+    "Fehler beim Laden der Zahlungsprozesse."
+  );
 }
 
 export async function fetchPaymentProcessById(id: number): Promise<PaymentProcess> {
-  const res = await fetch(`/api/payment-processes/${id}`);
-  return handleResponse<PaymentProcess>(res);
+  return apiFetch<PaymentProcess>(
+    `/api/payment-processes/${id}`,
+    undefined,
+    "Fehler beim Laden des Zahlungsprozesses."
+  );
 }
 
 export async function fetchCreatePaymentProcess(data: NewPaymentProcessDto): Promise<PaymentProcess> {
-  const res = await fetch(`/api/payment-processes`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  return handleResponse<PaymentProcess>(res);
+  return apiFetch<PaymentProcess>(
+    `/api/payment-processes`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    },
+    "Fehler beim Erstellen des Zahlungsprozesses."
+  );
 }
 
-export async function fetchUpdatePaymentProcess(id: number, data: NewPaymentProcessDto): Promise<PaymentProcess> {
-  const res = await fetch(`/api/payment-processes/${id}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  return handleResponse<PaymentProcess>(res);
+export async function fetchUpdatePaymentProcess(
+  id: number,
+  data: NewPaymentProcessDto
+): Promise<PaymentProcess> {
+  return apiFetch<PaymentProcess>(
+    `/api/payment-processes/${id}`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    },
+    "Fehler beim Aktualisieren des Zahlungsprozesses."
+  );
 }
 
 export async function fetchDeletePaymentProcess(id: number): Promise<void> {
-  const res = await fetch(`/api/payment-processes/${id}`, {
-    method: "DELETE",
-  });
- if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(`Error deleting purchase ${id}: ${res.status} - ${errorText}`);
-  }
+  await apiFetch<void>(
+    `/api/payment-processes/${id}`,
+    { method: "DELETE" },
+    "Fehler beim Löschen des Zahlungsprozesses."
+  );
 }
-
-async function handleResponse<T>(res: Response): Promise<T> {
-  if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(`HTTP ${res.status}: ${errorText}`);
-  }
-  return res.json();
-}
-
