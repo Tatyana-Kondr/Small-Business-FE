@@ -69,6 +69,9 @@ export interface PaymentsState {
   prefillData: PaymentPrefillDto | null;
   totalPages: number;
   currentPage: number;
+  currentSort: string,
+  allSaleIds: number[];     
+  allPurchaseIds: number[];
   loading: boolean;
   error: string | null;
 }
