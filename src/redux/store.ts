@@ -14,7 +14,6 @@ import { paymentProcessesSlice } from "../features/payments/paymentProcessesSlic
 import { modalSlice } from "../modal/modalSlice";
 
 
-
 const rootReducer = combineSlices(productsSlice, 
                                   authSlice,
                                   customersSlice, 
@@ -25,7 +24,7 @@ const rootReducer = combineSlices(productsSlice,
                                   paymentsSlice,
                                   paymentMethodsSlice,
                                   paymentProcessesSlice,
-                                  modalSlice
+                                  modalSlice,
 )
 
 // TypeScript-оператор, который позволяет получить тип возвращаемого значения функции. 
@@ -44,8 +43,16 @@ export const makeStore = (preloadedState?: Partial<RootState>) => {
    middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({
         serializableCheck: {
-          ignoredPaths: ["modal.props"],
+          
+          ignoredPaths: ["modal.props", "meta.arg.file"],
           ignoredActionPaths: ["payload.props"],
+
+          // игнорируем экшены загрузки файла
+          ignoredActions: [
+            "productFiles/uploadProductFile/pending",
+            "productFiles/uploadProductFile/fulfilled",
+            "productFiles/uploadProductFile/rejected",
+          ],
         },
       }),
     preloadedState,
