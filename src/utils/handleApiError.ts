@@ -36,6 +36,7 @@ const errorMap: Record<string, string> = {
   "File could not be uploaded": "Datei konnte nicht hochgeladen werden.",
   "File could not be converted to Base64": "Datei konnte nicht konvertiert werden.",
   // Purchase
+  "No products in purchase": "Die Bestellung enthält keine Artikel.",
 
   //Payments
   "List of payments is empty": "Die Zahlungsliste ist leer.",
