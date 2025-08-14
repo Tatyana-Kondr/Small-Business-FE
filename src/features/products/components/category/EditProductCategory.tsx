@@ -2,8 +2,9 @@ import { useState } from "react";
 import { Box, Button, Modal, TextField, Typography, CircularProgress } from "@mui/material";
 import { ProductCategory } from "../../types";
 import { useAppDispatch } from "../../../../redux/hooks";
-import { fetchEditProductCategory } from "../../api";
-import { getProductCategories } from "../../productCategoriesSlice";
+import { editProductCategory, getProductCategories } from "../../productCategoriesSlice";
+import { showSuccessToast } from "../../../../utils/toast";
+import { handleApiError } from "../../../../utils/handleApiError";
 
 
 interface EditProductCategoryProps {
@@ -19,26 +20,26 @@ export default function EditProductCategory({ category, onClose }: EditProductCa
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
-    if (!name.trim() || !artName.trim()) {
-      setError("Заполните все поля");
-      return;
-    }
+  if (!name.trim() || !artName.trim()) {
+    setError("Заполните все поля");
+    return;
+  }
 
-    setLoading(true);
+  setLoading(true);
 
-    try {
-      await fetchEditProductCategory({
-        id: category.id,
-        newProductCategoryDto: { name, artName }
-      });
-      dispatch(getProductCategories());  // Обновляем список категорий
-      onClose();  
-    } catch (error) {
-      setError("Fehler bei der Aktualisierung der Kategorie");
-    } finally {
-      setLoading(false);
-    }
-  };
+  try {
+    await dispatch(editProductCategory({id: category.id, newProductCategoryDto: { name, artName } })).unwrap();
+    await dispatch(getProductCategories()).unwrap();
+
+    showSuccessToast("Erfolg", "Kategorie wurde erfolgreich aktualisiert!");
+    onClose();
+  } catch (error) {
+    handleApiError(error, "Fehler bei der Aktualisierung der Kategorie");
+    setError("Fehler bei der Aktualisierung der Kategorie");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <Modal open={true} onClose={onClose}>

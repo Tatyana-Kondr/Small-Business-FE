@@ -4,6 +4,8 @@ import { editProduct, selectProduct } from "../productsSlice";
 import { UpdateProductDto } from "../types";
 import { getProductCategories, selectProductCategories } from "../productCategoriesSlice";
 import { Box, Button, TextField, MenuItem, Select, SelectChangeEvent, FormControl, InputLabel, Typography } from "@mui/material";
+import { showSuccessToast } from "../../../utils/toast";
+import { handleApiError } from "../../../utils/handleApiError";
 
 interface EditProductProps {
     productId: number;
@@ -118,19 +120,22 @@ export default function EditProduct({ productId, closeModal }: EditProductProps)
     const handleSubmit = async () => {
         try {
             if (!productData) return;
-            console.log("Product data:", productData);
-            await dispatch(editProduct({ id: productId, updateProductDto: productData }));
-            alert("Das Produkt wurde erfolgreich aktualisiert!");
+
+            await dispatch(editProduct({ id: productId, updateProductDto: productData })).unwrap();
+
+            showSuccessToast("Erfolg", "Das Produkt wurde erfolgreich aktualisiert!");
             closeModal();
         } catch (error) {
             console.error("Fehler bei der Produktaktualisierung:", error);
+            handleApiError(error, "Das Produkt konnte nicht aktualisiert werden.");
         }
     };
-   
+
+
 
     return (
         <Box sx={{ p: 2 }}>
-             <Typography variant="h6" sx={{ textAlign:"left", fontWeight: "bold", textDecoration: 'underline', color: "#0277bd"}} mb={2}>Produktaktualisierung</Typography>
+            <Typography variant="h6" sx={{ textAlign: "left", fontWeight: "bold", textDecoration: 'underline', color: "#0277bd" }} mb={2}>Produktaktualisierung</Typography>
 
             <TextField
                 fullWidth

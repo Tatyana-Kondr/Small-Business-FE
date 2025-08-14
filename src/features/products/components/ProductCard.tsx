@@ -3,12 +3,14 @@ import { useEffect, useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { useAppDispatch, useAppSelector } from "../../../redux/hooks"
 import { getProduct, selectProduct, selectLoading, selectError } from "../productsSlice"
-import { getProductFiles, uploadProductFile, deleteProductFile, selectProductFiles } from "../productFilesSlice"
+import { getProductFiles, deleteProductFile, selectProductFiles, uploadProductFile } from "../productFilesSlice"
 import { CircularProgress, Container, Box, Typography, Button, Paper, Grid, Modal, IconButton, Dialog, DialogContent, Tooltip } from "@mui/material"
 import { ArrowBackIos, ArrowForwardIos, Close } from "@mui/icons-material"
 import EditProduct from "./EditProduct"
 import ClearIcon from '@mui/icons-material/Clear';
 import DeleteProduct from "./DeleteProduct"
+import { showSuccessToast } from "../../../utils/toast"
+import { handleApiError } from "../../../utils/handleApiError"
 
 
 export default function ProductCard() {
@@ -42,25 +44,35 @@ export default function ProductCard() {
     }, [editModalOpen, dispatch, productId]);
 
 
-    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         if (event.target.files && event.target.files.length > 0 && productId) {
-            dispatch(
-                uploadProductFile({
-                    productId: Number(productId),
-                    file: event.target.files[0],
-                })
-            ).then(() => {
-                dispatch(getProductFiles(Number(productId))); // Обновляем файлы после загрузки
-            });
+            try {
+                await dispatch(
+                    uploadProductFile({
+                        productId: Number(productId),
+                        file: event.target.files[0],
+                    })
+                ).unwrap();
+
+                showSuccessToast("Erfolg", "Datei wurde erfolgreich hochgeladen!");
+            } catch (error) {
+                handleApiError(error, "Fehler beim Hochladen der Datei");
+            }
         }
     };
 
-
-    const handleDeleteFile = (fileId: number) => {
+    const handleDeleteFile = async (fileId: number) => {
         if (productId) {
-            dispatch(deleteProductFile(fileId))
+            try {
+                await dispatch(deleteProductFile(fileId)).unwrap();
+                await dispatch(getProductFiles(Number(productId))).unwrap();
+
+                showSuccessToast("Erfolg", "Datei wurde erfolgreich gelöscht!");
+            } catch (error) {
+                handleApiError(error, "Fehler beim Löschen der Datei");
+            }
         }
-    }
+    };
 
     const handleNextFile = () => {
         setCurrentFileIndex((prevIndex) => (prevIndex === files.length - 1 ? 0 : prevIndex + 1))
@@ -166,13 +178,13 @@ export default function ProductCard() {
                             sx={{
                                 width: 40,
                                 height: 40,
-                                backgroundColor: "#d32f2f", 
+                                backgroundColor: "#d32f2f",
                                 color: "white",
                                 borderRadius: "50%",
                                 transition: "background-color 0.3s ease",
 
                                 "&:hover": {
-                                    backgroundColor: "red", 
+                                    backgroundColor: "red",
                                 },
 
                                 "& .MuiSvgIcon-root": {
@@ -225,7 +237,7 @@ export default function ProductCard() {
                                     productId={product.id}
                                     productName={product.name}
                                     productArticle={product.article}
-                                    onSuccessDelete={() => navigate("/")} 
+                                    onSuccessDelete={() => navigate("/")}
                                 />
                             </Box>
                         </Box>
@@ -255,10 +267,18 @@ export default function ProductCard() {
 
                             {/* Кнопки загрузки и удаления фото под изображением */}
                             <Box sx={{ display: "flex", justifyContent: "center", gap: 8, mt: 0 }}>
-                                <Button >
-                                    Bild hochladen
-                                    <input type="file" hidden accept="image/*" onChange={handleFileChange} />
-                                </Button>
+                                <label htmlFor="upload-file-input">
+                                    <Button component="span">
+                                        Bild hochladen
+                                    </Button>
+                                </label>
+                                <input
+                                    id="upload-file-input"
+                                    type="file"
+                                    accept="image/*"
+                                    style={{ display: 'none' }}
+                                    onChange={handleFileChange}
+                                />
 
                                 <Button
                                     color="error"

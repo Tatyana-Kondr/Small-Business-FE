@@ -21,6 +21,8 @@ import { addCustomer } from "../customersSlice";
 import { countries } from "../../../utils/countries";
 import Flag from "react-world-flags";
 import { Customer } from "../types";
+import {showSuccessToast } from "../../../utils/toast";
+import { handleApiError } from "../../../utils/handleApiError";
 
 
 type CreateCustomerProps = {
@@ -95,13 +97,14 @@ export default function CreateCustomer({ onClose, onSubmitSuccess }: CreateCusto
 
     try {
       const createdCustomer = await dispatch(addCustomer({ newCustomerDto })).unwrap();
+      showSuccessToast("Erfolg", `${createdCustomer.name} wurde erfolgreich erstellt.`);
       onSubmitSuccess(createdCustomer);
       onClose();
     } catch (error) {
-      console.error("Fehler beim Erstellen:", error);
-      alert("Der Kunde/Lieferant konnte nicht erstellt werden.");
+      handleApiError(error, "Der Kunde/Lieferant konnte nicht erstellt werden.");
     }
   };
+
 
   return (
     <Dialog open onClose={onClose} maxWidth="sm" fullWidth>

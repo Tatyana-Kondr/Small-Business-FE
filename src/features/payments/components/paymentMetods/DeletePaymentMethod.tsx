@@ -3,6 +3,8 @@ import { Button, Dialog, DialogActions, DialogContent, DialogContentText, Dialog
 import { useAppDispatch } from "../../../../redux/hooks";
 import { fetchDeletePaymentMethod } from "../../api";
 import { getPaymentMethods } from "../../paymentMethodsSlice";
+import { handleApiError } from "../../../../utils/handleApiError";
+import { showSuccessToast } from "../../../../utils/toast";
 
 
 interface DeletePaymentMethodProps {
@@ -23,11 +25,10 @@ export default function DeletePaymentMethod({ methodId, methodProvider }: Delete
     try {
       await fetchDeletePaymentMethod(methodId);
       dispatch(getPaymentMethods());
+      showSuccessToast("Erfolg", "Die Zahlungsmethode wurde erfolgreich gelöscht.");
       handleClose();
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Fehler beim Löschen der Zahlungsmethode";
-      alert(errorMessage); // можно заменить на Snackbar
+      handleApiError(error,  "Fehler beim Löschen der Zahlungsmethode");
     } finally {
       setLoading(false);
     }

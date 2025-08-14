@@ -10,6 +10,8 @@ import {
 import { useAppDispatch } from "../../../../redux/hooks";
 import { PaymentProcess } from "../../types";
 import { getPaymentProcesses, updatePaymentProcess } from "../../paymentProcessesSlice";
+import { showSuccessToast } from "../../../../utils/toast";
+import { handleApiError } from "../../../../utils/handleApiError";
 
 interface EditPaymentProcessProps {
   open: boolean;
@@ -34,22 +36,19 @@ export default function EditPaymentProcess({ open, onClose, process }: EditPayme
       setError("Bitte das Feld ausfüllen");
       return;
     }
-
     if (!process) {
       setError("Ungültiger Zahlungsvorgang");
       return;
     }
-
     setLoading(true);
     setError("");
-
     try {
-   
       await dispatch(updatePaymentProcess({ id: process.id, updatedPaymentProcess: { processName: name } })).unwrap();
       await dispatch(getPaymentProcesses());
+      showSuccessToast("Erfolg", "Die Zahlungsvorgang wurde erfolgreich aktualisiert.");
       onClose();
     } catch (err) {
-      setError("Fehler bei der Aktualisierung des Zahlungsvorgangs");
+      handleApiError(err, "Fehler bei der Aktualisierung des Zahlungsvorgangs");
     } finally {
       setLoading(false);
     }

@@ -21,6 +21,8 @@ import HomeIcon from "@mui/icons-material/Home";
 import ContactPhoneIcon from "@mui/icons-material/ContactPhone";
 import Flag from "react-world-flags"; // Для отображения флагов
 import { countries } from "../../../utils/countries"; // Список стран
+import { showSuccessToast } from "../../../utils/toast";
+import { handleApiError } from "../../../utils/handleApiError";
 
 export default function CustomerCard() {
     const dispatch = useAppDispatch();
@@ -76,36 +78,55 @@ export default function CustomerCard() {
         }));
     };
 
-    const handleAddressChange = (e: SelectChangeEvent<string>) => {
-        const { name, value } = e.target;
-        setFormData((prev) => ({
-            ...prev,
-            address: {
-                ...prev.address,
-                [name]: value,
-            },
-        }));
-    };
+    const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement | { name?: string; value: unknown }>) => {
+  const { name, value } = e.target;
+  if (!name) return;
 
-    const handleSubmit = () => {
-        if (customerId) {
-            dispatch(
-                editCustomer({
-                    id: Number(customerId),
-                    newCustomerDto: {
-                        name: formData.name,
-                        customerNumber: formData.customerNumber || null,
-                        addressDto: formData.address,
-                        phone: formData.phone || null,
-                        email: formData.email || null,
-                        website: formData.website || null,
-                    },
-                })
-            ).then(() => {
-                navigate("/lieferanten");
-            });
-        }
-    };
+  setFormData((prev) => ({
+    ...prev,
+    address: {
+      ...prev.address,
+      [name]: value as string,
+    },
+  }));
+};
+
+const handleCountryChange = (e: SelectChangeEvent<string>) => {
+  const { name, value } = e.target;
+
+  setFormData((prev) => ({
+    ...prev,
+    address: {
+      ...prev.address,
+      [name]: value,
+    },
+  }));
+};
+
+   const handleSubmit = async () => {
+    if (!customerId) return;
+
+    try {
+        await dispatch(
+            editCustomer({
+                id: Number(customerId),
+                newCustomerDto: {
+                    name: formData.name,
+                    customerNumber: formData.customerNumber || null,
+                    addressDto: formData.address,
+                    phone: formData.phone || null,
+                    email: formData.email || null,
+                    website: formData.website || null,
+                },
+            })
+        ).unwrap();
+
+        showSuccessToast("Erfolg", "Der Lieferant wurde erfolgreich aktualisiert.");
+        navigate("/lieferanten");
+    } catch (error) {
+        handleApiError(error, "Der Lieferant konnte nicht aktualisiert werden.");
+    }
+};
 
     const handleGoBack = () => {
         navigate(-1);
@@ -153,7 +174,7 @@ export default function CustomerCard() {
                                     label="Postleitzahl"
                                     name="postalCode"
                                     value={formData.address.postalCode}
-                                    onChange={handleInputChange}
+                                    onChange={handleAddressChange}
                                     fullWidth
                                     margin="normal"
                                 />
@@ -165,7 +186,7 @@ export default function CustomerCard() {
                                         labelId="country-label"
                                         name="country"
                                         value={formData.address.country}
-                                        onChange={handleAddressChange}
+                                        onChange={handleCountryChange}
                                     >
                                         {countries.map((country) => (
                                             <MenuItem key={country.code} value={country.code}>
@@ -190,7 +211,7 @@ export default function CustomerCard() {
                             label="Stadt"
                             name="city"
                             value={formData.address.city}
-                            onChange={handleInputChange}
+                            onChange={handleAddressChange}
                             fullWidth
                             margin="normal"
                         />
@@ -198,7 +219,7 @@ export default function CustomerCard() {
                             label="Strasse"
                             name="street"
                             value={formData.address.street}
-                            onChange={handleInputChange}
+                            onChange={handleAddressChange}
                             fullWidth
                             margin="normal"
                         />
@@ -206,7 +227,7 @@ export default function CustomerCard() {
                             label="Hausnummer"
                             name="building"
                             value={formData.address.building}
-                            onChange={handleInputChange}
+                            onChange={handleAddressChange}
                             fullWidth
                             margin="normal"
                         />

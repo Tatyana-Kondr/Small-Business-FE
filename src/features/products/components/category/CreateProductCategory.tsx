@@ -3,6 +3,8 @@ import { Box, Button, Modal, TextField, Typography, CircularProgress } from "@mu
 import { useAppDispatch } from "../../../../redux/hooks";
 import { fetchAddProductCategory } from "../../api";
 import { getProductCategories } from "../../productCategoriesSlice";
+import { showSuccessToast } from "../../../../utils/toast";
+import { handleApiError } from "../../../../utils/handleApiError";
 
 
 export default function CreateProductCategory() {
@@ -23,23 +25,23 @@ export default function CreateProductCategory() {
   };
 
   const handleSubmit = async () => {
-    if (!name.trim() || !artName.trim()) {
-      setError("Bitte alle Felder ausfüllen");
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      await fetchAddProductCategory({ name, artName });
-      dispatch(getProductCategories()); 
-      handleClose();
-    } catch (error) {
-      setError("Fehler beim Hinzufügen der Kategorie");
-    } finally {
-      setLoading(false);
-    }
-  };
+  if (!name.trim() || !artName.trim()) {
+    setError("Bitte alle Felder ausfüllen");
+    return;
+  }
+  setLoading(true);
+  try {
+    await fetchAddProductCategory({ name, artName });
+    await dispatch(getProductCategories()).unwrap();
+    showSuccessToast("Erfolg", "Kategorie erfolgreich hinzugefügt!");
+    handleClose();
+  } catch (error) {
+    handleApiError(error, "Fehler beim Hinzufügen der Kategorie");
+    setError("Fehler beim Hinzufügen der Kategorie");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <>

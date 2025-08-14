@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Alert, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Snackbar } from "@mui/material";
+import { Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from "@mui/material";
 import { useAppDispatch } from "../../../redux/hooks";
-import { deleteCustomer, getCustomers } from "../customersSlice";
+import { deleteCustomer, getCustomers, getCustomersWithCustomerNumber } from "../customersSlice";
+import { showErrorToast, showSuccessToast } from "../../../utils/toast";
 
 interface DeleteCustomerProps {
   customerId: number;
@@ -10,13 +11,15 @@ interface DeleteCustomerProps {
   trigger?: React.ReactNode;
 }
 
-export default function DeleteCustomer({ customerId, customerName, onSuccessDelete, trigger }: DeleteCustomerProps) {
+export default function DeleteCustomer({
+  customerId,
+  customerName,
+  onSuccessDelete,
+  trigger,
+}: DeleteCustomerProps) {
   const dispatch = useAppDispatch();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [showError, setShowError] = useState(false);
-
 
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
@@ -26,17 +29,26 @@ export default function DeleteCustomer({ customerId, customerName, onSuccessDele
     try {
       await dispatch(deleteCustomer(customerId)).unwrap();
       await dispatch(getCustomers({ page: 0, size: 15 }));
+      await dispatch(getCustomersWithCustomerNumber({ page: 0, size: 15 }));
+      showSuccessToast("Erfolg", `${customerName} wurde erfolgreich gelöscht.`);
       handleClose();
       onSuccessDelete?.();
     } catch (error: any) {
-      const message = error?.message || "Unbekannter Fehler beim Löschen.";
-      setErrorMessage(message);
-      setShowError(true);
+      let message = "Fehler beim Löschen.";
+
+      const raw = error?.message || "";
+
+      if (raw.includes("409")) {
+        message = `${customerName} kann nicht gelöscht werden, da es in anderen Einträgen verwendet wird.`;
+      } else if (raw.includes("404")) {
+        message = `${customerName} wurde nicht gefunden.`;
+      }
+
+      showErrorToast("Fehler beim Löschen", message);
     } finally {
       setLoading(false);
     }
   };
-
 
   return (
     <>
@@ -48,7 +60,6 @@ export default function DeleteCustomer({ customerId, customerName, onSuccessDele
           }}
           style={{ cursor: "pointer", display: "inline-flex" }}
         >
-
           {trigger}
         </span>
       ) : (
@@ -68,37 +79,24 @@ export default function DeleteCustomer({ customerId, customerName, onSuccessDele
         </Button>
       )}
 
-
-
       <Dialog open={open} onClose={handleClose}>
-        <DialogTitle sx={{ color: "error.main", fontWeight: "bold" }}>⚠️ WARNUNG!</DialogTitle>
+        <DialogTitle sx={{ color: "error.main", fontWeight: "bold" }}>
+          ⚠️ WARNUNG!
+        </DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Wollen Sie den <strong>{customerName}</strong>  wirklich löschen?
+            Wollen Sie den <strong>{customerName}</strong> wirklich löschen?
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleClose} color="primary">Abbrechen</Button>
+          <Button onClick={handleClose} color="primary">
+            Abbrechen
+          </Button>
           <Button onClick={handleDelete} color="error" disabled={loading}>
             {loading ? "Löschung..." : "Löschen"}
           </Button>
         </DialogActions>
       </Dialog>
-      <Snackbar
-        open={showError}
-        autoHideDuration={5000}
-        onClose={() => setShowError(false)}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-      >
-        <Alert
-          onClose={() => setShowError(false)}
-          severity="error"
-          sx={{ width: "100%" }}
-        >
-          {errorMessage}
-        </Alert>
-      </Snackbar>
-
     </>
   );
 }
