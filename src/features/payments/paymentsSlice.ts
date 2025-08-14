@@ -8,7 +8,7 @@ const initialState: PaymentsState = {
   paymentsList: [],
   totalPages: 1,
   currentPage: 0,
-  currentSort: "paymentDate",
+  currentSort: "paymentDate,DESC",
   selectedPayment: undefined,
   prefillData: null,
   allSaleIds: [],     
