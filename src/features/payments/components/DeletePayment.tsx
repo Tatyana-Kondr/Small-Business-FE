@@ -5,7 +5,7 @@ import { showSuccessToast } from "../../../utils/toast";
 import { deletePayment } from "../paymentsSlice";
 import { handleApiError } from "../../../utils/handleApiError";
 
-interface DeleteCustomerProps {
+interface DeletePaymentProps {
   paymentId: number;
   customerName: string;
   amount: number;
@@ -21,7 +21,7 @@ export default function DeletePayment({
   paymentDate,
   onSuccessDelete,
   trigger,
-}: DeleteCustomerProps) {
+}: DeletePaymentProps) {
   const dispatch = useAppDispatch();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
