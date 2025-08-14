@@ -27,14 +27,14 @@ import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
 
 import { useCallback, useEffect, useState } from "react";
 import React from "react";
-import { useNavigate } from "react-router-dom";
 import { ClearIcon } from "@mui/x-date-pickers";
 import { TypesOfDocument } from "../../../constants/enums";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
-import { getPayments, getPaymentsByFilter, searchPayments, selectPayments, selectTotalPages } from "../paymentsSlice";
-import { fetchDeletePayment } from "../api";
-
+import { getAllPurchaseIds, getAllSaleIds, getPayments, getPaymentsByFilter, searchPayments, selectPayments, selectTotalPages } from "../paymentsSlice";
+import DeletePayment from "./DeletePayment";
+import EditPayment from "./EditPayment";
+import { Payment } from "../types";
 
 const StyledTableHead = styled(TableHead)({
     backgroundColor: "#014D69",
@@ -45,6 +45,27 @@ const StyledTableHead = styled(TableHead)({
     },
 });
 
+type PaymentFilters = {
+    document: string;
+    documentNumber: string;
+    saleId: number | "";
+    purchaseId: number | "";
+    startDate: string;
+    endDate: string;
+};
+
+function convertFiltersToParams(f: PaymentFilters) {
+    const params: Record<string, any> = {};
+
+    if (f.document) params.document = f.document;
+    if (f.documentNumber) params.documentNumber = f.documentNumber;
+    if (f.startDate) params.startDate = f.startDate;
+    if (f.endDate) params.endDate = f.endDate;
+    if (f.saleId !== "" && f.saleId != null) params.saleId = f.saleId;
+    if (f.purchaseId !== "" && f.purchaseId != null) params.purchaseId = f.purchaseId;
+
+    return params;
+}
 
 export default function Payments() {
     const dispatch = useAppDispatch();
@@ -54,19 +75,37 @@ export default function Payments() {
     const [searchTerm, setSearchTerm] = useState("");
     const [filtersVisible, setFiltersVisible] = useState(false);
     const [, setOpenRows] = useState<{ [key: string]: boolean }>({});
+    const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
+    const [saleOptions, setSaleOptions] = useState<number[]>([]);
+    const [purchaseOptions, setPurchaseOptions] = useState<number[]>([]);
 
-    const [filters, setFilters] = useState({
+    const [filters, setFilters] = useState<PaymentFilters>({
         document: "",
         documentNumber: "",
+        saleId: "",
+        purchaseId: "",
         startDate: "",
         endDate: "",
     });
+    
+    useEffect(() => {
+        if (filtersVisible) {
+            dispatch(getAllSaleIds()).then((res: any) => {
+                setSaleOptions(res.payload || []);
+            });
+            dispatch(getAllPurchaseIds()).then((res: any) => {
+                setPurchaseOptions(res.payload || []);
+            });
+        }
+    }, [filtersVisible, dispatch]);
 
     const debouncedSearch = useCallback(
         debounce((searchTerm: string) => {
             const hasFilters =
                 filters.document ||
                 filters.documentNumber ||
+                filters.saleId ||
+                filters.purchaseId ||
                 filters.startDate ||
                 filters.endDate;
 
@@ -97,24 +136,14 @@ export default function Payments() {
             filters.startDate ||
             filters.endDate ||
             filters.documentNumber ||
+            filters.saleId ||
+            filters.purchaseId ||
             filters.document;
 
         if (hasFilters) {
-            dispatch(
-                getPaymentsByFilter({
-                    page,
-                    size: 15,
-                    ...convertFiltersToParams(filters),
-                    searchQuery: searchTerm,
-                })
-            );
+            dispatch(getPaymentsByFilter({ page, size: 15, ...convertFiltersToParams(filters), searchQuery: searchTerm, }));
         } else if (searchTerm) {
-            dispatch(
-                searchPayments({
-                    page,
-                    size: 15,
-                    query: searchTerm,
-                })
+            dispatch(searchPayments({ page, size: 15, query: searchTerm, })
             );
         } else {
             dispatch(getPayments({ page, size: 15 }));
@@ -125,10 +154,12 @@ export default function Payments() {
         setPage(value - 1);
     };
 
-    const handleFilterChange = (field: string, value: string) => {
+    const handleFilterChange = (field: string, value: string | number) => {
         setFilters((prev) => ({
             ...prev,
-            [field]: value,
+            [field]: (field === "saleId" || field === "purchaseId")
+                ? (value === "" ? "" : Number(value))
+                : value,
         }));
         setPage(0);
     };
@@ -137,13 +168,13 @@ export default function Payments() {
         setFilters({
             document: "",
             documentNumber: "",
+            saleId: "",
+            purchaseId: "",
             startDate: "",
             endDate: "",
         });
         setPage(0);
     };
-
-    const navigate = useNavigate();
 
     const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const newSearchTerm = event.target.value;
@@ -159,6 +190,8 @@ export default function Payments() {
             filters.startDate ||
             filters.endDate ||
             filters.documentNumber ||
+            filters.saleId ||
+            filters.purchaseId ||
             filters.document;
 
         if (hasFilters) {
@@ -180,17 +213,6 @@ export default function Payments() {
             ...prev,
             [id]: !prev[id],
         }));
-    };
-
-    const handleDeleteClick = async (id: number) => {
-        if (window.confirm("Willst du diese Zahlung wirklich löschen?")) {
-            try {
-                await fetchDeletePayment(id);
-                dispatch(getPayments({ page, size: 15 }));
-            } catch (error) {
-                console.error("Fehler beim Löschen der Zahlung:", error);
-            }
-        }
     };
 
     return (
@@ -232,6 +254,7 @@ export default function Payments() {
                 <Box display="flex" gap={1}>
                     <Button
                         variant="outlined"
+                        sx={{ "&:hover": { borderColor: "#00acc1" } }}
                         onClick={() => setFiltersVisible((prev) => !prev)}
                     >
                         {filtersVisible ? "Filter ausblenden" : "Filter anzeigen"}
@@ -300,8 +323,44 @@ export default function Payments() {
                             </Select>
                         </FormControl>
 
+                        {/* Sale ID */}
+                        <FormControl size="small" sx={{ minWidth: 160 }}>
+                            <InputLabel id="filter-sale-id-label">Sale ID</InputLabel>
+                            <Select
+                                labelId="filter-sale-id-label"
+                                id="filter-sale-id"
+                                value={filters.saleId}
+                                onChange={(e) => handleFilterChange("saleId", e.target.value)}
+                            >
+                                <MenuItem value="">ALL</MenuItem>
+                                {saleOptions.map((sale) => (
+                                    <MenuItem key={sale} value={sale}>
+                                        {sale}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
 
-                        <Button onClick={handleClearFilters} variant="outlined">
+
+                        {/* Purchase ID */}
+                        <FormControl size="small" sx={{ minWidth: 160 }}>
+                            <InputLabel id="filter-purchase-id-label">Purchase ID</InputLabel>
+                            <Select
+                                labelId="filter-purchase-id-label"
+                                id="filter-purchase-id"
+                                value={filters.purchaseId}
+                                onChange={(e) => handleFilterChange("purchaseId", e.target.value)}
+                            >
+                                <MenuItem value="">ALL</MenuItem>
+                                {purchaseOptions.map((purchase) => (
+                                    <MenuItem key={purchase} value={purchase}>
+                                        {purchase}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+
+                        <Button onClick={handleClearFilters} variant="outlined" sx={{ "&:hover": { borderColor: "#00acc1" } }}>
                             Filter zurücksetzen
                         </Button>
                     </Box>
@@ -320,8 +379,10 @@ export default function Payments() {
                                 <TableCell >Geschäftspartner</TableCell>
                                 <TableCell >Datum</TableCell>
                                 <TableCell >Betrag</TableCell>
-                                <TableCell >Dokument</TableCell>
+                                <TableCell >Dokumenttyp</TableCell>
                                 <TableCell >Referenz</TableCell>
+                                <TableCell >Auftrag Nr</TableCell>
+                                <TableCell >Bestellung Nr</TableCell>
                                 <TableCell >Aktionen</TableCell>
                             </TableRow>
                         </StyledTableHead>
@@ -345,23 +406,56 @@ export default function Payments() {
                                             <TableCell align="right" sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{payment.amount} €</TableCell>
                                             <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{payment.document}</TableCell>
                                             <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{payment.documentNumber}</TableCell>
-                                            <TableCell>
-                                                <Tooltip title="Bearbeiten" arrow>
-                                                    <IconButton
-                                                        onClick={(e) => { e.stopPropagation(); navigate(`/payments/${payment.id}`) }}
-                                                        sx={{ transition: 'transform 0.2s ease-in-out', "&:hover": { color: "#bdbdbd", transform: 'scale(1.2)', backgroundColor: "transparent" } }}
-                                                    >
-                                                        <EditIcon />
-                                                    </IconButton>
-                                                </Tooltip>
-                                                <Tooltip title="Löschen" arrow>
-                                                    <IconButton
-                                                        onClick={(e) => { e.stopPropagation(); handleDeleteClick(payment.id) }}
-                                                        sx={{ transition: 'transform 0.2s ease-in-out', "&:hover": { color: "#bdbdbd", transform: 'scale(1.2)', backgroundColor: "transparent" } }}
-                                                    >
-                                                        <DeleteIcon />
-                                                    </IconButton>
-                                                </Tooltip>
+                                            <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px", textAlign: "center" }}>{payment.saleId}</TableCell>
+                                            <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px", textAlign: "center" }}>{payment.purchaseId}</TableCell>
+                                            <TableCell sx={{ padding: "2px 12px" }}>
+                                                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                                    <Tooltip title="Bearbeiten" arrow placement="right-start">
+                                                        <IconButton
+                                                            onClick={(e) => { e.stopPropagation(); setSelectedPayment(payment) }}
+                                                            sx={{
+                                                                width: 32,
+                                                                height: 32,
+                                                                fontSize: "small",
+                                                                transition: "transform 0.2s ease-in-out",
+                                                                "&:hover": {
+                                                                    color: "#bdbdbd",
+                                                                    transform: "scale(1.2)",
+                                                                    backgroundColor: "transparent",
+                                                                },
+                                                            }}
+                                                        >
+                                                            <EditIcon />
+                                                        </IconButton>
+                                                    </Tooltip>
+
+                                                    <DeletePayment
+                                                        paymentId={payment.id}
+                                                        customerName={payment.customerName}
+                                                        amount={payment.amount}
+                                                        paymentDate={payment.paymentDate}
+                                                        onSuccessDelete={() => { }}
+                                                        trigger={
+                                                            <Tooltip title="Löschen" arrow placement="right-start">
+                                                                <IconButton
+                                                                    sx={{
+                                                                        width: 32,
+                                                                        height: 32,
+                                                                        fontSize: "small",
+                                                                        transition: "transform 0.2s ease-in-out",
+                                                                        "&:hover": {
+                                                                            color: "#bdbdbd",
+                                                                            transform: "scale(1.2)",
+                                                                            backgroundColor: "transparent",
+                                                                        },
+                                                                    }}
+                                                                >
+                                                                    <DeleteIcon />
+                                                                </IconButton>
+                                                            </Tooltip>
+                                                        }
+                                                    />
+                                                </Box>
                                             </TableCell>
                                         </TableRow>
                                     </React.Fragment>
@@ -377,7 +471,12 @@ export default function Payments() {
                     </Table>
                 </TableContainer>
             </Box>
-
+            {selectedPayment && (
+                <EditPayment
+                    payment={selectedPayment}
+                    onClose={() => setSelectedPayment(null)}
+                />
+            )}
             {/* Пагинация */}
             <Box display="flex" justifyContent="center" mt={2}>
                 <Pagination
@@ -387,15 +486,8 @@ export default function Payments() {
                     color="primary"
                 />
             </Box>
-        </Container>
+        </Container >
+
     );
 }
 
-const convertFiltersToParams = (filters: any) => {
-    return {
-        document: filters.document || undefined,
-        documentNumber: filters.documentNumber || undefined,
-        startDate: filters.startDate || undefined,
-        endDate: filters.endDate || undefined,
-    };
-};
