@@ -36,11 +36,11 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { ClearIcon } from "@mui/x-date-pickers";
 import { PaymentStatuses, TypesOfDocument } from "../../../constants/enums";
-import { fetchDeletePurchase } from "../api";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import PaymentsIcon from '@mui/icons-material/Payments';
 import CreatePayment from "../../payments/components/CreatePayment";
+import DeletePurchase from "./DeletePurchase";
 
 
 const StyledTableHead = styled(TableHead)({
@@ -49,6 +49,7 @@ const StyledTableHead = styled(TableHead)({
     color: "white",
     fontWeight: "bold",
     borderRight: "1px solid #ddd",
+    textAlign: "center"
   },
 });
 const StyledSubTableHead = styled(TableHead)({
@@ -57,6 +58,7 @@ const StyledSubTableHead = styled(TableHead)({
     color: "white",
     fontWeight: "bold",
     borderRight: "1px solid #ddd",
+    textAlign: "center"
   },
 });
 
@@ -196,17 +198,6 @@ export default function Purchases() {
       ...prev,
       [id]: !prev[id],
     }));
-  };
-
-  const handleDeleteClick = async (id: number) => {
-    if (window.confirm("Willst du diese Bestellung wirklich löschen?")) {
-      try {
-        await fetchDeletePurchase(id);
-        dispatch(getPurchases({ page, size: 15 }));
-      } catch (error) {
-        console.error("Fehler beim Löschen der Bestellung:", error);
-      }
-    }
   };
 
   return (
@@ -385,18 +376,36 @@ export default function Purchases() {
                       <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{purchase.document}</TableCell>
                       <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{purchase.documentNumber}</TableCell>
                       <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{purchase.paymentStatus}</TableCell>
-                      <TableCell>
-                        <Box display="flex" gap={1}>
+                      <TableCell sx={{ padding: "2px 12px" }}>
+                        <Box display="flex" sx={{ padding: "2px 12px" }} gap={1} >
                           <Tooltip title="Bearbeiten" arrow>
-                            <IconButton onClick={(e) => { e.stopPropagation(); navigate(`/purchases/${purchase.id}`); }} sx={{ transition: 'transform 0.2s ease-in-out', "&:hover": { color: "#bdbdbd", transform: 'scale(1.2)', backgroundColor: "transparent" } }}>
+                            <IconButton onClick={(e) => { e.stopPropagation(); navigate(`/purchases/${purchase.id}`); }} sx={{  p: 0.5, transition: 'transform 0.2s ease-in-out', "&:hover": { color: "#bdbdbd", transform: 'scale(1.2)', backgroundColor: "transparent" } }}>
                               <EditIcon />
                             </IconButton>
                           </Tooltip>
-                          <Tooltip title="Löschen" arrow>
-                            <IconButton onClick={(e) => { e.stopPropagation(); handleDeleteClick(purchase.id); }} sx={{ transition: 'transform 0.2s ease-in-out', "&:hover": { color: "#bdbdbd", transform: 'scale(1.2)', backgroundColor: "transparent" } }}>
-                              <DeleteIcon />
-                            </IconButton>
-                          </Tooltip>
+                          <DeletePurchase
+                            purchaseId={purchase.id}
+                            vendorName={purchase.vendorName}
+                            purchasingDate={purchase.purchasingDate}
+                            onSuccessDelete={() => { }}
+                            trigger={
+                              <Tooltip title="Löschen" arrow>
+                                <IconButton
+                                  sx={{
+                                     p: 0.5,
+                                    transition: "transform 0.2s ease-in-out",
+                                    "&:hover": {
+                                      color: "#bdbdbd",
+                                      transform: "scale(1.2)",
+                                      backgroundColor: "transparent",
+                                    },
+                                  }}
+                                >
+                                  <DeleteIcon />
+                                </IconButton>
+                              </Tooltip>
+                            }
+                          />
                           {purchase.paymentStatus !== "BEZAHLT" && (
                             <Tooltip title="Bezahlen" arrow>
                               <IconButton onClick={(e) => {
@@ -404,7 +413,7 @@ export default function Purchases() {
                                 setOpenPaymentDialogId(purchase.id);
                                 setSelectedOperationType(purchase.type);
                               }}
-                                sx={{ transition: 'transform 0.2s ease-in-out', "&:hover": { color: "#bdbdbd", transform: 'scale(1.2)', backgroundColor: "transparent" } }}>
+                                sx={{  p: 0.5, transition: 'transform 0.2s ease-in-out', "&:hover": { color: "#bdbdbd", transform: 'scale(1.2)', backgroundColor: "transparent" } }}>
                                 <PaymentsIcon />
                               </IconButton>
                             </Tooltip>
