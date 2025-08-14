@@ -1,5 +1,14 @@
+export class HttpError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "HttpError";
+    this.status = status;
+  }
+}
+
 export async function handleFetchError(response: Response, defaultMessage: string): Promise<never> {
-  let message: string | undefined;
+  let message: string = defaultMessage;
 
   try {
     const errorData = await response.json();
@@ -9,32 +18,29 @@ export async function handleFetchError(response: Response, defaultMessage: strin
       message = errorData.message;
     }
   } catch {
-    // тело не JSON — возможно пустой ответ (например, 401 или 204)
+    // тело не JSON — возможно пустой ответ
   }
 
-  // если не получили message от сервера, подставляем дефолт
-  if (!message) {
+  if (!message || message === defaultMessage) {
     switch (response.status) {
       case 400:
-        message = "Unkorrekte Anfrage";
+        message = "Ungültige Anfrage.";
         break;
       case 401:
       case 403:
-        message = "Falscher Login oder Passwort";
+        message = "Nicht autorisiert.";
         break;
       case 404:
-        message = "Ressource nicht gefunden";
+        message = "Ressource wurde nicht gefunden.";
         break;
       case 409:
-        message = "Konflikt beim Verarbeiten der Anfrage";
+        message = "Konflikt beim Verarbeiten der Anfrage.";
         break;
       case 500:
-        message = "Serverfehler. Versuchen Sie es später erneut.";
+        message = "Interner Serverfehler. Versuchen Sie es später erneut.";
         break;
-      default:
-        message = defaultMessage;
     }
   }
 
-  throw new Error(message);
+  throw new HttpError(message, response.status);
 }
