@@ -26,6 +26,7 @@ import Register from './components/Register';
 import { useSessionCheck } from './hooks/useSessionCheck';
 import CreateProductCategory from './features/products/components/category/CreateProductCategory';
 import { Toaster } from 'react-hot-toast';
+import SaleCard from './features/sales/components/SaleCard';
 
 
 function App() {
@@ -46,9 +47,9 @@ function App() {
     return <div>Laden...</div>; // или красивый спиннер
   }
 
-  return (  
+  return (
     <div className="App" style={{ textAlign: "center", marginTop: "50px" }}>
-       <Toaster position="top-center" reverseOrder={false} />
+      <Toaster position="top-center" reverseOrder={false} />
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route path="login" element={isAuthenticated ? <Navigate to="/" /> : <LoginForm />} />
@@ -131,6 +132,12 @@ function App() {
             element={
               <PrivateRoute>
                 <Sales />
+              </PrivateRoute>} />
+          <Route
+            path="/sales/:saleId"
+            element={
+              <PrivateRoute>
+                <SaleCard />
               </PrivateRoute>} />
 
           <Route
