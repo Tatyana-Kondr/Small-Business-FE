@@ -21,6 +21,8 @@ import HomeIcon from "@mui/icons-material/Home";
 import ContactPhoneIcon from "@mui/icons-material/ContactPhone";
 import Flag from "react-world-flags"; // Для отображения флагов
 import { countries } from "../../../utils/countries"; // Список стран
+import { showSuccessToast } from "../../../utils/toast";
+import { handleApiError } from "../../../utils/handleApiError";
 
 export default function CustomerWithNumberCard() {
     const dispatch = useAppDispatch();
@@ -76,8 +78,22 @@ export default function CustomerWithNumberCard() {
         }));
     };
 
-    const handleAddressChange = (e: SelectChangeEvent<string>) => {
+    const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement | { name?: string; value: unknown }>) => {
         const { name, value } = e.target;
+        if (!name) return;
+
+        setFormData((prev) => ({
+            ...prev,
+            address: {
+                ...prev.address,
+                [name]: value as string,
+            },
+        }));
+    };
+
+    const handleCountryChange = (e: SelectChangeEvent<string>) => {
+        const { name, value } = e.target;
+
         setFormData((prev) => ({
             ...prev,
             address: {
@@ -87,36 +103,40 @@ export default function CustomerWithNumberCard() {
         }));
     };
 
-
-    const handleSubmit = () => {
-        if (customerId) {
-            dispatch(
-                editCustomer({
-                    id: Number(customerId),
-                    newCustomerDto: {
-                        name: formData.name,
-                        customerNumber: formData.customerNumber || null,
-                        addressDto: formData.address,
-                        phone: formData.phone || null,
-                        email: formData.email || null,
-                        website: formData.website || null,
-                    },
-                })
-            ).then(() => {
-                navigate("/kunden");
-            });
-        }
-    };
-
-    const handleGoBack = () => {
-        navigate(-1);
-    };
+   const handleSubmit = async () => {
+       if (!customerId) return;
+   
+       try {
+           await dispatch(
+               editCustomer({
+                   id: Number(customerId),
+                   newCustomerDto: {
+                       name: formData.name,
+                       customerNumber: formData.customerNumber || null,
+                       addressDto: formData.address,
+                       phone: formData.phone || null,
+                       email: formData.email || null,
+                       website: formData.website || null,
+                   },
+               })
+           ).unwrap();
+   
+           showSuccessToast("Erfolg", "Der Kunde wurde erfolgreich aktualisiert.");
+           navigate("/kunden");
+       } catch (error) {
+           handleApiError(error, "Der Kunde konnte nicht aktualisiert werden.");
+       }
+   };
+   
+       const handleGoBack = () => {
+           navigate(-1);
+       };
 
     if (!customer) {
         return (
             <Container>
                 <Box mt={4}>
-                    <Typography variant="h6">Lieferant nicht gefunden</Typography>
+                    <Typography variant="h6">Kunde nicht gefunden</Typography>
                     <Button variant="contained" color="primary" onClick={handleGoBack} sx={{ mt: 2 }}>
                         Go Back
                     </Button>
@@ -169,7 +189,7 @@ export default function CustomerWithNumberCard() {
                                     label="Postleitzahl"
                                     name="postalCode"
                                     value={formData.address.postalCode}
-                                    onChange={handleInputChange}
+                                    onChange={handleAddressChange}
                                     fullWidth
                                     margin="normal"
                                 />
@@ -181,7 +201,7 @@ export default function CustomerWithNumberCard() {
                                         labelId="country-label"
                                         name="country"
                                         value={formData.address.country}
-                                        onChange={handleAddressChange}
+                                        onChange={handleCountryChange}
                                     >
                                         {countries.map((country) => (
                                             <MenuItem key={country.code} value={country.code}>
@@ -206,7 +226,7 @@ export default function CustomerWithNumberCard() {
                             label="Stadt"
                             name="city"
                             value={formData.address.city}
-                            onChange={handleInputChange}
+                            onChange={handleAddressChange}
                             fullWidth
                             margin="normal"
                         />
@@ -214,7 +234,7 @@ export default function CustomerWithNumberCard() {
                             label="Strasse"
                             name="street"
                             value={formData.address.street}
-                            onChange={handleInputChange}
+                            onChange={handleAddressChange}
                             fullWidth
                             margin="normal"
                         />
@@ -222,7 +242,7 @@ export default function CustomerWithNumberCard() {
                             label="Hausnummer"
                             name="building"
                             value={formData.address.building}
-                            onChange={handleInputChange}
+                            onChange={handleAddressChange}
                             fullWidth
                             margin="normal"
                         />

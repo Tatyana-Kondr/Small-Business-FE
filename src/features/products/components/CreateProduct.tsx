@@ -5,6 +5,8 @@ import { NewProductDto, ProductCategory } from "../types";
 import { fetchProductCategories } from "../api";
 import { addProduct } from "../productsSlice";
 import { UnitOfMeasurement, unitOfMeasurements } from "../../../constants/unitOfMeasurements";
+import { handleApiError } from "../../../utils/handleApiError";
+import { showSuccessToast } from "../../../utils/toast";
 
 
 type CreateProductProps = {
@@ -111,23 +113,30 @@ export default function CreateProduct({ onClose }: CreateProductProps) {
     }));
   };
 
-  const handleSubmit = async () => {
-    try {
-      await dispatch(addProduct(newProduct));
-      setNewProduct({
-        name: "",
-        vendorArticle: "",
-        purchasingPrice: 0,
-        markupPercentage: 20,
-        sellingPrice: 0,
-        productCategory: { id: 0, name: "", artName: "" },
-        unitOfMeasurement: "ST",
-      });
-      onClose();
-    } catch (error) {
-      console.error("Fehler beim Hinzufügen eines Produkts:", error);
-    }
-  };
+ const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  try {
+    const createdProduct = await dispatch(addProduct(newProduct)).unwrap();
+
+    showSuccessToast("Erfolg", `${createdProduct.name} wurde erfolgreich erstellt.`);
+
+    setNewProduct({
+      name: "",
+      vendorArticle: "",
+      purchasingPrice: 0,
+      markupPercentage: 20,
+      sellingPrice: 0,
+      productCategory: { id: 0, name: "", artName: "" },
+      unitOfMeasurement: "ST",
+    });
+
+    onClose();
+  } catch (error) {
+    handleApiError(error, "Das Produkt konnte nicht erstellt werden.");
+  }
+};
+
 
   return (
     <Dialog open={true} onClose={onClose} maxWidth="sm" fullWidth>

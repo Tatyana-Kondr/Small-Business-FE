@@ -2,13 +2,32 @@ import { createAppSlice } from "../../redux/createAppSlice"
 import { fetchAddPurchase, fetchDeletePurchase, fetchPurchaseById, fetchPurchases, fetchPurchasesByFilter, fetchSearchPurchases, fetchUpdatePurchase, fetchUpdatePurchasePaymentStatus, } from "./api";
 import { NewPurchaseDto, PurchasesState } from "./types";
 
+
 const initialState: PurchasesState = {
   purchasesList: [],
   totalPages: 1,
   currentPage: 0,
   selectedPurchase: undefined,
+  sort: "purchasingDate,DESC",
   loading: false,
   error: null,
+};
+
+interface GetPurchasesParams {
+  page: number;
+  size?: number;
+  sort?: string;
+  searchTerm?: string;
+}
+
+const handlePending = (state: PurchasesState) => {
+  state.loading = true;
+  state.error = null;
+};
+
+const handleRejected = (state: PurchasesState, action: any, message: string) => {
+  state.error = action.error?.message ?? message;
+  state.loading = false;
 };
 
 export const purchasesSlice = createAppSlice({
@@ -16,105 +35,80 @@ export const purchasesSlice = createAppSlice({
   initialState,
   reducers: (create) => ({
     getPurchases: create.asyncThunk(
-      async ({
-        page,
-        size = 15,
-        searchTerm,
-      }: {
-        page: number;
-        size?: number;
-        searchTerm?: string;
-      }) => {
-        return await fetchPurchases({ page, size, searchTerm });
+      async ({ page, size = 15, sort = "purchasingDate,DESC", searchTerm = "" }: GetPurchasesParams) => {
+        return await fetchPurchases(page, size, sort, searchTerm);
       },
       {
         fulfilled: (state, action) => {
-          state.purchasesList = action.payload.content;
-          state.totalPages = action.payload.totalPages;
-          state.currentPage = action.payload.pageable.pageNumber;
+          const { content, totalPages, pageable } = action.payload;
+          state.purchasesList = content;
+          state.totalPages = totalPages;
+          state.currentPage = pageable.pageNumber;
+          state.sort = action.meta.arg.sort ?? "purchasingDate,DESC";
           state.loading = false;
+          state.error = null;
         },
-        pending: (state) => {
-          state.loading = true;
-        },
+        pending: handlePending,
         rejected: (state, action) => {
-          const errorMessage = action.payload instanceof Error ? action.payload.message : "Failed to fetch purchases";
-          state.error = errorMessage;
-          state.loading = false;
+          handleRejected(state, action, "Fehler beim Laden der Bestellungen.");
         },
       }
     ),
 
     addPurchase: create.asyncThunk(
-      async (newPurchase: NewPurchaseDto) => {
-        return await fetchAddPurchase(newPurchase);
+      async (newPurchase: NewPurchaseDto, { dispatch, getState }) => {
+        const addedPurchase = await fetchAddPurchase(newPurchase);
+        const state = getState() as { purchases: PurchasesState };
+        await dispatch(
+          getPurchases({
+            page: state.purchases.currentPage,
+            size: 15,
+            sort: state.purchases.sort,
+          })
+        );
+        return addedPurchase;
       },
       {
-        fulfilled: (state, action) => {
-          state.selectedPurchase = action.payload;
+        pending: handlePending,
+        fulfilled: (state) => {
           state.loading = false;
         },
-        pending: (state) => {
-          state.loading = true;
-        },
-        rejected: (state, action) => {
-          const errorMessage = action.payload instanceof Error ? action.payload.message : "Failed to add purchase";
-          state.error = errorMessage;
-          state.loading = false;
-        },
+        rejected: (state, action) =>
+          handleRejected(state, action, "Fehler beim Hinzufügen der Bestellung."),
       }
     ),
 
+
     getPurchaseById: create.asyncThunk(
-      async (id: number) => {
-        return await fetchPurchaseById(id);
-      },
+      async (id: number) => await fetchPurchaseById(id),
       {
+        pending: handlePending,
         fulfilled: (state, action) => {
           state.selectedPurchase = action.payload;
           state.loading = false;
+          state.error = null;
         },
-        pending: (state) => {
-          state.loading = true;
-        },
-        rejected: (state, action) => {
-          const errorMessage =
-            action.payload instanceof Error ? action.payload.message : "Failed to fetch purchase by ID";
-          state.error = errorMessage;
-          state.loading = false;
-        },
+        rejected: (state, action) =>
+          handleRejected(state, action, "Fehler beim Laden der Bestellung."),
       }
     ),
 
     searchPurchases: create.asyncThunk(
-      async ({
-        query,
-        page,
-        size,
-      }: {
-        query: string;
-        page: number;
-        size?: number;
-        sort?: string;
-      }) => {
-        return await fetchSearchPurchases({ query, page, size });
+      async ({ query, page, size = 15, sort = "purchasingDate,DESC" }: GetPurchasesParams & { query: string }) => {
+        return await fetchSearchPurchases(query, page, size, sort);
       },
       {
         fulfilled: (state, action) => {
           state.purchasesList = action.payload.content;
           state.totalPages = action.payload.totalPages;
           state.currentPage = action.payload.pageable.pageNumber;
+          state.sort = action.meta.arg.sort ?? "purchasingDate,DESC";
           state.loading = false;
+          state.error = null;
         },
-        pending: (state) => {
-          state.loading = true;
-        },
-        rejected: (state, action) => {
-          const errorMessage =
-            action.payload instanceof Error ? action.payload.message : "Failed to search purchases";
-          state.error = errorMessage;
-          state.loading = false;
-        },
+        pending: handlePending,
+        rejected: (state, action) =>
+          handleRejected(state, action, "Fehler beim Laden der Bestellungen."),
       }
     ),
 
@@ -133,101 +127,113 @@ export const purchasesSlice = createAppSlice({
         endDate?: string;
         searchQuery?: string;
       }) => {
-        return await fetchPurchasesByFilter(params);
+        const {
+          page,
+          size = 15,
+          sort = "purchasingDate,DESC",
+          id,
+          vendorId,
+          document,
+          documentNumber,
+          total,
+          paymentStatus,
+          startDate,
+          endDate,
+          searchQuery,
+        } = params;
+
+        return await fetchPurchasesByFilter(page, size, sort, {
+          id,
+          vendorId,
+          document,
+          documentNumber,
+          total,
+          paymentStatus,
+          startDate,
+          endDate,
+          searchQuery,
+        });
       },
       {
         fulfilled: (state, action) => {
           state.purchasesList = action.payload.content;
           state.totalPages = action.payload.totalPages;
           state.currentPage = action.payload.pageable.pageNumber;
+          state.sort = action.meta.arg.sort ?? "purchasingDate,DESC";
           state.loading = false;
+          state.error = null;
         },
-        pending: (state) => {
-          state.loading = true;
-        },
-        rejected: (state, action) => {
-          const errorMessage =
-            action.payload instanceof Error ? action.payload.message : "Failed to fetch purchases by filter";
-          state.error = errorMessage;
-          state.loading = false;
-        },
+        pending: handlePending,
+        rejected: (state, action) =>
+          handleRejected(state, action, "Fehler beim Laden der gefilterten Bestellungen."),
       }
     ),
 
     updatePurchase: create.asyncThunk(
-      async ({
-        id,
-        updatedPurchase,
-      }: {
-        id: number;
-        updatedPurchase: NewPurchaseDto;
-      }) => {
-        return await fetchUpdatePurchase(id, updatedPurchase);
+      async ({ id, updatedPurchase }: { id: number; updatedPurchase: NewPurchaseDto }, { dispatch, getState }) => {
+        const editedPurchase = await fetchUpdatePurchase(id, updatedPurchase);
+        const state = getState() as { purchases: PurchasesState };
+        await dispatch(
+          getPurchases({
+            page: state.purchases.currentPage,
+            size: 15,
+            sort: state.purchases.sort,
+          })
+        );
+
+        return editedPurchase;
       },
       {
-        fulfilled: (state, action) => {
-          state.selectedPurchase = action.payload;
+        fulfilled: (state) => {
           state.loading = false;
         },
-        pending: (state) => {
-          state.loading = true;
-        },
-        rejected: (state, action) => {
-          const errorMessage =
-            action.payload instanceof Error ? action.payload.message : "Failed to update purchase";
-          state.error = errorMessage;
-          state.loading = false;
-        },
+        pending: handlePending,
+        rejected: (state, action) =>
+          handleRejected(state, action, "Fehler beim Bearbeiten der Bestellung."),
       }
     ),
 
     deletePurchase: create.asyncThunk(
-      async (id: number) => {
+      async (id: number, { dispatch, getState }) => {
         await fetchDeletePurchase(id);
+        const state = getState() as { purchases: PurchasesState };
+        await dispatch(
+          getPurchases({
+            page: state.purchases.currentPage,
+            size: 15,
+            sort: state.purchases.sort,
+          })
+        );
         return id;
       },
       {
-        fulfilled: (state, action) => {
-          state.purchasesList = state.purchasesList.filter((purchase) => purchase.id !== action.payload);
+        fulfilled: (state) => {
           state.loading = false;
+          state.error = null;
         },
-        pending: (state) => {
-          state.loading = true;
-        },
-        rejected: (state, action) => {
-          const errorMessage =
-            action.payload instanceof Error ? action.payload.message : "Failed to delete purchase";
-          state.error = errorMessage;
-          state.loading = false;
-        },
+        pending: handlePending,
+        rejected: (state, action) =>
+          handleRejected(state, action, "Fehler beim Löschen der Bestellung."),
       }
     ),
 
     updatePurchasePaymentStatus: create.asyncThunk(
-  async (id: number) => {
-    return await fetchUpdatePurchasePaymentStatus(id); 
-  },
-  {
-    fulfilled: (state, action) => {
-      const updatedPurchase = action.payload; 
-      const index = state.purchasesList.findIndex(p => p.id === updatedPurchase.id);
-      if (index !== -1) {
-        state.purchasesList[index] = updatedPurchase;
+      async (id: number) => {
+        return await fetchUpdatePurchasePaymentStatus(id);
+      },
+      {
+        fulfilled: (state, action) => {
+          const updatedPurchase = action.payload;
+          state.purchasesList = state.purchasesList.map(p =>
+            p.id === updatedPurchase.id ? updatedPurchase : p);
+          state.loading = false;
+          state.error = null;
+        },
+        pending: handlePending,
+        rejected: (state, action) =>
+          handleRejected(state, action, "Fehler beim Aktualisieren des Zahlungsstatus."),
       }
-      state.loading = false;
-    },
-    pending: (state) => {
-      state.loading = true;
-    },
-    rejected: (state, action) => {
-      const errorMessage =
-        action.payload instanceof Error ? action.payload.message : "Failed to update payment status";
-      state.error = errorMessage;
-      state.loading = false;
-    },
-  }
-),
-
+    ),
 
   }),
 

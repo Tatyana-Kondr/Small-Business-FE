@@ -7,7 +7,8 @@ import {
     styled,
     Paper,
     InputAdornment,
-    InputLabel
+    InputLabel,
+    Tooltip
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 
@@ -28,6 +29,8 @@ import { Shipping, TermsOfPayment } from '../../../constants/enums';
 import { Dialog } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import CreateCustomer from '../../customers/components/CreateCustomer';
+import { handleApiError } from '../../../utils/handleApiError';
+import { showSuccessToast } from '../../../utils/toast';
 
 const StyledTableHead = styled(TableHead)(({
     backgroundColor: "#1a3d6d",
@@ -38,6 +41,7 @@ const StyledTableHead = styled(TableHead)(({
         color: "white",
         fontWeight: "bold",
         borderRight: "1px solid #ddd",
+        textAlign: "center",
         zIndex: 1,
     },
 }));
@@ -95,7 +99,7 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
         dispatch(getCustomersWithCustomerNumber({ page: 0, size: 100 }))
             .unwrap()
             .then(customers => setCustomers(customers.content))
-            .catch(error => console.error("Fehler beim Laden von Kunden", error));
+            .catch(error => handleApiError(error, "Fehler beim Laden der Kunden"));
     }, [dispatch]);
 
     useEffect(() => {
@@ -127,26 +131,23 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
         setSearchTerm("");
     }, [selectedCategory]);
 
-    const { subtotal, discountSum, taxSum, total } = useMemo(() => {
+    const { subtotal, taxSum, total } = useMemo(() => {
         if (!newSale.salesItems || newSale.salesItems.length === 0) {
-            return { subtotal: 0, discountSum: 0, taxSum: 0, total: 0 };
+            return { subtotal: 0, taxSum: 0, total: 0 };
         }
 
         let subtotal = 0;
-        let discountSum = 0;
         let taxSum = 0;
         let total = 0;
 
         for (const item of newSale.salesItems) {
             subtotal += item.totalPrice;
-            discountSum += item.discountAmount;
             taxSum += item.taxAmount;
             total += item.totalAmount;
         }
 
         return {
             subtotal: parseFloat(subtotal.toFixed(2)),
-            discountSum: parseFloat(discountSum.toFixed(2)),
             taxSum: parseFloat(taxSum.toFixed(2)),
             total: parseFloat(total.toFixed(2)),
         };
@@ -158,14 +159,19 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
                 const quantity = item.quantity;
                 const unitPrice = item.unitPrice;
                 const subTotalPrice = quantity * unitPrice;
-                const discountAmount = (subTotalPrice * item.discount) / 100;
+
+                const discount = prev.defaultDiscount;
+                const discountAmount = (subTotalPrice * discount) / 100;
                 const totalPrice = subTotalPrice - discountAmount;
-                const taxAmount = (totalPrice * prev.defaultTax) / 100;
+
+                const tax = prev.defaultTax;
+                const taxAmount = (totalPrice * tax) / 100;
                 const totalAmount = totalPrice + taxAmount;
 
                 return {
                     ...item,
-                    tax: prev.defaultTax,
+                    discount,
+                    tax,
                     discountAmount,
                     totalPrice,
                     taxAmount,
@@ -178,8 +184,7 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
                 salesItems: updatedItems,
             };
         });
-    }, [newSale.defaultTax]);
-
+    }, [newSale.defaultTax, newSale.defaultDiscount]);
 
     const handleAddProductToCart = (product: Product) => {
         const quantity = 1;
@@ -224,14 +229,14 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
         setShowCreateCustomer(true);
     };
 
-
     const handleSubmit = () => {
-        if (
-            !newSale.customerId ||
-            !newSale.salesDate ||
-            newSale.salesItems.length === 0
-        ) {
-            alert("Bitte füllen Sie alle Pflichtfelder korrekt aus.");
+        if (!newSale.salesItems.length) {
+            handleApiError(new Error("Der Autrag enthält keine Artikel."));
+            return;
+        }
+
+        if (!newSale.customerId || !newSale.salesDate) {
+            handleApiError(new Error("Bitte füllen Sie alle Pflichtfelder korrekt aus."));
             return;
         }
 
@@ -249,14 +254,11 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
         dispatch(addSale(newSaleToSend))
             .unwrap()
             .then(() => {
-                alert('Auftrag erfolgreich erstellt.');
+                showSuccessToast("Erfolg", "Auftrag erfolgreich erstellt.");
                 onSubmitSuccess?.();
                 onClose();
             })
-            .catch((error) => {
-                console.error('Fehler beim Erstellen:', error);
-                alert('Der Auftrag konnte nicht erstellt werden.');
-            });
+            .catch(error => handleApiError(error, "Der Auftrag konnte nicht erstellt werden."));
     };
     const updateShippingDimension = (
         field: keyof NewShippingDimensionsDto,
@@ -272,7 +274,6 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
             },
         }));
     };
-
 
     const handleItemChange = (
         index: number,
@@ -299,8 +300,6 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
             };
         });
     };
-
-
 
     return (
         <Dialog open onClose={onClose} maxWidth="lg" fullWidth scroll="paper" >
@@ -534,16 +533,22 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
                                                     label="Gewicht (kg)"
                                                     value={weightInput}
                                                     onChange={(e) => {
-                                                        const val = e.target.value;
+                                                        const val = e.target.value.replace(/[^0-9,]/g, "");
                                                         setWeightInput(val);
-                                                        const parsed = parseFloat(val.replace(',', '.'));
+                                                    }}
+                                                    onBlur={() => {
+                                                        const parsed = parseFloat(weightInput.replace(",", "."));
                                                         setNewSale((prev) => ({
                                                             ...prev,
                                                             shippingDimensions: {
                                                                 ...prev.shippingDimensions,
-                                                                weight: isNaN(parsed) ? null : parsed,
+                                                                weight: isNaN(parsed) ? null : Number(parsed.toFixed(3)),
                                                             },
                                                         }));
+                                                        // форматируем в поле
+                                                        if (!isNaN(parsed)) {
+                                                            setWeightInput(parsed.toFixed(3).replace(".", ","));
+                                                        }
                                                     }}
                                                     fullWidth
                                                 />
@@ -559,7 +564,7 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
                         <Grid item xs={12}>
                             <Paper elevation={2} sx={{ p: 2, mb: 5 }}>
                                 <Typography gutterBottom sx={{ color: "#00acc1", mb: 2, textAlign: 'left' }}>
-                                    Bestellung
+                                    Bestelldaten
                                 </Typography>
 
                                 <Grid container spacing={2}>
@@ -614,22 +619,22 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
                             <Table size="small">
                                 <StyledTableHead>
                                     <TableRow>
-                                        <TableCell>Pos</TableCell>
-                                        <TableCell>Name</TableCell>
-                                        <TableCell>Menge</TableCell>
-                                        <TableCell>Preis</TableCell>
-                                        <TableCell>Rabatt%</TableCell>
-                                        <TableCell>MWSt%</TableCell>
-                                        <TableCell>Netto</TableCell>
-                                        <TableCell>MWSt</TableCell>
-                                        <TableCell></TableCell>
+                                        <TableCell sx={{ width: 50, fontSize: "12px" }}>Pos</TableCell>
+                                        <TableCell sx={{ minWidth: 200 }}>Name</TableCell>
+                                        <TableCell sx={{ width: 70 }}>Menge</TableCell>
+                                        <TableCell sx={{ width: 90 }}>Preis</TableCell>
+                                        <TableCell sx={{ width: 70, fontSize: "12px" }}>Rabatt%</TableCell>
+                                        <TableCell sx={{ width: 70, fontSize: "12px" }}>MWSt%</TableCell>
+                                        <TableCell sx={{ width: 90 }}>Netto</TableCell>
+                                        <TableCell sx={{ width: 90 }}>MWSt</TableCell>
+                                        <TableCell sx={{ width: 40 }}></TableCell>
                                     </TableRow>
                                 </StyledTableHead>
                                 <TableBody>
                                     {newSale.salesItems.map((item, index) => (
                                         <StyledTableRow key={index}>
-                                            <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", borderLeft: "1px solid #ddd" }}>{item.position}</TableCell>
-                                            <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd" }}>
+                                            <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", borderLeft: "1px solid #ddd", textAlign: "center", width: 50, }}>{item.position}</TableCell>
+                                            <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", minWidth: 200, textAlign: "left" }}>
                                                 <TextField
                                                     id={`product-name-${index}`}
                                                     aria-label="Produktname"
@@ -646,7 +651,7 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
                                                 />
                                             </TableCell>
 
-                                            <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd" }}>
+                                            <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", width: "70px" }}>
                                                 <TextField
                                                     id={`quantity-${index}`}
                                                     aria-label="Menge"
@@ -659,13 +664,13 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
                                                     sx={{
                                                         fontSize: '0.875rem',
                                                         '& .MuiInputBase-root': { border: 'none' },
-                                                        '& .MuiInputBase-input': { fontSize: '0.875rem', padding: 0 },
+                                                        '& .MuiInputBase-input': { fontSize: '0.875rem', padding: 0, textAlign: 'center' },
                                                     }}
-                                                    inputProps={{ min: 0, step: 0.01 }}
+                                                    inputProps={{ min: 0, step: 1 }}
                                                 />
                                             </TableCell>
 
-                                            <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd" }}>
+                                            <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", width: "70px" }}>
                                                 <TextField
                                                     id={`unit-price-${index}`}
                                                     aria-label="Stückpreis"
@@ -678,13 +683,13 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
                                                     sx={{
                                                         fontSize: '0.875rem',
                                                         '& .MuiInputBase-root': { border: 'none' },
-                                                        '& .MuiInputBase-input': { fontSize: '0.875rem', padding: 0 },
+                                                        '& .MuiInputBase-input': { fontSize: '0.875rem', padding: 0, textAlign: 'right' },
                                                     }}
                                                     inputProps={{ min: 0, step: 0.01 }}
                                                 />
                                             </TableCell>
 
-                                            <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd" }}>
+                                            <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", width: 70 }}>
                                                 <TextField
                                                     id={`discount-${index}`}
                                                     aria-label="Rabatt"
@@ -698,13 +703,13 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
                                                     sx={{
                                                         fontSize: '0.875rem',
                                                         '& .MuiInputBase-root': { border: 'none' },
-                                                        '& .MuiInputBase-input': { fontSize: '0.875rem', padding: 0 },
+                                                        '& .MuiInputBase-input': { fontSize: '0.875rem', padding: 0, textAlign: 'right' },
                                                     }}
                                                     inputProps={{ min: 0, step: 1 }}
                                                 />
                                             </TableCell>
 
-                                            <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd" }}>
+                                            <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", width: 70 }}>
                                                 <TextField
                                                     id={`tax-${index}`}
                                                     aria-label="MwSt"
@@ -718,17 +723,36 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
                                                     sx={{
                                                         fontSize: '0.875rem',
                                                         '& .MuiInputBase-root': { border: 'none' },
-                                                        '& .MuiInputBase-input': { fontSize: '0.875rem', padding: 0 },
+                                                        '& .MuiInputBase-input': { fontSize: '0.875rem', padding: 0, textAlign: 'right' },
                                                     }}
                                                     inputProps={{ min: 0, step: 1 }}
                                                 />
                                             </TableCell>
-                                            <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd" }}>{item.totalPrice.toFixed(2)}</TableCell>
-                                            <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd" }}>{item.taxAmount.toFixed(2)}</TableCell>
+                                            <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", textAlign: 'right' }}>
+                                                {item.totalPrice.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            </TableCell>
+                                            <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", textAlign: 'right' }}>
+                                                {item.taxAmount.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            </TableCell>
                                             <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd" }}>
-                                                <IconButton onClick={() => handleRemoveItem(index)} size="small" color="error">
-                                                    <DeleteIcon />
-                                                </IconButton>
+                                                <Tooltip title="Löschen" arrow>
+                                                    <IconButton
+                                                        size="small"
+                                                        onClick={() => handleRemoveItem(index)}
+                                                        aria-label="Zeile löschen"
+                                                        sx={{
+                                                            p: 0.5,
+                                                            transition: "transform 0.2s ease-in-out",
+                                                            "&:hover": {
+                                                                color: "#d32f2f",
+                                                                transform: "scale(1.2)",
+                                                                backgroundColor: "transparent",
+                                                            },
+                                                        }}
+                                                    >
+                                                        <DeleteIcon />
+                                                    </IconButton>
+                                                </Tooltip>
                                             </TableCell>
                                         </StyledTableRow>
                                     ))}
@@ -748,10 +772,9 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
                                 </Button>
                             </Grid>
                             <Grid item xs={8} sx={{ textAlign: 'right' }}>
-                                <Typography>Netto: {subtotal.toFixed(2)}</Typography>
-                                <Typography>Rabatt: {discountSum.toFixed(2)}</Typography>
-                                <Typography>MWSt: {taxSum.toFixed(2)}</Typography>
-                                <Typography variant="h6">Gesamtbetrag: {total.toFixed(2)}</Typography>
+                                <Typography>Netto: {subtotal.toFixed(2)} €</Typography>
+                                <Typography>MWSt: {taxSum.toFixed(2)} €</Typography>
+                                <Typography variant="h6">Gesamtbetrag: {total.toFixed(2)} €</Typography>
                             </Grid>
                         </Grid>
                     </Paper>

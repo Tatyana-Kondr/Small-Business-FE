@@ -31,6 +31,9 @@ export interface CustomersState {
   selectedCustomer: Customer | undefined;
   totalPages: number;
   currentPage: number;
+  currentSort: string,
+   loading: boolean;
+  error: string | null;
 }
 
 // Интерфейс для ответа с пагинацией

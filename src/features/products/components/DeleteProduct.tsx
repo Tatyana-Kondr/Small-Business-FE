@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { Alert, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Snackbar } from "@mui/material";
-import { deleteProduct, getProducts } from "../productsSlice";
+import { Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from "@mui/material";
+import { deleteProduct } from "../productsSlice";
 import { useAppDispatch } from "../../../redux/hooks";
+import { showSuccessToast } from "../../../utils/toast";
+import { handleApiError } from "../../../utils/handleApiError";
 
 interface DeleteProductProps {
   productId: number;
@@ -14,29 +16,23 @@ export default function DeleteProduct({ productId, productName, productArticle, 
   const dispatch = useAppDispatch();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [showError, setShowError] = useState(false);
-
 
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
 
   const handleDelete = async () => {
-    setLoading(true);
-    try {
-      await dispatch(deleteProduct(productId)).unwrap();
-      await dispatch(getProducts({ page: 0 })); 
-      handleClose();
-      onSuccessDelete?.();
-    } catch (error: any) {
-      const message = error?.message || "Unbekannter Fehler beim Löschen.";
-      setErrorMessage(message);
-      setShowError(true);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  setLoading(true);
+  try {
+    await dispatch(deleteProduct(productId)).unwrap();
+    handleClose();
+    onSuccessDelete?.();
+    showSuccessToast("Erfolg", "Produkt wurde erfolgreich gelöscht!");
+  } catch (error: any) {
+    handleApiError(error, "Fehler beim Löschen des Produkts.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <>
@@ -70,21 +66,7 @@ export default function DeleteProduct({ productId, productName, productArticle, 
           </Button>
         </DialogActions>
       </Dialog>
-      <Snackbar
-        open={showError}
-        autoHideDuration={5000}
-        onClose={() => setShowError(false)}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-      >
-        <Alert
-          onClose={() => setShowError(false)}
-          severity="error"
-          sx={{ width: "100%" }}
-        >
-          {errorMessage}
-        </Alert>
-      </Snackbar>
-
+      
     </>
   );
 }

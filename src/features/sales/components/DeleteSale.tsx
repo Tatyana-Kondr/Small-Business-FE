@@ -1,22 +1,25 @@
 import { useState } from "react";
 import { Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from "@mui/material";
 import { useAppDispatch } from "../../../redux/hooks";
-import { deleteCustomer, getCustomers, getCustomersWithCustomerNumber } from "../customersSlice";
-import { showErrorToast, showSuccessToast } from "../../../utils/toast";
+import { showSuccessToast } from "../../../utils/toast";
+import { handleApiError } from "../../../utils/handleApiError";
+import { deleteSale } from "../salesSlice";
 
-interface DeleteCustomerProps {
-  customerId: number;
+interface DeleteSaleProps {
+  saleId: number;
   customerName: string;
+  salesDate: string;
   onSuccessDelete?: () => void;
   trigger?: React.ReactNode;
 }
 
-export default function DeleteCustomer({
-  customerId,
+export default function DeleteSale({
+  saleId,
   customerName,
+  salesDate,
   onSuccessDelete,
   trigger,
-}: DeleteCustomerProps) {
+}: DeleteSaleProps) {
   const dispatch = useAppDispatch();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -27,28 +30,16 @@ export default function DeleteCustomer({
   const handleDelete = async () => {
     setLoading(true);
     try {
-      await dispatch(deleteCustomer(customerId)).unwrap();
-      await dispatch(getCustomers({ page: 0, size: 15 }));
-      await dispatch(getCustomersWithCustomerNumber({ page: 0, size: 15 }));
-      showSuccessToast("Erfolg", `${customerName} wurde erfolgreich gelöscht.`);
+      await dispatch(deleteSale(saleId)).unwrap();
+      showSuccessToast("Erfolg", `Der Autrag wurde erfolgreich gelöscht.`);
       handleClose();
       onSuccessDelete?.();
     } catch (error: any) {
-      let message = "Fehler beim Löschen.";
-
-      const raw = error?.message || "";
-
-      if (raw.includes("409")) {
-        message = `${customerName} kann nicht gelöscht werden, da es in anderen Einträgen verwendet wird.`;
-      } else if (raw.includes("404")) {
-        message = `${customerName} wurde nicht gefunden.`;
-      }
-
-      showErrorToast("Fehler beim Löschen", message);
+      handleApiError(error, "Fehler beim Löschen des Auftrags.");
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   return (
     <>
@@ -85,8 +76,17 @@ export default function DeleteCustomer({
         </DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Wollen Sie den <strong>{customerName}</strong> wirklich löschen?
+            Wollen Sie den Auftrag Nr. <strong>{saleId}</strong> von <strong>{customerName}</strong> vom{" "}
+            <strong>
+              {new Date(salesDate).toLocaleDateString("de-DE", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+              })}
+            </strong>{" "}
+            wirklich löschen?
           </DialogContentText>
+
         </DialogContent>
         <DialogActions>
           <Button onClick={handleClose} color="primary">

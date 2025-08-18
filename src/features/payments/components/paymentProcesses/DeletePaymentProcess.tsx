@@ -3,6 +3,8 @@ import { Button, Dialog, DialogActions, DialogContent, DialogContentText, Dialog
 import { useAppDispatch } from "../../../../redux/hooks";
 import { getPaymentMethods } from "../../paymentMethodsSlice";
 import { deletePaymentProcess } from "../../paymentProcessesSlice";
+import { showSuccessToast } from "../../../../utils/toast";
+import { handleApiError } from "../../../../utils/handleApiError";
 
 
 interface DeletePaymentProcessProps {
@@ -23,11 +25,10 @@ export default function DeletePaymentProcess({ processId, processName }: DeleteP
     try {
       dispatch(deletePaymentProcess(processId));
       dispatch(getPaymentMethods());
+      showSuccessToast("Erfolg", "Die Zahlungsvorgang wurde erfolgreich gelöscht.");
       handleClose();
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Fehler beim Löschen der Zahlungsvorgang";
-      alert(errorMessage); 
+      handleApiError(error, "Fehler beim Löschen der Zahlungsvorgang"); 
     } finally {
       setLoading(false);
     }

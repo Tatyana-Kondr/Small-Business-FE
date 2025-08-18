@@ -16,7 +16,7 @@ import {
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
-import { addPayment, getPayments, selectError, selectLoading } from "../paymentsSlice";
+import { addPayment, selectError, selectLoading } from "../paymentsSlice";
 import { NewPaymentDto, PaymentMethod, PaymentPrefillDto, PaymentProcess } from "../types";
 import { fetchAllPaymentMethods, fetchAllPaymentProcesses, fetchPrefillDataForPurchase, fetchPrefillDataForSale } from "../api";
 import { updatePurchasePaymentStatus } from "../../purchases/purchasesSlice";
@@ -25,6 +25,8 @@ import { TypesOfDocument } from "../../../constants/enums";
 import { getCustomers } from "../../customers/customersSlice";
 import { Customer } from "../../customers/types";
 import CreateCustomer from "../../customers/components/CreateCustomer";
+import { handleApiError } from "../../../utils/handleApiError";
+import { showSuccessToast } from "../../../utils/toast";
 
 
 interface CreatePaymentProps {
@@ -80,7 +82,7 @@ export default function CreatePayment({
     dispatch(getCustomers({ page: 0, size: 100 }))
       .unwrap()
       .then((data) => setCustomers(data.content))
-      .catch((err) => console.error("Fehler beim Laden von Kunden", err));
+      .catch((err) => handleApiError(err, "Fehler beim Laden von Kunden."));
   }, [dispatch]);
 
 
@@ -119,7 +121,7 @@ export default function CreatePayment({
           paymentProcessId: processes[0]?.id || 0,
         }));
       } catch (err) {
-        console.error("Failed to load payment form data", err);
+        handleApiError(err, "Fehler beim Laden der Zahlungsdaten.");
       } finally {
         setLoadingPrefill(false);
       }
@@ -164,12 +166,10 @@ export default function CreatePayment({
       if (prefillType === "sale" && form.saleId) {
         await dispatch(updateSalePaymentStatus(form.saleId));
       }
-
-      await dispatch(getPayments({ page: 0, size: 15 }));
-
+      showSuccessToast("Erfolg", "Die Zahlung wurde erfolgreich erstellt.");
       onClose();
     } catch (err) {
-      console.error("Error when adding payment", err);
+      handleApiError(err, "Fehler beim Hinzufügen der Zahlung.");
     }
   };
 

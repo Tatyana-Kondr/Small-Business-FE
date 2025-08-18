@@ -1,71 +1,57 @@
+import { apiFetch } from "../../../utils/apiFetch";
 import { Customer, NewCustomerDto, PaginatedResponse } from "../types"
 
-export async function fetchCustomers(page: number, size: number = 10): Promise<PaginatedResponse<Customer>> {
-    const res = await fetch(`/api/customers?page=${page}&size=${size}`);
-    if (!res.ok) {
-      throw new Error("Fehler beim Laden");
-    }
-    return res.json();
-  }
+export async function fetchCustomers(page: number, size: number, sort = "name"): Promise<PaginatedResponse<Customer>> {
+  return apiFetch<PaginatedResponse<Customer>>
+    (`/api/customers?page=${page}&size=${size}&sort=${sort}`,
+      undefined,
+      "Fehler beim Laden der Lieferanten."
+    );
+}
 
-  export async function fetchCustomerswithCustomerNumber(page: number, size: number = 10): Promise<PaginatedResponse<Customer>> {
-    const res = await fetch(`/api/customers/customer-number?page=${page}&size=${size}`);
-    if (!res.ok) {
-      throw new Error("Fehler beim Laden");
-    }
-    return res.json();
-  }
+export async function fetchCustomerswithCustomerNumber(page: number, size: number, sort = "name"): Promise<PaginatedResponse<Customer>> {
+  return apiFetch<PaginatedResponse<Customer>>(`/api/customers/customer-number?page=${page}&size=${size}&sort=${sort}`,
+    undefined,
+    "Fehler beim Laden der Kunden."
+  );
 
-  export async function fetchAddCustomer(newCustomerDto: NewCustomerDto): Promise<Customer> {
-    const res = await fetch(`/api/customers`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json", 
-      },
-      credentials: "include",
-      body: JSON.stringify(newCustomerDto),
-    });
-    if (!res.ok) {
-      const errorDetails = await res.text(); 
-      throw new Error(`Fehler beim Laden: ${errorDetails}`);
-    }
-    return res.json();
-  }
+}
 
-  export async function fetchCustomer(id: number): Promise<Customer> {
-    const res = await fetch(`/api/customers/${id}`);
-    if (!res.ok) {
-      throw new Error("Fehler beim Laden");
-    }
-    return res.json();
-  }
+export async function fetchAddCustomer(newCustomerDto: NewCustomerDto): Promise<Customer> {
+  return apiFetch<Customer>(`/api/customers`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(newCustomerDto),
+  },
+    "Fehler beim Hinzufügen des Kunden."
+  );
+}
 
-  export async function fetchEditCustomer(id: number, newCustomerDto: NewCustomerDto): Promise<Customer> {
-    console.log("Отправляемые данные:", JSON.stringify(newCustomerDto, null, 2));
+export async function fetchCustomer(id: number): Promise<Customer> {
+  return apiFetch<Customer>(
+    `/api/customers/${id}`,
+    undefined,
+   "Fehler beim Laden des Kunden."
+  );
+}
 
-    const res = await fetch(`/api/customers/${id}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json", 
-      },
-      credentials: "include",
-      body: JSON.stringify(newCustomerDto), 
-    });
-  
-    if (!res.ok) {
-      throw new Error("Fehler beim Laden"); 
-    }
-  
-    return res.json(); 
-  }
+export async function fetchEditCustomer(id: number, newCustomerDto: NewCustomerDto): Promise<Customer> {
+   return apiFetch<Customer>(
+    `/api/customers/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json",},
+    credentials: "include",
+    body: JSON.stringify(newCustomerDto),
+  },
+  "Fehler beim Aktualisieren des Kunden."
+);
+}
 
-  export async function fetchDeleteCustomer(id: number): Promise<void> {
-  const response = await fetch(`/api/customers/${id}`, {
-    method: 'DELETE',
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Error deleting customer ${id}: ${response.status} - ${errorText}`);
-  }
+export async function fetchDeleteCustomer(id: number): Promise<void> {
+  return apiFetch<void>(
+    `/api/customers/${id}`,
+    { method: "DELETE" },
+    `Error deleting customer ${id}`
+  );
 }

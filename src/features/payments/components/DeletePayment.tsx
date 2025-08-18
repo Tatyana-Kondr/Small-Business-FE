@@ -1,22 +1,27 @@
 import { useState } from "react";
 import { Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from "@mui/material";
 import { useAppDispatch } from "../../../redux/hooks";
-import { deleteCustomer, getCustomers, getCustomersWithCustomerNumber } from "../customersSlice";
-import { showErrorToast, showSuccessToast } from "../../../utils/toast";
+import { showSuccessToast } from "../../../utils/toast";
+import { deletePayment } from "../paymentsSlice";
+import { handleApiError } from "../../../utils/handleApiError";
 
-interface DeleteCustomerProps {
-  customerId: number;
+interface DeletePaymentProps {
+  paymentId: number;
   customerName: string;
+  amount: number;
+  paymentDate: string;
   onSuccessDelete?: () => void;
   trigger?: React.ReactNode;
 }
 
-export default function DeleteCustomer({
-  customerId,
+export default function DeletePayment({
+  paymentId,
   customerName,
+  amount,
+  paymentDate,
   onSuccessDelete,
   trigger,
-}: DeleteCustomerProps) {
+}: DeletePaymentProps) {
   const dispatch = useAppDispatch();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -27,28 +32,16 @@ export default function DeleteCustomer({
   const handleDelete = async () => {
     setLoading(true);
     try {
-      await dispatch(deleteCustomer(customerId)).unwrap();
-      await dispatch(getCustomers({ page: 0, size: 15 }));
-      await dispatch(getCustomersWithCustomerNumber({ page: 0, size: 15 }));
-      showSuccessToast("Erfolg", `${customerName} wurde erfolgreich gelöscht.`);
+      await dispatch(deletePayment(paymentId)).unwrap();
+      showSuccessToast("Erfolg", `Die Zahlung wurde erfolgreich gelöscht.`);
       handleClose();
       onSuccessDelete?.();
     } catch (error: any) {
-      let message = "Fehler beim Löschen.";
-
-      const raw = error?.message || "";
-
-      if (raw.includes("409")) {
-        message = `${customerName} kann nicht gelöscht werden, da es in anderen Einträgen verwendet wird.`;
-      } else if (raw.includes("404")) {
-        message = `${customerName} wurde nicht gefunden.`;
-      }
-
-      showErrorToast("Fehler beim Löschen", message);
+      handleApiError(error, "Fehler beim Löschen der Zahlung.");
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   return (
     <>
@@ -85,8 +78,17 @@ export default function DeleteCustomer({
         </DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Wollen Sie den <strong>{customerName}</strong> wirklich löschen?
+            Wollen Sie die Zahlung <strong>{customerName}</strong> vom{" "}
+            <strong>
+              {new Date(paymentDate).toLocaleDateString("de-DE", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+              })}
+            </strong>{" "}
+            in Betrag von <strong>{amount}</strong> Euro wirklich löschen?
           </DialogContentText>
+
         </DialogContent>
         <DialogActions>
           <Button onClick={handleClose} color="primary">

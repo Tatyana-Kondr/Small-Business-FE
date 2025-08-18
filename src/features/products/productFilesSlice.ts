@@ -1,8 +1,8 @@
 import { createAppSlice } from "../../redux/createAppSlice";
 import {
   fetchProductFiles,
-  fetchUploadProductFile,
   fetchDeleteProductFile,
+  fetchUploadProductFile,
 } from "./api";
 import { ProductFilesState } from "./types";
 
@@ -15,7 +15,6 @@ export const productFilesSlice = createAppSlice({
   name: "productFiles",
   initialState,
   reducers: (create) => ({
-    
     getProductFiles: create.asyncThunk(
       async (productId: number) => {
         return await fetchProductFiles(productId);
@@ -27,18 +26,19 @@ export const productFilesSlice = createAppSlice({
       }
     ),
 
-    
     uploadProductFile: create.asyncThunk(
-      async ({ productId, file }: { productId: number; file: File }) => {
-        return await fetchUploadProductFile(productId, file);
-      },
-      {
-        fulfilled: (state, action) => {
-          state.files.push(action.payload);
-        },
-      }
-    ),
-
+  async ({ productId, file }: { productId: number; file: File }) => {
+    // API теперь возвращает ProductPhoto
+    return await fetchUploadProductFile(productId, file);
+  },
+  {
+    fulfilled: (state, action) => {
+      // пушим сразу готовый объект в список
+      state.files.push(action.payload);
+      console.log("File uploaded:", action.payload);
+    },
+  }
+),
 
     deleteProductFile: create.asyncThunk(
       async (fileId: number) => {
@@ -52,7 +52,6 @@ export const productFilesSlice = createAppSlice({
       }
     ),
   }),
-
   selectors: {
     selectProductFiles: (state: ProductFilesState) => state.files,
   },

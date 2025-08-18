@@ -3,6 +3,8 @@ import { Button, Dialog, DialogActions, DialogContent, DialogContentText, Dialog
 import { useAppDispatch } from "../../../../redux/hooks";
 import { fetchDeleteProductCategory } from "../../api";
 import { getProductCategories } from "../../productCategoriesSlice";
+import { showSuccessToast } from "../../../../utils/toast";
+import { handleApiError } from "../../../../utils/handleApiError";
 
 interface DeleteCategoryProps {
   categoryId: number;
@@ -18,17 +20,19 @@ export default function DeleteProductCategory({ categoryId, categoryName }: Dele
   const handleClose = () => setOpen(false);
 
   const handleDelete = async () => {
-    setLoading(true);
-    try {
-      await fetchDeleteProductCategory(categoryId);
-      dispatch(getProductCategories());  // Обновляем список после удаления
-      handleClose();
-    } catch (error) {
-      alert("Fehler beim Löschen der Kategorie");
-    } finally {
-      setLoading(false);
-    }
-  };
+  setLoading(true);
+  try {
+    await fetchDeleteProductCategory(categoryId);
+    await dispatch(getProductCategories()).unwrap();
+    showSuccessToast("Erfolg", "Kategorie wurde erfolgreich gelöscht!");
+    handleClose();
+  } catch (error) {
+    handleApiError(error, "Fehler beim Löschen der Kategorie");
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <>

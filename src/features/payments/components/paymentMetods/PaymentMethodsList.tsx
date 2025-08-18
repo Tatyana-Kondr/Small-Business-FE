@@ -8,6 +8,7 @@ import { NewPaymentMethodDto, PaymentMethod } from "../../types";
 import DeletePaymentMethod from "./DeletePaymentMethod";
 import EditPaymentMethod from "./EditPaymentMethod";
 import { CreatePaymentMethod } from "./CreatePaymentMethod";
+import { handleApiError } from "../../../../utils/handleApiError";
 
 const StyledTableHead = styled(TableHead)(({
     backgroundColor: "#1a3d6d",
@@ -36,31 +37,32 @@ export default function PaymentMethodsList() {
 
 
     useEffect(() => {
-        dispatch(getPaymentMethods());
-    }, [dispatch]);
+  dispatch(getPaymentMethods()).catch((error) => {
+    handleApiError(error, "Fehler beim Laden der Zahlungsmethoden");
+  });
+}, [dispatch]);
 
-    const handleEdit = (method: PaymentMethod) => {
-        setSelectedPaymentMethod(method);
-        setEditOpen(true);
-    };
+const handleEdit = (method: PaymentMethod) => {
+  setSelectedPaymentMethod(method);
+  setEditOpen(true);
+};
 
-    const handleToggleActive = async (method: PaymentMethod) => {
-        const updatedMethod: NewPaymentMethodDto = {
-            provider: method.provider,
-            maskedNumber: method.maskedNumber,
-            details: method.details,
-            active: !method.active,
-        };
+const handleToggleActive = async (method: PaymentMethod) => {
+  const updatedMethod: NewPaymentMethodDto = {
+    provider: method.provider,
+    maskedNumber: method.maskedNumber,
+    details: method.details,
+    active: !method.active,
+  };
 
-        try {
-            await dispatch(updatePaymentMethod({ id: method.id, updatedPaymentMethod: updatedMethod })).unwrap();
-            dispatch(getPaymentMethods()); // Обновим список после успешного изменения
-        } catch (error) {
-            console.error("Fehler beim Umschalten des Status", error);
-            alert("Fehler beim Aktualisieren des Status");
-        }
-    };
-
+  try {
+    await dispatch(updatePaymentMethod({ id: method.id, updatedPaymentMethod: updatedMethod })).unwrap();
+    await dispatch(getPaymentMethods()).unwrap(); // Обновим список после успешного изменения
+  } catch (error) {
+    console.error("Fehler beim Umschalten des Status", error);
+    handleApiError(error, "Fehler beim Aktualisieren des Status");
+  }
+};
 
     const handleGoBack = () => {
         navigate(-1)

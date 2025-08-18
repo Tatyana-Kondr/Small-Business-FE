@@ -10,6 +10,8 @@ import {
 import { useAppDispatch, useAppSelector } from "../../../../redux/hooks";
 import { NewPaymentMethodDto } from "../../types";
 import { paymentMethodsSlice } from "../../paymentMethodsSlice";
+import { handleApiError } from "../../../../utils/handleApiError";
+import { showSuccessToast } from "../../../../utils/toast";
 
 
 
@@ -57,9 +59,10 @@ export const CreatePaymentMethod: React.FC<CreatePaymentMethodModalProps> = ({ o
 
       await dispatch(paymentMethodsSlice.actions.addPaymentMethod(payload)).unwrap();
       await dispatch(paymentMethodsSlice.actions.getPaymentMethods());
+      showSuccessToast("Erfolg", "Die Zahlungsmethode wurde erfolgreich erstellt.");
       handleClose(); // Закрыть и очистить форму
     } catch (error) {
-      console.error("Fehler beim Erstellen einer Zahlungsmethode:", error);
+      handleApiError(error, "Fehler beim Erstellen einer Zahlungsmethode:");
     }
   };
 

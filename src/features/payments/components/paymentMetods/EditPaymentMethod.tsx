@@ -12,6 +12,8 @@ import {
 import { useAppDispatch } from "../../../../redux/hooks";
 import { NewPaymentMethodDto, PaymentMethod } from "../../types";
 import { paymentMethodsSlice } from "../../paymentMethodsSlice";
+import { handleApiError } from "../../../../utils/handleApiError";
+import { showSuccessToast } from "../../../../utils/toast";
 
 
 interface EditPaymentMethodProps {
@@ -57,17 +59,23 @@ export default function EditPaymentMethod({ open, onClose, method }: EditPayment
 
 
   const handleSave = async () => {
-    if (!method) return;
+  if (!method) return;
 
+  try {
     await dispatch(
       paymentMethodsSlice.actions.updatePaymentMethod({
         id: method.id,
         updatedPaymentMethod: formData,
       })
-    );
-    await dispatch(paymentMethodsSlice.actions.getPaymentMethods());
+    ).unwrap();
+
+    await dispatch(paymentMethodsSlice.actions.getPaymentMethods()).unwrap();
+    showSuccessToast("Erfolg", "Zahlungsmethode erfolgreich aktualisiert.");
     onClose();
-  };
+  } catch (err) {
+    handleApiError(err, "Fehler beim Aktualisieren der Zahlungsmethode.");
+  }
+};
 
   const handleCancel = () => {
     onClose();

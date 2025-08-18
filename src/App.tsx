@@ -25,12 +25,14 @@ import PrivateRoute from './components/PrivateRoute';
 import Register from './components/Register';
 import { useSessionCheck } from './hooks/useSessionCheck';
 import CreateProductCategory from './features/products/components/category/CreateProductCategory';
+import { Toaster } from 'react-hot-toast';
+import SaleCard from './features/sales/components/SaleCard';
 
 
 function App() {
   useSessionCheck();
   const isAuthenticated = useAppSelector(selectIsAuthenticated);
-  const isSessionChecked = useAppSelector((state) => state.auth.isSessionChecked); 
+  const isSessionChecked = useAppSelector((state) => state.auth.isSessionChecked);
   const dispatch = useAppDispatch();
 
   useEffect(() => {
@@ -47,117 +49,124 @@ function App() {
 
   return (
     <div className="App" style={{ textAlign: "center", marginTop: "50px" }}>
+      <Toaster position="top-center" reverseOrder={false} />
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route path="login" element={isAuthenticated ? <Navigate to="/" /> : <LoginForm />} />
           <Route path="register" element={isAuthenticated ? <Navigate to="/" /> : <Register />} />
 
 
-            {/* Если пользователь авторизован, показываем Home */}
-            <Route index element={
+          {/* Если пользователь авторизован, показываем Home */}
+          <Route index element={
+            <PrivateRoute>
+              <Home />
+            </PrivateRoute>
+          }
+          />
+          <Route
+            path="/product-categories"
+            element={
               <PrivateRoute>
-                <Home />
+                <ProductCategoryList />
               </PrivateRoute>
             }
-            />
-            <Route
-              path="/product-categories"
-              element={
-                <PrivateRoute>
-                  <ProductCategoryList />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/lieferanten"
-              element={
-                <PrivateRoute>
-                  <Customers />
-                </PrivateRoute>} />
-            <Route
-              path="/kunden"
-              element={
-                <PrivateRoute>
-                  <CustomersWithNumber />
-                </PrivateRoute>
-              } />
-            <Route
-              path="/customer/:customerId"
-              element={
-                <PrivateRoute>
-                  <CustomerCard />
-                </PrivateRoute>} />
-            <Route
-              path="/kunde/:customerId"
-              element={
-                <PrivateRoute>
-                  <CustomerWithNumberCard />
-                </PrivateRoute>} />
-            <Route
-              path="/product-card/:productId"
-              element={
-                <PrivateRoute>
-                  <ProductCard />
-                </PrivateRoute>} />
-            <Route
-              path="/product-categories"
-              element={
-                <PrivateRoute>
-                  <ProductCategoryList />
-                </PrivateRoute>} />
-            <Route
-              path="/create-product-category"
-              element={
-                <PrivateRoute>
-                  <CreateProductCategory />
-                </PrivateRoute>} />
-            <Route
-              path="/purchases"
-              element={
-                <PrivateRoute>
-                  <Purchases />
-                </PrivateRoute>} />
-            
-            <Route
-              path="/purchases/:purchaseId"
-              element={
-                <PrivateRoute>
-                  <PurchaseCard />
-                </PrivateRoute>} />
-            <Route
-              path="/sales"
-              element={
-                <PrivateRoute>
-                  <Sales />
-                </PrivateRoute>} />
-            
-            <Route
-              path="/payments"
-              element={
-                <PrivateRoute>
-                  <Payments />
-                </PrivateRoute>} />
-            <Route
-              path="/payment-methods"
-              element={
-                <PrivateRoute>
-                  <PaymentMethodsList />
-                </PrivateRoute>} />
-            <Route
-              path="/payment-processes"
-              element={
-                <PrivateRoute>
-                  <PaymentProcessesList />
-                </PrivateRoute>} />
+          />
+          <Route
+            path="/lieferanten"
+            element={
+              <PrivateRoute>
+                <Customers />
+              </PrivateRoute>} />
+          <Route
+            path="/kunden"
+            element={
+              <PrivateRoute>
+                <CustomersWithNumber />
+              </PrivateRoute>
+            } />
+          <Route
+            path="/customer/:customerId"
+            element={
+              <PrivateRoute>
+                <CustomerCard />
+              </PrivateRoute>} />
+          <Route
+            path="/kunde/:customerId"
+            element={
+              <PrivateRoute>
+                <CustomerWithNumberCard />
+              </PrivateRoute>} />
+          <Route
+            path="/product-card/:productId"
+            element={
+              <PrivateRoute>
+                <ProductCard />
+              </PrivateRoute>} />
+          <Route
+            path="/product-categories"
+            element={
+              <PrivateRoute>
+                <ProductCategoryList />
+              </PrivateRoute>} />
+          <Route
+            path="/create-product-category"
+            element={
+              <PrivateRoute>
+                <CreateProductCategory />
+              </PrivateRoute>} />
+          <Route
+            path="/purchases"
+            element={
+              <PrivateRoute>
+                <Purchases />
+              </PrivateRoute>} />
 
-            {/* Страница 404 */}
-            <Route path="*" element={<NoSuchPage />} />
-          </Route>
-        </Routes>
-        <ModalManager />
-      </div>
+          <Route
+            path="/purchases/:purchaseId"
+            element={
+              <PrivateRoute>
+                <PurchaseCard />
+              </PrivateRoute>} />
+          <Route
+            path="/sales"
+            element={
+              <PrivateRoute>
+                <Sales />
+              </PrivateRoute>} />
+          <Route
+            path="/sales/:saleId"
+            element={
+              <PrivateRoute>
+                <SaleCard />
+              </PrivateRoute>} />
 
-    )
-  }
+          <Route
+            path="/payments"
+            element={
+              <PrivateRoute>
+                <Payments />
+              </PrivateRoute>} />
+          <Route
+            path="/payment-methods"
+            element={
+              <PrivateRoute>
+                <PaymentMethodsList />
+              </PrivateRoute>} />
+          <Route
+            path="/payment-processes"
+            element={
+              <PrivateRoute>
+                <PaymentProcessesList />
+              </PrivateRoute>} />
+
+          {/* Страница 404 */}
+          <Route path="*" element={<NoSuchPage />} />
+        </Route>
+      </Routes>
+      <ModalManager />
+    </div>
+
+  )
+}
 
 export default App

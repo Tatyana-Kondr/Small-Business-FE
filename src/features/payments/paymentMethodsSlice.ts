@@ -21,13 +21,14 @@ export const paymentMethodsSlice = createAppSlice({
         fulfilled: (state, action) => {
           state.paymentMethodsList = action.payload;
           state.loading = false;
+          state.error = null;
         },
         pending: (state) => {
           state.loading = true;
+          state.error = null;
         },
         rejected: (state, action) => {
-          const errorMessage = action.payload instanceof Error ? action.payload.message : "Failed to fetch methods of payment";
-          state.error = errorMessage;
+          state.error = action.error?.message || "Fehler beim Laden der Zahlungsmethoden.";
           state.loading = false;
         },
       }
@@ -41,13 +42,14 @@ export const paymentMethodsSlice = createAppSlice({
         fulfilled: (state, action) => {
           state.selectedPaymentMethod = action.payload;
           state.loading = false;
+          state.error = null;
         },
         pending: (state) => {
           state.loading = true;
+          state.error = null;
         },
         rejected: (state, action) => {
-          const errorMessage = action.payload instanceof Error ? action.payload.message : "Failed to add method of payment";
-          state.error = errorMessage;
+          state.error = action.error?.message || "Fehler beim Erstellen der Zahlungsmethode.";
           state.loading = false;
         },
       }
@@ -61,14 +63,14 @@ export const paymentMethodsSlice = createAppSlice({
         fulfilled: (state, action) => {
           state.selectedPaymentMethod = action.payload;
           state.loading = false;
+          state.error = null;
         },
         pending: (state) => {
           state.loading = true;
+          state.error = null;
         },
         rejected: (state, action) => {
-          const errorMessage =
-            action.payload instanceof Error ? action.payload.message : "Failed to fetch method of payment by ID";
-          state.error = errorMessage;
+          state.error = action.error?.message || "Fehler beim Laden der Zahlungsmethode.";
           state.loading = false;
         },
       }
@@ -88,14 +90,14 @@ export const paymentMethodsSlice = createAppSlice({
         fulfilled: (state, action) => {
           state.selectedPaymentMethod = action.payload;
           state.loading = false;
+          state.error = null;
         },
         pending: (state) => {
           state.loading = true;
+          state.error = null;
         },
         rejected: (state, action) => {
-          const errorMessage =
-            action.payload instanceof Error ? action.payload.message : "Failed to update method of payment";
-          state.error = errorMessage;
+          state.error = action.error?.message || "Fehler beim Aktualisieren der Zahlungsmethode.";
           state.loading = false;
         },
       }
@@ -108,16 +110,24 @@ export const paymentMethodsSlice = createAppSlice({
       },
       {
         fulfilled: (state, action) => {
-          state.paymentMethodsList = state.paymentMethodsList.filter((method) => method.id !== action.payload);
+          state.paymentMethodsList = state.paymentMethodsList.filter(
+            (method) => method.id !== action.payload
+          );
+          if (
+            state.selectedPaymentMethod &&
+            state.selectedPaymentMethod.id === action.payload
+          ) {
+            state.selectedPaymentMethod = undefined;
+          }
           state.loading = false;
+          state.error = null;
         },
         pending: (state) => {
           state.loading = true;
+          state.error = null;
         },
         rejected: (state, action) => {
-          const errorMessage =
-            action.payload instanceof Error ? action.payload.message : "Failed to delete method of payment";
-          state.error = errorMessage;
+          state.error = action.error?.message || "Fehler beim Löschen der Zahlungsmethode.";
           state.loading = false;
         },
       }
@@ -134,10 +144,18 @@ export const paymentMethodsSlice = createAppSlice({
   },
 });
 
-export const { getPaymentMethods,
+export const {
+  getPaymentMethods,
   addPaymentMethod,
   getPaymentMethodById,
   updatePaymentMethod,
-  deletePaymentMethod } = paymentMethodsSlice.actions;
-export const { selectPaymentMethods, selectPaymentMethod, selectLoading, selectError, selectPaymentMethodById } =
-  paymentMethodsSlice.selectors;
+  deletePaymentMethod,
+} = paymentMethodsSlice.actions;
+
+export const {
+  selectPaymentMethods,
+  selectPaymentMethod,
+  selectLoading,
+  selectError,
+  selectPaymentMethodById,
+} = paymentMethodsSlice.selectors;

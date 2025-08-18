@@ -4,126 +4,199 @@ import { CustomersState, NewCustomerDto } from "./types";
 
 const initialState: CustomersState = {
   customersList: [],
-  totalPages: 1, // Количество страниц
-  currentPage: 0, // Текущая страница
+  totalPages: 1,
+  currentPage: 0,
+  currentSort: "name",
   selectedCustomer: undefined,
+  loading: false,
+  error: null,
 };
-  
+
 export const customersSlice = createAppSlice({
   name: "customers",
   initialState,
   reducers: (create) => ({
     getCustomers: create.asyncThunk(
-      async ({ page, size }: { page: number; size: number }) => {
-        const response = await fetchCustomers(page, size);
+      async ({ page, size, sort }: { page: number; size: number; sort?: string }) => {
+       const response = await fetchCustomers(page, size, sort ?? "name");
         return response;
       },
       {
-        pending: () => {},
-        fulfilled: (state, action) => {
-          console.log("Полученные поставщики и клиенты:", action.payload.content);
-          state.customersList = action.payload.content;
-          state.totalPages = action.payload.totalPages; // API должен возвращать totalPages
-          state.currentPage = action.payload.pageable.pageNumber;
+        pending: (state) => {
+          state.loading = true;
+          state.error = null;
         },
-        rejected: () => {},
+        fulfilled: (state, action) => {
+          const response = action.payload;
+          state.loading = false;
+          state.customersList = response.content;
+          state.totalPages = response.totalPages;
+          state.currentPage = response.pageable.pageNumber;
+          state.currentSort = action.meta.arg.sort ?? "name";
+        },
+        rejected: (state, action) => {
+          state.loading = false;
+          state.error = action.error.message || "Fehler beim Laden der Lieferanten.";
+        },
       }
     ),
 
     getCustomersWithCustomerNumber: create.asyncThunk(
-      async ({ page, size }: { page: number; size: number }) => {
-        const response = await fetchCustomerswithCustomerNumber(page, size);
+      async ({ page, size, sort }: { page: number; size: number; sort?: string }) => {
+       const response = await fetchCustomerswithCustomerNumber(page, size, sort ?? "name");
         return response;
       },
       {
-        pending: () => {},
-        fulfilled: (state, action) => {
-          console.log("Полученные поставщики и клиенты:", action.payload.content);
-          state.customersList = action.payload.content;
-          state.totalPages = action.payload.totalPages; // API должен возвращать totalPages
-          state.currentPage = action.payload.pageable.pageNumber;
+        pending: (state) => {
+          state.loading = true;
+          state.error = null;
         },
-        rejected: () => {},
+        fulfilled: (state, action) => {
+          const response = action.payload;
+          state.loading = false;
+          state.customersList = response.content;
+          state.totalPages = response.totalPages;
+          state.currentPage = response.pageable.pageNumber;
+          state.currentSort = action.meta.arg.sort ?? "name";
+        },
+        rejected: (state, action) => {
+          state.loading = false;
+          state.error = action.error.message || "Fehler beim Laden der Kunden.";
+        },
       }
     ),
 
     getCustomer: create.asyncThunk(
       async (id: number) => {
-        const response = await fetchCustomer(id);
-        return response;
+        return await fetchCustomer(id);
       },
       {
-        pending: () => {},
-        fulfilled: (state, action) => {
-          state.selectedCustomer = action.payload;          
+        pending: (state) => {
+          state.loading = true;
+          state.error = null;
         },
-        rejected: () => {},
-      }
-    ),
-
-
-    addCustomer: create.asyncThunk(
-      async ({newCustomerDto}: {newCustomerDto: NewCustomerDto}) => {
-        console.log("New customer DTO:", newCustomerDto);
-        const response = await fetchAddCustomer(newCustomerDto);
-        return response;
-      },
-      {
-        pending: () => {},
         fulfilled: (state, action) => {
-          console.log("Customer added successfully:", action.payload);
-          state.customersList.push(action.payload)
-        },        
-        rejected: () => {},
-      },
-    ),
-
-
-    editCustomer: create.asyncThunk(
-      async ({ id, newCustomerDto }: { id: number; newCustomerDto: NewCustomerDto }) => {
-        const response = await fetchEditCustomer(id, newCustomerDto);
-        return response;
-      },
-      {
-        pending: () => {},
-        fulfilled: (state, action) => {
+          state.loading = false;
           state.selectedCustomer = action.payload;
-          // Обновляем клиента в списке, а не добавляем его заново
-          state.customersList = state.customersList.map(c => 
-            c.id === action.payload.id ? action.payload : c
-          );
         },
         rejected: (state, action) => {
-          console.error("Error editing customer:", action.error);
+          state.loading = false;
+          state.error = action.error.message || "Fehler beim Laden des Kunden/Lieferanten.";
         },
       }
     ),
 
-    deleteCustomer: create.asyncThunk(
-          async (id: number) => {
-            await fetchDeleteCustomer(id);
-            return id;
-          },
-          {
-            fulfilled: (state, action) => {
-              state.customersList = state.customersList.filter((customer) => customer.id !== action.payload);
-            },
-            pending: () => {},
-            rejected: (state, action) => {
-              console.error("Error remote customer:", action.error);
-            },
-          }
-        ),
+    addCustomer: create.asyncThunk(
+      async ({ newCustomerDto }: { newCustomerDto: NewCustomerDto }, { dispatch, getState }) => {
+        const addedCustomer = await fetchAddCustomer(newCustomerDto);
+        // После успешного добавления подгружаем заново список с текущей пагинацией и сортировкой
+        const state = getState() as { customers: CustomersState };
+        await dispatch(
+          getCustomers({
+            page: state.customers.currentPage,
+            size: 15,
+            sort: state.customers.currentSort,
+          })
+        );
+        return addedCustomer;
+      },
+      {
+        pending: (state) => {
+          state.loading = true;
+          state.error = null;
+        },
+        fulfilled: (state, ) => {
+          state.loading = false;
+          // В customersList теперь уже свежие данные из getCustomers
+        },
+        rejected: (state, action) => {
+          state.loading = false;
+          state.error = action.error.message || "Fehler beim Hinzufügen des Kunden/Lieferanten.";
+        },
+      }
+    ),
+
+    editCustomer: create.asyncThunk(
+      async ({ id, newCustomerDto }: { id: number; newCustomerDto: NewCustomerDto }, { dispatch, getState }) => {
+        const editedCustomer = await fetchEditCustomer(id, newCustomerDto);
+        const state = getState() as { customers: CustomersState };
+        await dispatch(
+          getCustomers({
+            page: state.customers.currentPage,
+            size: 15,
+            sort: state.customers.currentSort,
+          })
+        );
+        return editedCustomer;
+      },
+      {
+        pending: (state) => {
+          state.loading = true;
+          state.error = null;
+        },
+        fulfilled: (state, ) => {
+          state.loading = false;
+          // customersList обновится через getCustomers
+        },
+        rejected: (state, action) => {
+          state.loading = false;
+          state.error = action.error.message || "Fehler beim Bearbeiten des Kunden/Lieferanten.";
+        },
+      }
+    ),
+
+        deleteCustomer: create.asyncThunk(
+      async (id: number, { dispatch, getState }) => {
+        await fetchDeleteCustomer(id);
+        const state = getState() as { customers: CustomersState };
+        await dispatch(
+          getCustomers({
+            page: state.customers.currentPage,
+            size: 15,
+            sort: state.customers.currentSort,
+          })
+        );
+        return id;
+      },
+      {
+        pending: (state) => {
+          state.loading = true;
+          state.error = null;
+        },
+        fulfilled: (state, ) => {
+          state.loading = false;
+          // customersList обновится через getCustomers
+        },
+        rejected: (state, action) => {
+          state.loading = false;
+          state.error = action.error.message || "Fehler beim Löschen des Kunden/Lieferanten.";
+        },
+      }
+    ),
+
   }),
   selectors: {
-    selectCustomers: (customersState: CustomersState) => customersState.customersList,
-    selectCustomersWithCustomerNumber: (customersState: CustomersState) => customersState.customersList,
-    selectTotalPages: (customersState: CustomersState) => customersState.totalPages,
-    selectCurrentPage: (customersState: CustomersState) => customersState.currentPage,
-    selectCustomer: (customersState: CustomersState) => customersState.selectedCustomer,
+    selectCustomers: (state: CustomersState) => state.customersList,
+    selectCustomersWithCustomerNumber: (state: CustomersState) => state.customersList,
+    selectTotalPages: (state: CustomersState) => state.totalPages,
+    selectCurrentPage: (state: CustomersState) => state.currentPage,
+    selectCustomer: (state: CustomersState) => state.selectedCustomer,
   },
 });
 
-export const { getCustomers, getCustomersWithCustomerNumber, getCustomer, addCustomer, editCustomer, deleteCustomer } = customersSlice.actions;
-export const { selectCustomers, selectCustomersWithCustomerNumber, selectTotalPages, selectCurrentPage, selectCustomer } =
-  customersSlice.selectors;
+export const {
+  getCustomers,
+  getCustomersWithCustomerNumber,
+  getCustomer,
+  addCustomer,
+  editCustomer,
+  deleteCustomer,
+} = customersSlice.actions;
+
+export const {
+  selectCustomers,
+  selectCustomersWithCustomerNumber,
+  selectTotalPages,
+  selectCurrentPage,
+  selectCustomer,
+} = customersSlice.selectors;

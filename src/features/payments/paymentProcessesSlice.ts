@@ -21,13 +21,14 @@ export const paymentProcessesSlice = createAppSlice({
         fulfilled: (state, action) => {
           state.paymentProcessesList = action.payload;
           state.loading = false;
+          state.error = null;
         },
         pending: (state) => {
           state.loading = true;
+          state.error = null;
         },
         rejected: (state, action) => {
-          const errorMessage = action.payload instanceof Error ? action.payload.message : "Failed to fetch Processes of payment";
-          state.error = errorMessage;
+          state.error = action.error?.message || "Fehler beim Laden der Zahlungsprozesse.";
           state.loading = false;
         },
       }
@@ -41,13 +42,14 @@ export const paymentProcessesSlice = createAppSlice({
         fulfilled: (state, action) => {
           state.selectedPaymentProcess = action.payload;
           state.loading = false;
+          state.error = null;
         },
         pending: (state) => {
           state.loading = true;
+          state.error = null;
         },
         rejected: (state, action) => {
-          const errorMessage = action.payload instanceof Error ? action.payload.message : "Failed to add Process of payment";
-          state.error = errorMessage;
+          state.error = action.error?.message || "Fehler beim Erstellen des Zahlungsprozesses.";
           state.loading = false;
         },
       }
@@ -61,14 +63,14 @@ export const paymentProcessesSlice = createAppSlice({
         fulfilled: (state, action) => {
           state.selectedPaymentProcess = action.payload;
           state.loading = false;
+          state.error = null;
         },
         pending: (state) => {
           state.loading = true;
+          state.error = null;
         },
         rejected: (state, action) => {
-          const errorMessage =
-            action.payload instanceof Error ? action.payload.message : "Failed to fetch Process of payment by ID";
-          state.error = errorMessage;
+          state.error = action.error?.message || "Fehler beim Laden des Zahlungsprozesses.";
           state.loading = false;
         },
       }
@@ -88,14 +90,14 @@ export const paymentProcessesSlice = createAppSlice({
         fulfilled: (state, action) => {
           state.selectedPaymentProcess = action.payload;
           state.loading = false;
+          state.error = null;
         },
         pending: (state) => {
           state.loading = true;
+          state.error = null;
         },
         rejected: (state, action) => {
-          const errorMessage =
-            action.payload instanceof Error ? action.payload.message : "Failed to update Process of payment";
-          state.error = errorMessage;
+          state.error = action.error?.message || "Fehler beim Aktualisieren des Zahlungsprozesses.";
           state.loading = false;
         },
       }
@@ -108,16 +110,24 @@ export const paymentProcessesSlice = createAppSlice({
       },
       {
         fulfilled: (state, action) => {
-          state.paymentProcessesList = state.paymentProcessesList.filter((process) => process.id !== action.payload);
+          state.paymentProcessesList = state.paymentProcessesList.filter(
+            (process) => process.id !== action.payload
+          );
+          if (
+            state.selectedPaymentProcess &&
+            state.selectedPaymentProcess.id === action.payload
+          ) {
+            state.selectedPaymentProcess = undefined;
+          }
           state.loading = false;
+          state.error = null;
         },
         pending: (state) => {
           state.loading = true;
+          state.error = null;
         },
         rejected: (state, action) => {
-          const errorMessage =
-            action.payload instanceof Error ? action.payload.message : "Failed to delete Process of payment";
-          state.error = errorMessage;
+          state.error = action.error?.message || "Fehler beim Löschen des Zahlungsprozesses.";
           state.loading = false;
         },
       }
@@ -134,10 +144,18 @@ export const paymentProcessesSlice = createAppSlice({
   },
 });
 
-export const { getPaymentProcesses,
+export const {
+  getPaymentProcesses,
   addPaymentProcess,
   getPaymentProcessById,
   updatePaymentProcess,
-  deletePaymentProcess } = paymentProcessesSlice.actions;
-export const { selectPaymentProcesses, selectPaymentProcess, selectLoading, selectError, selectPaymentProcessById } =
-  paymentProcessesSlice.selectors;
+  deletePaymentProcess,
+} = paymentProcessesSlice.actions;
+
+export const {
+  selectPaymentProcesses,
+  selectPaymentProcess,
+  selectLoading,
+  selectError,
+  selectPaymentProcessById,
+} = paymentProcessesSlice.selectors;

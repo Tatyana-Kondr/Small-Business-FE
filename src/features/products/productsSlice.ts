@@ -13,6 +13,7 @@ const initialState: ProductsState = {
   productsList: [],
   totalPages: 1,
   currentPage: 0,
+  currentSort: "name",
   selectedProduct: undefined,
   loading: false,
   error: null,
@@ -22,21 +23,29 @@ export const productsSlice = createAppSlice({
   name: "products",
   initialState,
   reducers: (create) => ({
-    getProducts: create.asyncThunk(
-      async ({
-        page,
-        size = 15,
-        searchTerm,
-      }: {
-        page: number;
-        size?: number;
-        searchTerm?: string;
-      }) => await fetchProducts({ page, size, searchTerm }),
+   getProducts: create.asyncThunk(
+      async (
+        { page, size = 15, sort = "name", searchTerm = "" }: { page: number; size?: number; sort?: string; searchTerm?: string }
+      ) => {
+        const response = await fetchProducts(page, size, sort, searchTerm);
+        return response;
+      },
       {
+        pending: (state) => {
+          state.loading = true;
+          state.error = null;
+        },
         fulfilled: (state, action) => {
-          state.productsList = action.payload.content;
-          state.totalPages = action.payload.totalPages;
-          state.currentPage = action.payload.pageable.pageNumber;
+          const response = action.payload;
+          state.loading = false;
+          state.productsList = response.content;
+          state.totalPages = response.totalPages;
+          state.currentPage = response.pageable.pageNumber;
+          state.currentSort = action.meta.arg.sort ?? "name";
+        },
+        rejected: (state, action) => {
+          state.loading = false;
+          state.error = action.error.message || "Fehler beim Laden der Produkte.";
         },
       }
     ),
@@ -46,55 +55,131 @@ export const productsSlice = createAppSlice({
         categoryId,
         page = 0,
         size = 15,
+        sort = "name",
       }: {
         categoryId: number;
         page?: number;
         size?: number;
-      }) => await fetchProductsByCategory(categoryId, page, size),
+        sort?: string;
+      }) => {
+        return await fetchProductsByCategory(categoryId, page, size, sort);
+      },
       {
+        pending: (state) => {
+          state.loading = true;
+          state.error = null;
+        },
         fulfilled: (state, action) => {
-          state.productsList = action.payload.content;
-          state.totalPages = action.payload.totalPages;
-          state.currentPage = action.payload.pageable.pageNumber;
+          const response = action.payload;
+          state.loading = false;
+          state.productsList = response.content;
+          state.totalPages = response.totalPages;
+          state.currentPage = response.pageable.pageNumber;
+          state.currentSort = action.meta.arg.sort ?? "name";
+        },
+        rejected: (state, action) => {
+          state.loading = false;
+          state.error = action.error.message || "Fehler beim Laden der Produktkategorien.";
         },
       }
     ),
 
     addProduct: create.asyncThunk(
-      async (newProductDto: NewProductDto) => await fetchAddProduct(newProductDto),
+      async (newProductDto: NewProductDto, { dispatch, getState }) => {
+        const addedProduct = await fetchAddProduct(newProductDto);
+
+        const state = getState() as { products: ProductsState };
+        await dispatch(
+          getProducts({
+            page: state.products.currentPage,
+            size: 15, 
+            sort: state.products.currentSort,
+          })
+        );
+
+        return addedProduct;
+      },
       {
-        fulfilled: (state, action) => {
-          state.productsList.push(action.payload);
+        pending: (state) => {
+          state.loading = true;
+          state.error = null;
+        },
+        fulfilled: (state) => {
+          state.loading = false;
+          // productsList обновится через getProducts, здесь не нужно пушить
+        },
+        rejected: (state, action) => {
+          state.loading = false;
+          state.error = action.error.message || "Fehler beim Hinzufügen des Produkts.";
         },
       }
     ),
 
     editProduct: create.asyncThunk(
-      async ({
-        id,
-        updateProductDto,
-      }: {
-        id: number;
-        updateProductDto: UpdateProductDto;
-      }) => await fetchEditProduct({ id, updateProductDto }),
+      async (
+        {
+          id,
+          updateProductDto,
+        }: {
+          id: number;
+          updateProductDto: UpdateProductDto;
+        },
+        { dispatch, getState }
+      ) => {
+        const editedProduct = await fetchEditProduct({ id, updateProductDto });
+
+        const state = getState() as { products: ProductsState };
+        await dispatch(
+          getProducts({
+            page: state.products.currentPage,
+            size: 15,
+            sort: state.products.currentSort,
+          })
+        );
+
+        return editedProduct;
+      },
       {
-        fulfilled: (state, action) => {
-          const index = state.productsList.findIndex((product) => product.id === action.payload.id);
-          if (index !== -1) {
-            state.productsList[index] = action.payload;
-          }
+        pending: (state) => {
+          state.loading = true;
+          state.error = null;
+        },
+        fulfilled: (state) => {
+          state.loading = false;
+        },
+        rejected: (state, action) => {
+          state.loading = false;
+          state.error = action.error.message || "Fehler beim Bearbeiten des Produkts.";
         },
       }
     ),
 
     deleteProduct: create.asyncThunk(
-      async (id: number) => {
+      async (id: number, { dispatch, getState }) => {
         await fetchDeleteProduct(id);
+
+        const state = getState() as { products: ProductsState };
+        await dispatch(
+          getProducts({
+            page: state.products.currentPage,
+            size: 15,
+            sort: state.products.currentSort,
+          })
+        );
+
         return id;
       },
       {
-        fulfilled: (state, action) => {
-          state.productsList = state.productsList.filter((product) => product.id !== action.payload);
+        pending: (state) => {
+          state.loading = true;
+          state.error = null;
+        },
+        fulfilled: (state) => {
+          state.loading = false;
+        },
+        rejected: (state, action) => {
+          state.loading = false;
+          state.error = action.error.message || "Fehler beim Löschen des Produkts.";
         },
       }
     ),
@@ -112,7 +197,7 @@ export const productsSlice = createAppSlice({
         },
         rejected: (state, action) => {
           state.loading = false;
-          state.error = action.error.message || "Произошла ошибка";
+          state.error = action.error.message || "Fehler beim Laden der Produkt.";
         },
       }
     ),

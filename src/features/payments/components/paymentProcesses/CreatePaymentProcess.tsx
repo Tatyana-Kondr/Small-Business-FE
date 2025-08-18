@@ -10,6 +10,8 @@ import {
 import { useAppDispatch, useAppSelector } from "../../../../redux/hooks";
 import { NewPaymentProcessDto } from "../../types";
 import { addPaymentProcess, getPaymentProcesses } from "../../paymentProcessesSlice";
+import { showSuccessToast } from "../../../../utils/toast";
+import { handleApiError } from "../../../../utils/handleApiError";
 
 interface CreatePaymentProcessModalProps {
   open: boolean;
@@ -45,9 +47,10 @@ export const CreatePaymentProcess: React.FC<CreatePaymentProcessModalProps> = ({
     try {
       await dispatch(addPaymentProcess(formData)).unwrap();
       dispatch(getPaymentProcesses());
+      showSuccessToast("Erfolg", "Zahlungsvorgang wurde erfolgreich erstellt.");
       handleClose();
     } catch (err) {
-      console.error("Fehler beim Erstellen eines Zahlungsvorgangs:", err);
+      handleApiError(err, "Fehler beim Erstellen eines Zahlungsvorgangs:");
     }
   };
 

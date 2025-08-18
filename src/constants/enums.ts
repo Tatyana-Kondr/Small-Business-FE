@@ -20,14 +20,12 @@ export const OperationTypes: TypeOfOperation[] = [
 export type PaymentStatus =
   | "AUSSTEHEND"
   | "ANZAHLUNG"
-  | "BEZAHLT"
-  | "CANCELLED";
+  | "BEZAHLT";
 
 export const PaymentStatuses: PaymentStatus[] = [
   "AUSSTEHEND",
   "ANZAHLUNG",
   "BEZAHLT",
-  "CANCELLED",
 ];
 
 // Тип документа

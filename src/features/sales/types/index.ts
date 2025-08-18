@@ -89,6 +89,7 @@ export interface SalesState {
     selectedSale: Sale | undefined;
     totalPages: number;
     currentPage: number;
+    sort: string;
     loading: boolean;
     error: string | null;
 }
