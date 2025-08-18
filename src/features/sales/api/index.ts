@@ -1,164 +1,126 @@
+import { apiFetch } from "../../../utils/apiFetch";
 import { NewSaleDto, PaginatedResponse, Sale } from "../types";
 
-export async function fetchSales({
-  page,
-  size = 15,
-  searchTerm = "",
-}: {
-  page: number;
-  size?: number;
-  searchTerm?: string;
-}): Promise<PaginatedResponse<Sale>> {
+export async function fetchSales(
+ page: number,
+  size: number,
+  sort: string = "salesDate,DESC",
+  searchTerm: string = ""
+): Promise<PaginatedResponse<Sale>> {
   const queryParams = new URLSearchParams();
   queryParams.append("page", page.toString());
   queryParams.append("size", size.toString());
+  queryParams.append("sort", sort);
   if (searchTerm) {
     queryParams.append("search", searchTerm);
   }
-
-  const res = await fetch(`/api/sales?${queryParams.toString()}`);
-  if (!res.ok) {
-    throw new Error("Failed to fetch sales");
-  }
-  return res.json();
+  return apiFetch<PaginatedResponse<Sale>>(
+ `/api/sales?${queryParams.toString()}`,
+  undefined,
+    "Fehler beim Laden der Aufträge."
+  );
 }
 
 export async function fetchAddSale(newSale: NewSaleDto): Promise<Sale> {
-  try {
-    const response = await fetch(`/api/sales`, {
+  return apiFetch<Sale>(
+    `/api/sales`, 
+    {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newSale),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text(); 
-      throw new Error(`Error: ${response.status} - ${errorText}`);
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Failed to add sale:', error);
-    throw error;
-  }
+    },
+    "Fehler beim Erstellen des Auftrags."
+  );
 }
 
 export async function fetchUpdateSale(id: number, updatedSale: NewSaleDto): Promise<Sale> {
-  const response = await fetch(`/api/sales/${id}`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
+  return apiFetch<Sale>(
+  `/api/sales/${id}`, 
+  {
+     method: "PUT",
+      body: JSON.stringify(updatedSale),
+      headers: { "Content-Type": "application/json" },
     },
-    body: JSON.stringify(updatedSale),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Error updating sale ${id}: ${response.status} - ${errorText}`);
-  }
-
-  return response.json();
+    `Fehler beim Aktualisieren des Auftrags mit der ID ${id}.`
+  );
 }
 
 export async function fetchDeleteSale(id: number): Promise<void> {
-  const response = await fetch(`/api/sales/${id}`, {
-    method: 'DELETE',
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Error deleting sale ${id}: ${response.status} - ${errorText}`);
-  }
+ return apiFetch<void>(
+    `/api/sales/${id}`,
+    { method: "DELETE" },
+    `Fehler beim Löschen des Auftrags mit der ID ${id}.`
+  );
 }
 
 export async function fetchSaleById(id: number): Promise<Sale> {
-  const res = await fetch(`/api/sales/${id}`);
-  if (!res.ok) {
-    throw new Error(`Failed to fetch sale with ID ${id}`);
+   return apiFetch<Sale>(
+      `/api/sales/${id}`,
+      undefined,
+      `Fehler beim Laden des Auftrags mit der ID ${id}.`
+    );
   }
-  return res.json();
-}
 
-export async function fetchSearchSales({
-  query,
-  page,
-  size = 10,
-  
-}: {
-  query: string;
-  page: number;
-  size?: number;
-  sort?: string;
-}): Promise<PaginatedResponse<Sale>> {
-  const queryParams = new URLSearchParams();
-  queryParams.append("page", page.toString());
-  queryParams.append("size", size.toString());
-  queryParams.append("sort", "salesDate,DESC"); 
+export async function fetchSearchSales(
+ query: string,
+   page: number,
+   size: number,
+   sort = "salesDate,DESC",
+ ): Promise<PaginatedResponse<Sale>> {
+   const queryParams = new URLSearchParams();
+   queryParams.append("page", page.toString());
+   queryParams.append("size", size.toString());
+   queryParams.append("sort", sort);
+ 
+   return apiFetch<PaginatedResponse<Sale>>(
+     `/api/sales/search/${encodeURIComponent(query)}?${queryParams.toString()}`,
+     undefined,
+     "Fehler bei der Suche des Auftrags."
+   );
+ }
 
-  const res = await fetch(`/api/sales/search/${encodeURIComponent(query)}?${queryParams.toString()}`);
-  if (!res.ok) {
-    throw new Error("Failed to search sales");
-  }
-  return res.json();
-}
-
-export async function fetchSalesByFilter({
-  page,
-  size = 10,
-  sort = "salesDate",
-  id,
-  customerId,
-  invoiceNumber,
-  totalAmount,
-  paymentStatus,
-  startDate,
-  endDate,
-  searchQuery,  
-}: {
-  page: number;
-  size?: number;
-  sort?: string;
+export async function fetchSalesByFilter(
+  page: number,
+  size: number,
+  sort = "salesDate,DESC",
+ filters?: {
   id?: number;
   customerId?: number;
   invoiceNumber?: string;
   totalAmount?: number;
   paymentStatus?: string;
-  startDate?: string; // формат yyyy-MM-dd
-  endDate?: string;   // формат yyyy-MM-dd
-  searchQuery?: string;  
-}): Promise<PaginatedResponse<Sale>> {
+  startDate?: string; 
+  endDate?: string;   
+  searchQuery?: string;    
+}
+): Promise<PaginatedResponse<Sale>> {
   const queryParams = new URLSearchParams();
   queryParams.append("page", page.toString());
   queryParams.append("size", size.toString());
   queryParams.append("sort", sort);
 
-  if (id !== undefined) queryParams.append("id", id.toString());
-  if (customerId !== undefined) queryParams.append("customerId", customerId.toString());
-  if (invoiceNumber) queryParams.append("invoiceNumber", invoiceNumber);
-  if (totalAmount !== undefined) queryParams.append("total", totalAmount.toString());
-  if (paymentStatus) queryParams.append("paymentStatus", paymentStatus);
-  if (startDate) queryParams.append("startDate", startDate);
-  if (endDate) queryParams.append("endDate", endDate);
-  if (searchQuery) queryParams.append("searchQuery", searchQuery); 
-
-  const res = await fetch(`/api/sales/filter?${queryParams.toString()}`);
-  if (!res.ok) {
-    throw new Error("Failed to fetch sales by filter");
+  if (filters) {
+      if (filters.id !== undefined) queryParams.append("id", filters.id.toString());
+      if (filters.customerId !== undefined) queryParams.append("customerId", filters.customerId.toString());
+      if (filters.invoiceNumber) queryParams.append("invoiceNumber", filters.invoiceNumber);
+      if (filters.totalAmount !== undefined) queryParams.append("totalAmount", filters.totalAmount.toString());
+      if (filters.paymentStatus) queryParams.append("paymentStatus", filters.paymentStatus);
+      if (filters.startDate) queryParams.append("startDate", filters.startDate);
+      if (filters.endDate) queryParams.append("endDate", filters.endDate);
+      if (filters.searchQuery) queryParams.append("searchQuery", filters.searchQuery);
+    }
+  
+    return apiFetch<PaginatedResponse<Sale>>(
+      `/api/sales/filter?${queryParams.toString()}`,
+      undefined,
+      "Fehler beim Laden der gefilterten Aufträge."
+    );
   }
-  return res.json();
-}
 
 export async function fetchUpdateSalePaymentStatus(id: number): Promise<Sale> {
-  const response = await fetch(`/api/sales/${id}/update-payment-status`, {
-    method: 'PATCH',
-     credentials: 'include',
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Failed to update payment status for sale ${id}: ${response.status} - ${errorText}`);
-  }
-  return await response.json();
-}
+ return apiFetch<Sale>(
+     `/api/sales/${id}/update-payment-status`,
+     { method: "PATCH", credentials: "include" },
+     `Fehler beim Aktualisieren des Zahlungsstatus für Auftrag ${id}.`
+   );
+ }
