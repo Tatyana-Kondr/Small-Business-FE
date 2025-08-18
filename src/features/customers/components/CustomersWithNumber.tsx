@@ -72,7 +72,7 @@ export default function CustomersWithNumber() {
                             <TableRow>
                                 <TableCell style={{ display: "none" }}>ID</TableCell>
                                 <TableCell>Name</TableCell>
-                                <TableCell>Kundennummer</TableCell>
+                                <TableCell>KundenNr</TableCell>
                                 <TableCell>Adresse</TableCell>
                                 <TableCell>Telefon</TableCell>
                                 <TableCell>E-Mail</TableCell>

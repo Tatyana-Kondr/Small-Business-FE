@@ -1,5 +1,5 @@
 import { createAppSlice } from "../../redux/createAppSlice";
-import { fetchAddCustomer, fetchCustomer, fetchCustomers, fetchDeleteCustomer, fetchEditCustomer } from "./api";
+import { fetchAddCustomer, fetchCustomer, fetchCustomers, fetchCustomerswithCustomerNumber, fetchDeleteCustomer, fetchEditCustomer } from "./api";
 import { CustomersState, NewCustomerDto } from "./types";
 
 const initialState: CustomersState = {
@@ -43,7 +43,7 @@ export const customersSlice = createAppSlice({
 
     getCustomersWithCustomerNumber: create.asyncThunk(
       async ({ page, size, sort }: { page: number; size: number; sort?: string }) => {
-       const response = await fetchCustomers(page, size, sort ?? "name");
+       const response = await fetchCustomerswithCustomerNumber(page, size, sort ?? "name");
         return response;
       },
       {
