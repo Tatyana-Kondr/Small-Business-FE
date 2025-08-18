@@ -49,6 +49,7 @@ const StyledTableHead = styled(TableHead)(({
     color: "white",
     fontWeight: "bold",
     borderRight: "1px solid #ddd",
+    textAlign: "center",
     zIndex: 1,
   },
 }));
@@ -108,7 +109,7 @@ export default function PurchaseCard() {
     dispatch(getCustomers({ page: 0, size: 100 }))
       .unwrap()
       .then(c => setVendors(c.content))
-      .catch(error => handleApiError(error, "Fehler beim Laden den Lieferanten."));
+      .catch(error => handleApiError(error, "Fehler beim Laden der Lieferanten."));
 
     // Загрузка категорий и продуктов
     dispatch(getProductCategories());
@@ -441,7 +442,7 @@ export default function PurchaseCard() {
                         <IconButton
                           size="small"
                           onClick={() => handleRemoveItem(index)}
-                          aria-label="Удалить позицию"
+                          aria-label="Zeile löschen"
                         >
                           <DeleteIcon />
                         </IconButton>

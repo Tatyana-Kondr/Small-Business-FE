@@ -40,7 +40,7 @@ export const purchasesSlice = createAppSlice({
       },
       {
         fulfilled: (state, action) => {
-         const { content, totalPages, pageable } = action.payload;
+          const { content, totalPages, pageable } = action.payload;
           state.purchasesList = content;
           state.totalPages = totalPages;
           state.currentPage = pageable.pageNumber;
@@ -50,12 +50,12 @@ export const purchasesSlice = createAppSlice({
         },
         pending: handlePending,
         rejected: (state, action) => {
-          handleRejected(state, action,"Fehler beim Laden der Bestellungen.");
+          handleRejected(state, action, "Fehler beim Laden der Bestellungen.");
         },
       }
     ),
 
-addPurchase: create.asyncThunk(
+    addPurchase: create.asyncThunk(
       async (newPurchase: NewPurchaseDto, { dispatch, getState }) => {
         const addedPurchase = await fetchAddPurchase(newPurchase);
         const state = getState() as { purchases: PurchasesState };
@@ -108,7 +108,7 @@ addPurchase: create.asyncThunk(
         },
         pending: handlePending,
         rejected: (state, action) =>
-          handleRejected(state, action, "Fehler beim Laden der Bestellungen."),        
+          handleRejected(state, action, "Fehler beim Laden der Bestellungen."),
       }
     ),
 
@@ -164,13 +164,13 @@ addPurchase: create.asyncThunk(
           state.error = null;
         },
         pending: handlePending,
-       rejected: (state, action) =>
-          handleRejected(state, action, "Fehler beim Abrufen von Bestellungen nach Filter."),
+        rejected: (state, action) =>
+          handleRejected(state, action, "Fehler beim Laden der gefilterten Bestellungen."),
       }
     ),
 
     updatePurchase: create.asyncThunk(
-     async ({ id, updatedPurchase }: { id: number; updatedPurchase: NewPurchaseDto }, { dispatch, getState }) => {
+      async ({ id, updatedPurchase }: { id: number; updatedPurchase: NewPurchaseDto }, { dispatch, getState }) => {
         const editedPurchase = await fetchUpdatePurchase(id, updatedPurchase);
         const state = getState() as { purchases: PurchasesState };
         await dispatch(
@@ -225,8 +225,7 @@ addPurchase: create.asyncThunk(
         fulfilled: (state, action) => {
           const updatedPurchase = action.payload;
           state.purchasesList = state.purchasesList.map(p =>
-            p.id === updatedPurchase.id ? updatedPurchase : p
-          );
+            p.id === updatedPurchase.id ? updatedPurchase : p);
           state.loading = false;
           state.error = null;
         },

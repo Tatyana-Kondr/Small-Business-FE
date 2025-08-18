@@ -39,6 +39,7 @@ const StyledTableHead = styled(TableHead)(({
         color: "white",
         fontWeight: "bold",
         borderRight: "1px solid #ddd",
+        textAlign: "center",
         zIndex: 1,
     },
 }));
@@ -83,7 +84,7 @@ export default function CreatePurchasePage({ onClose, onSubmitSuccess }: CreateP
         dispatch(getCustomers({ page: 0, size: 100 }))
             .unwrap()
             .then(customers => setVendors(customers.content))
-            .catch(error => handleApiError(error, "Fehler beim Laden von Lieferanten"));
+            .catch(error => handleApiError(error, "Fehler beim Laden der Lieferanten"));
     }, [dispatch]);
 
     useEffect(() => {
@@ -231,8 +232,6 @@ export default function CreatePurchasePage({ onClose, onSubmitSuccess }: CreateP
             };
         });
     };
-
-
 
     return (
         <Dialog open onClose={onClose} maxWidth="lg" fullWidth scroll="paper">
