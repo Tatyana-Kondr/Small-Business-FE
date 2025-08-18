@@ -3,7 +3,6 @@ import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
 import { getSales, getSalesByFilter, searchSales, selectSales, selectTotalPages } from "../salesSlice";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { fetchDeleteSale } from "../api";
 import { ClearIcon } from "@mui/x-date-pickers";
 import { PaymentStatuses } from "../../../constants/enums";
 import React from "react";
@@ -11,6 +10,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import PaymentsIcon from '@mui/icons-material/Payments';
 import CreatePayment from "../../payments/components/CreatePayment";
+import DeleteSale from "./DeleteSale";
 
 
 const StyledTableHead = styled(TableHead)({
@@ -19,6 +19,7 @@ const StyledTableHead = styled(TableHead)({
     color: "white",
     fontWeight: "bold",
     borderRight: "1px solid #ddd",
+    textAlign: "center"
   },
 });
 const StyledSubTableHead = styled(TableHead)({
@@ -168,18 +169,6 @@ export default function Sales() {
     }));
   };
 
-  const handleDeleteClick = async (id: number) => {
-    if (window.confirm("Willst du diese Auftrag wirklich löschen?")) {
-      try {
-        await fetchDeleteSale(id);
-        dispatch(getSales({ page, size: 15 }));
-      } catch (error) {
-        console.error("Fehler beim Löschen der Auftrag:", error);
-      }
-    }
-  };
-  console.log("Sales:", sales);
-
   return (
     <Container>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
@@ -242,7 +231,7 @@ export default function Sales() {
             transition: "all 0.3s ease",
           }}
         >
-          <Box display="flex" flexWrap="wrap" gap={2} mb={2}>
+          <Box display="flex" flexWrap="wrap" justifyContent="space-between" gap={2} mb={2}>
             {/* Дата от */}
             <TextField
               id="filter-start-date"
@@ -253,7 +242,6 @@ export default function Sales() {
               onChange={(e) => handleFilterChange("startDate", e.target.value)}
               InputLabelProps={{ shrink: true }}
               aria-label="Startdatum"
-              fullWidth
             />
 
             {/* Дата до */}
@@ -266,11 +254,10 @@ export default function Sales() {
               onChange={(e) => handleFilterChange("endDate", e.target.value)}
               InputLabelProps={{ shrink: true }}
               aria-label="Enddatum"
-              fullWidth
             />
 
             {/* PaymentStatus */}
-            <FormControl size="small" sx={{ minWidth: 160 }} fullWidth>
+            <FormControl size="small" sx={{ minWidth: 160 }}>
               <InputLabel id="payment-status-label">Zahlungsstatus</InputLabel>
               <Select
                 labelId="payment-status-label"
@@ -368,23 +355,37 @@ export default function Sales() {
                           </IconButton>
                         </Tooltip>
                       </TableCell>
-                      <TableCell>
-                        <Box display="flex" gap={1}>
+
+                      <TableCell sx={{ padding: "2px 12px" }}>
+                        <Box display="flex" sx={{ padding: "2px 12px" }} gap={1} >
                           <Tooltip title="Bearbeiten" arrow>
-                            <IconButton onClick={(e) => {
-                              e.stopPropagation();
-                              navigate(`/sales/${sale.id}`);
-                            }}
-                              sx={{ transition: 'transform 0.2s ease-in-out', "&:hover": { color: "#bdbdbd", transform: 'scale(1.2)', backgroundColor: "transparent" } }}>
+                            <IconButton onClick={(e) => { e.stopPropagation(); navigate(`/sales/${sale.id}`); }} sx={{ p: 0.5, transition: 'transform 0.2s ease-in-out', "&:hover": { color: "#bdbdbd", transform: 'scale(1.2)', backgroundColor: "transparent" } }}>
                               <EditIcon />
                             </IconButton>
                           </Tooltip>
-                          <Tooltip title="Löschen" arrow>
-                            <IconButton onClick={(e) => { e.stopPropagation(); handleDeleteClick(sale.id) }}
-                              sx={{ transition: 'transform 0.2s ease-in-out', "&:hover": { color: "#bdbdbd", transform: 'scale(1.2)', backgroundColor: "transparent" } }}>
-                              <DeleteIcon />
-                            </IconButton>
-                          </Tooltip>
+                          <DeleteSale
+                            saleId={sale.id}
+                            customerName={sale.customerName}
+                            salesDate={sale.salesDate}
+                            onSuccessDelete={() => { }}
+                            trigger={
+                              <Tooltip title="Löschen" arrow>
+                                <IconButton
+                                  sx={{
+                                    p: 0.5,
+                                    transition: "transform 0.2s ease-in-out",
+                                    "&:hover": {
+                                      color: "#bdbdbd",
+                                      transform: "scale(1.2)",
+                                      backgroundColor: "transparent",
+                                    },
+                                  }}
+                                >
+                                  <DeleteIcon />
+                                </IconButton>
+                              </Tooltip>
+                            }
+                          />
                           {sale.paymentStatus !== "BEZAHLT" && (
                             <Tooltip title="Bezahlen" arrow>
                               <IconButton onClick={(e) => {
@@ -413,6 +414,7 @@ export default function Sales() {
                                     <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>Artikelname</TableCell>
                                     <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>Menge</TableCell>
                                     <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>Einzelpreis</TableCell>
+                                    <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>Rabatt</TableCell>
                                     <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>Netto</TableCell>
                                     <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>MWSt</TableCell>
                                     <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>Gesamt</TableCell>
@@ -425,6 +427,7 @@ export default function Sales() {
                                       <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{item.productName}</TableCell>
                                       <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{item.quantity}</TableCell>
                                       <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{item.unitPrice} €</TableCell>
+                                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{item.discount} %</TableCell>
                                       <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{item.totalPrice} €</TableCell>
                                       <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{item.taxAmount} €</TableCell>
                                       <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{item.totalAmount} €</TableCell>
