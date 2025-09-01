@@ -1,5 +1,5 @@
 import { createAppSlice } from "../../redux/createAppSlice";
-import { fetchCurrentUser, fetchLogin, fetchRegister } from "./api";
+import { fetchCurrentUser, fetchLogin, fetchLogout, fetchRefresh, fetchRegister } from "./api";
 import { AuthState, UserCreateDto, UserLoginDto } from "./types";
 
 
@@ -19,8 +19,7 @@ export const authSlice = createAppSlice({
   reducers: (create) => ({
     register: create.asyncThunk(
       async (user: UserCreateDto) => {
-        const response = await fetchRegister(user);
-        return response;
+        return await fetchRegister(user);
       },
       {
         pending: (state) => {
@@ -34,16 +33,15 @@ export const authSlice = createAppSlice({
         },
         rejected: (state, action) => {
           state.status = "failed";
-          state.registerErrorMessage = action.error?.message || "Registration failed";
+          state.registerErrorMessage =
+            action.error?.message || "Registration failed";
         },
       }
     ),
 
     login: create.asyncThunk(
       async (user: UserLoginDto) => {
-        await fetchLogin(user); // 🔐 просто логинимся — сервер создаст сессию
-        const userData = await fetchCurrentUser(); // 🧠 затем получаем user из сессии
-        return userData;
+        return await fetchLogin(user);
       },
       {
         pending: (state) => {
@@ -59,41 +57,73 @@ export const authSlice = createAppSlice({
           state.status = "failed";
           state.isAuthenticated = false;
           state.user = null;
-          state.loginErrorMessage = action.error?.message || "Login failed";
+          state.loginErrorMessage =
+            action.error?.message || "Login failed";
         },
       }
     ),
 
     user: create.asyncThunk(
       async () => {
-        return await fetchCurrentUser(); // ⚙️ просто получаем текущего пользователя из сессии
+        return await fetchCurrentUser();
       },
       {
-        pending: () => {},
+        pending: (state) => {
+          state.status = "loading";
+        },
         fulfilled: (state, action) => {
           state.user = action.payload;
           state.isAuthenticated = true;
           state.isSessionChecked = true;
+          state.status = "idle";
         },
         rejected: (state) => {
           state.user = null;
           state.isAuthenticated = false;
           state.isSessionChecked = true;
+          state.status = "idle";
         },
       }
     ),
 
     logout: create.asyncThunk(
       async () => {
-        await fetch("/api/auth/logout", {
-          method: "POST",
-          credentials: "include", // обязательно для удаления сессии
-        });
+        await fetchLogout();
       },
       {
         fulfilled: (state) => {
           state.user = null;
           state.isAuthenticated = false;
+          state.isSessionChecked = true;
+          state.status = "idle";
+          state.error = null;
+          state.loginErrorMessage = undefined;
+          state.registerErrorMessage = undefined;
+        },
+      }
+    ),
+
+    refresh: create.asyncThunk(
+      async () => {
+        const refreshed = await fetchRefresh();
+        if (!refreshed) throw new Error("Refresh failed");
+        return await fetchCurrentUser();
+      },
+      {
+        pending: (state) => {
+          state.status = "loading";
+        },
+        fulfilled: (state, action) => {
+          state.user = action.payload;
+          state.isAuthenticated = true;
+          state.isSessionChecked = true;
+          state.status = "idle";
+        },
+        rejected: (state) => {
+          state.user = null;
+          state.isAuthenticated = false;
+          state.isSessionChecked = true;
+          state.status = "idle";
         },
       }
     ),
@@ -105,8 +135,9 @@ export const authSlice = createAppSlice({
     selectIsAuthenticated: (userState) => userState.isAuthenticated,
     selectLoginError: (userState) => userState.loginErrorMessage,
     selectRegisterError: (userState) => userState.registerErrorMessage,
+    selectSessionChecked: (state) => state.isSessionChecked,
   },
 });
 
-export const { register, login, user, logout } = authSlice.actions;
-export const { selectUser, selectRoles, selectIsAuthenticated, selectLoginError, selectRegisterError } = authSlice.selectors;
+export const { register, login, user, logout, refresh } = authSlice.actions;
+export const { selectUser, selectRoles, selectIsAuthenticated, selectLoginError, selectRegisterError, selectSessionChecked } = authSlice.selectors;
