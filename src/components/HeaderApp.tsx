@@ -11,9 +11,11 @@ export default function HeaderApp() {
 
   const dispatch = useAppDispatch()
   const navigate = useNavigate();
-  function handleLogout() {
-    dispatch(logout())
-  }
+
+ function handleLogout() {
+  dispatch(logout()).unwrap;
+  navigate("/login", { replace: true });
+}
 
    const handleGoBack = () => {
     navigate(-1);
@@ -70,7 +72,6 @@ export default function HeaderApp() {
           >
             Exit
           </Button>
-
         </Box>
       </Toolbar>
     </AppBar>
