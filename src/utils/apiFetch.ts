@@ -1,57 +1,77 @@
-import { logout, refresh } from "../features/auth/authSlice";
-import { resetAutoLogoutTimer } from "../hooks/useAutoLogout";
+import { NavigateFunction } from "react-router-dom";
+import { handleApiError } from "./handleApiError";
+import { HttpError } from "./handleFetchError";
 import { store } from "../redux/store";
-import { handleFetchError } from "./handleFetchError";
-import { getToken, removeToken } from "./token";
+import { logout } from "../features/auth/authSlice";
+
+let navigate: NavigateFunction | null = null;
+
+// Функция для установки navigate из App
+export const setNavigate = (nav: NavigateFunction) => {
+  navigate = nav;
+};
+
+export interface ApiFetchOptions extends RequestInit {
+  auth?: boolean; // использовать ли accessToken
+}
 
 export async function apiFetch<T>(
-  input: RequestInfo,
-  init?: RequestInit,
-  defaultErrorMessage: string = "Unbekannter Fehler",
-  retry: boolean = false
+  url: string,
+  options: ApiFetchOptions = {},
+  fallbackMessage = "Ein unbekannter Fehler ist aufgetreten."
 ): Promise<T> {
-  let token = getToken();
+  try {
+    const headers = new Headers(options.headers);
 
-  const makeRequest = async () =>
-    fetch(input, {
-      ...init,
-      headers: {
-        ...init?.headers,
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      credentials: "include",
+    // Если auth=true, добавляем токен
+    if (options.auth) {
+      const token = localStorage.getItem("accessToken");
+      if (token) headers.set("Authorization", `Bearer ${token}`);
+    }
+
+    // Всегда ставим JSON, если не FormData
+    if (!headers.has("Content-Type") && !(options.body instanceof FormData)) {
+      headers.set("Content-Type", "application/json");
+    }
+
+    console.log("apiFetch →", url, options);
+
+    const response = await fetch(url, {
+      ...options,
+      headers,
+      credentials: "include", // для refreshToken cookie
     });
 
-  let response = await makeRequest();
-
-  // Успешный ответ
-  if (response.ok) {
-   resetAutoLogoutTimer(); // сброс таймера при успешном запросе
-    if (response.status === 204) return {} as T;
-    return response.json() as Promise<T>;
-  }
-
-  // Если 401 или 403 и мы ещё не пробовали refresh
-  if ((response.status === 401 || response.status === 403) && !retry) {
+     // читаем тело ответа (json или текст)
+    let responseData: any = {};
+    const text = await response.text();
     try {
-      // диспатчим refresh через Redux
-      await store.dispatch(refresh()).unwrap();
-      token = getToken();
-      response = await makeRequest(); // повторяем запрос
-      if (response.ok) {
-        resetAutoLogoutTimer();
-        if (response.status === 204) return {} as T;
-        return response.json() as Promise<T>;
-      }
-    } catch (e) {
-      // Refresh не сработал → чистим токен
-      store.dispatch(logout());
-      removeToken();
-      throw new Error("Session expired");
+      responseData = text ? JSON.parse(text) : {};
+    } catch {
+      responseData = { message: text };
     }
-  }
 
-  // Любая другая ошибка
-  await handleFetchError(response, defaultErrorMessage);
-  throw new Error(defaultErrorMessage);
+    // logout для 401/403 (кроме login)
+    if ((response.status === 401 || response.status === 403) && !url.endsWith("/login")) {
+      localStorage.removeItem("accessToken");
+      store.dispatch(logout());
+      if (navigate) navigate("/login", { replace: true });
+    }
+
+    if (!response.ok) {
+      const message = responseData?.message || fallbackMessage;
+      throw new HttpError(message, response.status);
+    }
+
+    if (response.status === 204) return undefined as unknown as T;
+
+    return responseData as T;
+  } catch (err) {
+    if (err instanceof HttpError) {
+      handleApiError(err);
+    } else {
+      handleApiError(err, "Unbekannter Fehler beim Abrufen der API.");
+    }
+    throw err;
+  }
 }
