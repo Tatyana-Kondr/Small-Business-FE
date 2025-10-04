@@ -25,8 +25,10 @@ import {
   Groups as GroupsIcon,
 } from "@mui/icons-material";
 import { useEffect, useState } from "react";
-import { useAppDispatch } from "../redux/hooks";
+import { useAppDispatch, useAppSelector } from "../redux/hooks";
 import { closeModal, openModal } from "../modal/modalSlice";
+import { selectUser } from "../features/auth/authSlice";
+import SettingsIcon from "@mui/icons-material/Settings";
 
 
 
@@ -139,6 +141,11 @@ const navItems: NavItem[] = [
       },
     ],
   },
+  {
+    label: "Admin Settings",
+    to: "/settings",
+    icon: <SettingsIcon />,
+  },
 ];
 
 export default function Sidebar() {
@@ -147,26 +154,28 @@ export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+  const currentUser = useAppSelector(selectUser);
+  const isAdmin = currentUser?.role === "ADMIN";
 
   useEffect(() => {
-  const initialOpenMenus: { [key: string]: boolean } = {};
+    const initialOpenMenus: { [key: string]: boolean } = {};
 
-  navItems.forEach(({ label, children }) => {
-    if (children) {
-      const isChildActive = children.some(
-        (child) =>
-          child.to &&
-          (location.pathname === child.to || location.pathname.startsWith(child.to + "/"))
-      );
+    navItems.forEach(({ label, children }) => {
+      if (children) {
+        const isChildActive = children.some(
+          (child) =>
+            child.to &&
+            (location.pathname === child.to || location.pathname.startsWith(child.to + "/"))
+        );
 
-      if (isChildActive) {
-        initialOpenMenus[label] = true;
+        if (isChildActive) {
+          initialOpenMenus[label] = true;
+        }
       }
-    }
-  });
+    });
 
-  setOpenMenus(initialOpenMenus);
-}, []);
+    setOpenMenus(initialOpenMenus);
+  }, []);
 
   const handleParentClick = (label: string, to?: string) => {
     setOpenMenus((prev) => ({
@@ -242,6 +251,21 @@ export default function Sidebar() {
 
       <List>
         {navItems.map(({ label, to, icon, children }) => {
+          // Скрываем раздел "Zahlungen" для не-админов
+          if (label === "Zahlungen" && !isAdmin) return null;
+
+           // скрываем Admin Settings для не-админов
+          if (label === "Admin Settings" && !isAdmin) return null;
+
+          // Скрываем "Produktkategorien" внутри Home для не-админов
+           const filteredChildren =
+            label === "Home" && !isAdmin
+              ? (children ?? []).filter(
+                  (child) => child.label !== "Produktkategorien"
+                )
+              : children ?? [];
+
+          
           const isOpen = openMenus[label];
           const hasChildren = !!children?.length;
 
@@ -298,7 +322,7 @@ export default function Sidebar() {
               {hasChildren && (
                 <Collapse in={isOpen} timeout="auto" unmountOnExit>
                   <List disablePadding>
-                    {children.map((child) => {
+                    {filteredChildren.map((child) => {
                       const isLink = !!child.to;
                       const isModal = !!child.modal;
 
