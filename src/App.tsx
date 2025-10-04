@@ -1,12 +1,12 @@
 import './App.css'
 import Layout from "./components/Layout"
 
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import NoSuchPage from './components/NoSuchPage';
 import Home from './components/Home';
 import LoginForm from './components/Login';
-import { useAppSelector } from './redux/hooks';
-import { selectIsAuthenticated, selectSessionChecked } from './features/auth/authSlice';
+import { useAppDispatch, useAppSelector } from './redux/hooks';
+import { refresh, selectIsAuthenticated, selectSessionChecked, setSessionChecked } from './features/auth/authSlice';
 import Customers from './features/customers/components/Customers';
 import CustomersWithNumber from './features/customers/components/CustomersWithNumber';
 import CustomerCard from './features/customers/components/CustomerCard';
@@ -21,69 +21,113 @@ import PaymentMethodsList from './features/payments/components/paymentMetods/Pay
 import PaymentProcessesList from './features/payments/components/paymentProcesses/PaymentProcessesList';
 import { ModalManager } from './modal/ModalManager';
 import PrivateRoute from './components/PrivateRoute';
-import Register from './components/Register';
-import { useSessionCheck } from './hooks/useSessionCheck';
 import CreateProductCategory from './features/products/components/category/CreateProductCategory';
-import { Toaster } from 'react-hot-toast';
 import SaleCard from './features/sales/components/SaleCard';
 import Spinner from './components/Spinner';
-import { JSX } from 'react';
+import { JSX, useEffect, useState } from 'react';
+import ShippingsList from './features/sales/components/shipping/ShippingsList';
+import { setNavigate } from './utils/apiFetch';
 import { useAutoLogout } from './hooks/useAutoLogout';
 import AutoLogoutModal from './components/AutoLogoutModal';
+import AdminSettings from './components/AdminSettings';
+
 
 
 
 function App() {
-  useSessionCheck();
+  const dispatch = useAppDispatch();
   const isAuthenticated = useAppSelector(selectIsAuthenticated);
   const isSessionChecked = useAppSelector(selectSessionChecked);
+  const navigate = useNavigate();
 
-  const { showWarning, endTime, warningTime } = useAutoLogout();
+   // Динамический таймер автологаута
+  const [autoLogoutMinutes, setAutoLogoutMinutes] = useState<number>(
+    Number(localStorage.getItem("autoLogoutMinutes")) ||
+      Number(import.meta.env.VITE_AUTOLOGOUT_TIMEOUT) ||
+      30
+  );
 
-  if (!isSessionChecked) return <Spinner />;
+  const { showModal, endTime, warningTime, handleLogout } = useAutoLogout({
+    timeout: autoLogoutMinutes * 60 * 1000, // в миллисекундах
+  });
 
-  const Private = (component: JSX.Element) => <PrivateRoute>{component}</PrivateRoute>;
+  // Передаем navigate в apiFetch
+  useEffect(() => {
+    setNavigate(navigate);
+  }, [navigate]);
+
+  // Проверка сессии при загрузке
+  useEffect(() => {
+    const token = localStorage.getItem("accessToken");
+    if (token) {
+      dispatch(refresh());
+    } else {
+      dispatch(setSessionChecked(true));
+    }
+  }, [dispatch]);
+
+  if (!isSessionChecked && location.pathname !== "/login") return <Spinner />;
+
+  const Private = (component: JSX.Element, role?: "USER" | "ADMIN") => {
+    return <PrivateRoute role={role}>{component}</PrivateRoute>;
+  };
 
   return (
     <div className="App" style={{ textAlign: "center", marginTop: "50px" }}>
-      <Toaster position="top-center" reverseOrder={false} />
-      {isAuthenticated && (
-         <AutoLogoutModal
-          show={showWarning}
-          endTime={endTime}
-          warningTime={warningTime}
-        />
-      )}
 
       <Routes>
         <Route path="/" element={<Layout />}>
           {/* Публичные страницы */}
           <Route path="login" element={isAuthenticated ? <Navigate to="/" replace /> : <LoginForm />} />
-          <Route path="register" element={isAuthenticated ? <Navigate to="/" replace /> : <Register />} />
 
           {/* Защищённые страницы */}
-          <Route index element={Private(<Home />)} />
-          <Route path="product-categories" element={Private(<ProductCategoryList />)} />
-          <Route path="create-product-category" element={Private(<CreateProductCategory />)} />
+          <Route index element={Private(<Home />)} />     
+          <Route path="product-categories" element={Private(<ProductCategoryList />, "ADMIN")} />
+          <Route path="create-product-category" element={Private(<CreateProductCategory />, "ADMIN")} />
           <Route path="lieferanten" element={Private(<Customers />)} />
           <Route path="kunden" element={Private(<CustomersWithNumber />)} />
           <Route path="customer/:customerId" element={Private(<CustomerCard />)} />
           <Route path="kunde/:customerId" element={Private(<CustomerWithNumberCard />)} />
           <Route path="product-card/:productId" element={Private(<ProductCard />)} />
           <Route path="purchases" element={Private(<Purchases />)} />
-          <Route path="purchases/:purchaseId" element={Private(<PurchaseCard />)} />
+          <Route path="purchases/:purchaseId" element={Private(<PurchaseCard />, "ADMIN")} />
           <Route path="sales" element={Private(<Sales />)} />
           <Route path="sales/:saleId" element={Private(<SaleCard />)} />
-          <Route path="payments" element={Private(<Payments />)} />
-          <Route path="payment-methods" element={Private(<PaymentMethodsList />)} />
-          <Route path="payment-processes" element={Private(<PaymentProcessesList />)} />
+          <Route path="payments" element={Private(<Payments />, "ADMIN")} />
+          <Route path="payment-methods" element={Private(<PaymentMethodsList />, "ADMIN")} />
+          <Route path="payment-processes" element={Private(<PaymentProcessesList />, "ADMIN")} />
+          <Route path="shippings" element={Private(<ShippingsList />, "ADMIN")} />
+          <Route
+            path="settings"
+            element={
+              Private(
+                <AdminSettings
+                  autoLogoutMinutes={autoLogoutMinutes}
+                  setAutoLogoutMinutes={(minutes) => {
+                    setAutoLogoutMinutes(minutes);
+                    localStorage.setItem("autoLogoutMinutes", String(minutes));
+                  }}
+                />,
+                "ADMIN"
+              )
+            }
+          />
 
           {/* 404 страница */}
           <Route path="*" element={<NoSuchPage />} />
         </Route>
       </Routes>
       <ModalManager />
+      
+        <AutoLogoutModal
+        show={showModal}
+        endTime={endTime}
+        warningTime={warningTime}
+        onLogout={handleLogout}
+      />
+    
     </div>
   );
 }
+
 export default App;
