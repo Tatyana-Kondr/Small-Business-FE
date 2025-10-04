@@ -1,20 +1,26 @@
 import { Navigate } from "react-router-dom";
+import { JSX } from "react";
 import { useAppSelector } from "../redux/hooks";
-import { ReactNode } from "react";
-import { selectIsAuthenticated, selectSessionChecked } from "../features/auth/authSlice";
-import Spinner from "./Spinner";
+import { selectIsAuthenticated, selectUser } from "../features/auth/authSlice";
 
 interface PrivateRouteProps {
-  children: ReactNode;
+  children: JSX.Element;
+  role?: "USER" | "ADMIN";
 }
 
-export default function PrivateRoute({ children }: PrivateRouteProps) {
+export default function PrivateRoute({ children, role }: PrivateRouteProps) {
+  
+
   const isAuthenticated = useAppSelector(selectIsAuthenticated);
-  const isSessionChecked = useAppSelector(selectSessionChecked);
+  const user = useAppSelector(selectUser);
 
-  if (!isSessionChecked) return <Spinner />;
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
 
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (role && user?.role !== role) {
+    return <Navigate to="/" replace />; // если роль не совпадает
+  }
 
-  return <>{children}</>;
+  return children;
 }
