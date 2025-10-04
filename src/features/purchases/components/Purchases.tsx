@@ -41,6 +41,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import PaymentsIcon from '@mui/icons-material/Payments';
 import CreatePayment from "../../payments/components/CreatePayment";
 import DeletePurchase from "./DeletePurchase";
+import { selectUser } from "../../auth/authSlice";
 
 
 const StyledTableHead = styled(TableHead)({
@@ -66,6 +67,8 @@ export default function Purchases() {
   const dispatch = useAppDispatch();
   const purchases = useAppSelector(selectPurchases);
   const totalPages = useAppSelector(selectTotalPages);
+  const currentUser = useAppSelector(selectUser);
+  const isAdmin = currentUser?.role === "ADMIN"; 
   const [page, setPage] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [filtersVisible, setFiltersVisible] = useState(false);
@@ -352,7 +355,7 @@ export default function Purchases() {
                 <TableCell >Dokument</TableCell>
                 <TableCell >Dokument-Nr</TableCell>
                 <TableCell >Zahlungsstatus</TableCell>
-                <TableCell >Aktionen</TableCell>
+                 {isAdmin && <TableCell>Aktionen</TableCell>} 
               </TableRow>
             </StyledTableHead>
 
@@ -376,6 +379,7 @@ export default function Purchases() {
                       <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{purchase.document}</TableCell>
                       <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{purchase.documentNumber}</TableCell>
                       <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{purchase.paymentStatus}</TableCell>
+                       {isAdmin && (
                       <TableCell sx={{ padding: "2px 12px" }}>
                         <Box display="flex" sx={{ padding: "2px 12px" }} gap={1} >
                           <Tooltip title="Bearbeiten" arrow>
@@ -420,6 +424,7 @@ export default function Purchases() {
                           )}
                         </Box>
                       </TableCell>
+                      )}
 
                     </TableRow>
                     {/* Подтаблица */}
@@ -463,7 +468,7 @@ export default function Purchases() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={7} align="center">
+                  <TableCell colSpan={isAdmin ? 8 : 7} align="center">
                     Keine Bestellungen gefunden
                   </TableCell>
                 </TableRow>
