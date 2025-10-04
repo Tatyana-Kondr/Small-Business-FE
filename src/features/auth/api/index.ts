@@ -1,71 +1,102 @@
 import { apiFetch } from "../../../utils/apiFetch";
-import { getToken, removeToken, saveToken } from "../../../utils/token";
 import {
-  SessionUserDto,
-  UserCreateDto,
-  UserLoginDto,
+  AuthRequestDto,
+  AuthResponseDto,
+  ChangePasswordDto,
+  NewUserDto,
+  Role,
+  UpdateUserDto,
+  UserDto,
 } from "../types";
 
-// Регистрация
-export async function fetchRegister(userCreateDto: UserCreateDto): Promise<SessionUserDto> {
-  const data = await apiFetch<{ token: string }>("/api/users/register", {
+
+// Регистрация нового пользователя (только для ADMIN)
+export async function fetchRegister(newUserDto: NewUserDto): Promise<UserDto> {
+  return apiFetch<UserDto>("/api/auth/register", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(userCreateDto),
-  }, "Fehler bei der Registrierung.");
-
-  saveToken(data.token);
-  return fetchCurrentUser();
+    body: JSON.stringify(newUserDto),
+    auth: true, // нужно быть залогиненным
+  });
 }
 
-// Логин
-export async function fetchLogin(userLoginDto: UserLoginDto): Promise<SessionUserDto> {
-  const data = await apiFetch<{ token: string }>("/api/auth/login", {
+// Логин пользователя
+export async function fetchLogin(authRequestDto: AuthRequestDto): Promise<AuthResponseDto> {
+  return apiFetch<AuthResponseDto>("/api/auth/login", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(userLoginDto),
-  }, "Fehler beim Anmelden.");
-
-  saveToken(data.token);
-  return fetchCurrentUser();
+    body: JSON.stringify(authRequestDto),
+  });
 }
 
-// Получение текущего пользователя
-export async function fetchCurrentUser(): Promise<SessionUserDto> {
-  const token = getToken();
-  if (!token) throw new Error("Not authenticated");
-
-  return apiFetch<SessionUserDto>("/api/auth/me", {
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-  }, "Benutzer nicht gefunden.");
+// Обновление accessToken по refreshToken
+export async function fetchRefreshToken(): Promise<AuthResponseDto> {
+  return apiFetch<AuthResponseDto>("/api/auth/refresh", {
+    method: "POST",
+    auth: true, // нужно, чтобы куки с refreshToken ушли на сервер
+  });
 }
 
-// Логаут
+// Выход пользователя
 export async function fetchLogout(): Promise<void> {
-   try {
-  await apiFetch("/api/auth/logout", {
+  return apiFetch<void>("/api/auth/logout", {
     method: "POST",
-    credentials: "include", 
-  }, "Logout-Fehler");
-   } finally {
-    removeToken(); // удаляем токен в любом случае
-  } 
+    auth: true,
+  });
 }
 
-// Refresh
-export async function fetchRefresh(): Promise<string | null> {
-  try {
-    const data = await apiFetch<{ token: string }>("/api/auth/refresh", {
-      method: "POST",
-      credentials: "include",
-    }, "Fehler beim Refresh.", true); // ⚡ передаём retry=true, чтобы не уйти в цикл
+// Получение профиля текущего пользователя
+export async function fetchUserProfile(): Promise<UserDto> {
+  return apiFetch<UserDto>("/api/auth/me", {
+    method: "GET",
+    auth: true,
+  });
+}
 
-    saveToken(data.token);
-    return data.token;
-  } catch {
-    return null;
-  }
+// -------------------- Users --------------------
+
+// Получение списка всех пользователей (только ADMIN)
+export async function fetchUsers(): Promise<UserDto[]> {
+  return apiFetch<UserDto[]>("/api/users", {
+    auth: true,
+  },
+"Fehler beim Laden der Liste der Benutzer."
+);
+}
+
+// Получение  пользователя по id 
+export async function fetchUser(id: number): Promise<UserDto> {
+  return apiFetch<UserDto>(`/api/users/${id}`, 
+    { auth: true, },
+    "Fehler beim Laden des Benutzers."
+  );
+}
+
+export async function fetchEditUser(userId: number, updateUserDto: UpdateUserDto): Promise<UserDto> {
+  return apiFetch<UserDto>(`/api/users/${userId}`, {
+    method: "PATCH",
+    body: JSON.stringify(updateUserDto),
+    auth: true,
+  },
+  "Fehler beim Aktualisieren des Benutzers."
+);
+}
+
+// Обновление роли пользователя (только ADMIN)
+export async function fetchUpdateUserRole(userId: number, role: Role): Promise<UserDto> {
+  return apiFetch<UserDto>(`/api/users/${userId}/role`, {
+    method: "PATCH",
+    body: JSON.stringify({ role }),
+    auth: true,
+  },
+ "Fehler beim Aktualisieren der Rolle."
+);
+}
+
+export async function fetchChangePassword(userId: number, changePasswordDto: ChangePasswordDto): Promise<UserDto> {
+  return apiFetch<UserDto>(`/api/users/${userId}/change-password`, {
+    method: "PATCH",
+    body: JSON.stringify(changePasswordDto),
+    auth: true,
+  },
+  "Fehler beim Ändern des Passworts."
+);
 }
