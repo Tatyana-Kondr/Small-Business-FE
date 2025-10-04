@@ -4,14 +4,14 @@ import { Customer, NewCustomerDto, PaginatedResponse } from "../types"
 export async function fetchCustomers(page: number, size: number, sort = "name"): Promise<PaginatedResponse<Customer>> {
   return apiFetch<PaginatedResponse<Customer>>
     (`/api/customers?page=${page}&size=${size}&sort=${sort}`,
-      undefined,
+      { auth: true },
       "Fehler beim Laden der Lieferanten."
     );
 }
 
 export async function fetchCustomerswithCustomerNumber(page: number, size: number, sort = "name"): Promise<PaginatedResponse<Customer>> {
   return apiFetch<PaginatedResponse<Customer>>(`/api/customers/customer-number?page=${page}&size=${size}&sort=${sort}`,
-    undefined,
+    { auth: true },
     "Fehler beim Laden der Kunden."
   );
 
@@ -23,6 +23,7 @@ export async function fetchAddCustomer(newCustomerDto: NewCustomerDto): Promise<
     headers: { "Content-Type": "application/json" },
     credentials: "include",
     body: JSON.stringify(newCustomerDto),
+    auth: true,
   },
     "Fehler beim Hinzufügen des Kunden."
   );
@@ -31,7 +32,7 @@ export async function fetchAddCustomer(newCustomerDto: NewCustomerDto): Promise<
 export async function fetchCustomer(id: number): Promise<Customer> {
   return apiFetch<Customer>(
     `/api/customers/${id}`,
-    undefined,
+    { auth: true },
    "Fehler beim Laden des Kunden."
   );
 }
@@ -43,6 +44,7 @@ export async function fetchEditCustomer(id: number, newCustomerDto: NewCustomerD
     headers: { "Content-Type": "application/json",},
     credentials: "include",
     body: JSON.stringify(newCustomerDto),
+    auth: true,
   },
   "Fehler beim Aktualisieren des Kunden."
 );
@@ -51,7 +53,7 @@ export async function fetchEditCustomer(id: number, newCustomerDto: NewCustomerD
 export async function fetchDeleteCustomer(id: number): Promise<void> {
   return apiFetch<void>(
     `/api/customers/${id}`,
-    { method: "DELETE" },
+    { method: "DELETE", auth: true },
     `Error deleting customer ${id}`
   );
 }

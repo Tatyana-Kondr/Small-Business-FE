@@ -1,5 +1,5 @@
 import { apiFetch } from "../../../utils/apiFetch";
-import { NewSaleDto, PaginatedResponse, Sale } from "../types";
+import { NewSaleDto, NewShippingDto, PaginatedResponse, Sale, Shipping } from "../types";
 
 export async function fetchSales(
  page: number,
@@ -16,7 +16,7 @@ export async function fetchSales(
   }
   return apiFetch<PaginatedResponse<Sale>>(
  `/api/sales?${queryParams.toString()}`,
-  undefined,
+  {auth: true},
     "Fehler beim Laden der Aufträge."
   );
 }
@@ -28,6 +28,7 @@ export async function fetchAddSale(newSale: NewSaleDto): Promise<Sale> {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newSale),
+      auth: true,
     },
     "Fehler beim Erstellen des Auftrags."
   );
@@ -40,6 +41,7 @@ export async function fetchUpdateSale(id: number, updatedSale: NewSaleDto): Prom
      method: "PUT",
       body: JSON.stringify(updatedSale),
       headers: { "Content-Type": "application/json" },
+      auth: true,
     },
     `Fehler beim Aktualisieren des Auftrags mit der ID ${id}.`
   );
@@ -48,7 +50,7 @@ export async function fetchUpdateSale(id: number, updatedSale: NewSaleDto): Prom
 export async function fetchDeleteSale(id: number): Promise<void> {
  return apiFetch<void>(
     `/api/sales/${id}`,
-    { method: "DELETE" },
+    { method: "DELETE", auth: true },
     `Fehler beim Löschen des Auftrags mit der ID ${id}.`
   );
 }
@@ -56,7 +58,7 @@ export async function fetchDeleteSale(id: number): Promise<void> {
 export async function fetchSaleById(id: number): Promise<Sale> {
    return apiFetch<Sale>(
       `/api/sales/${id}`,
-      undefined,
+      {auth: true},
       `Fehler beim Laden des Auftrags mit der ID ${id}.`
     );
   }
@@ -74,7 +76,7 @@ export async function fetchSearchSales(
  
    return apiFetch<PaginatedResponse<Sale>>(
      `/api/sales/search/${encodeURIComponent(query)}?${queryParams.toString()}`,
-     undefined,
+     {auth: true},
      "Fehler bei der Suche des Auftrags."
    );
  }
@@ -112,7 +114,7 @@ export async function fetchSalesByFilter(
   
     return apiFetch<PaginatedResponse<Sale>>(
       `/api/sales/filter?${queryParams.toString()}`,
-      undefined,
+      {auth: true},
       "Fehler beim Laden der gefilterten Aufträge."
     );
   }
@@ -120,7 +122,62 @@ export async function fetchSalesByFilter(
 export async function fetchUpdateSalePaymentStatus(id: number): Promise<Sale> {
  return apiFetch<Sale>(
      `/api/sales/${id}/update-payment-status`,
-     { method: "PATCH", credentials: "include" },
+     { method: "PATCH", credentials: "include", auth: true },
      `Fehler beim Aktualisieren des Zahlungsstatus für Auftrag ${id}.`
+   );
+ }
+
+ // === Shipping ===
+ 
+ export async function fetchAllShippings(): Promise<Shipping[]> {
+   return apiFetch<Shipping[]>(
+     `/api/shippings`,
+     {auth: true},
+     "Fehler beim Laden der Versand."
+   );
+ }
+ 
+ export async function fetchShippingById(id: number): Promise<Shipping> {
+   return apiFetch<Shipping>(
+     `/api/shippings/${id}`,
+     {auth: true},
+     "Fehler beim Laden des Versands."
+   );
+ }
+ 
+ export async function fetchCreateShipping(data: NewShippingDto): Promise<Shipping> {
+   return apiFetch<Shipping>(
+     `/api/shippings`,
+     {
+       method: "POST",
+       headers: { "Content-Type": "application/json" },
+       body: JSON.stringify(data),
+       auth: true, 
+     },
+     "Fehler beim Erstellen des Versands."
+   );
+ }
+ 
+ export async function fetchUpdateShipping(
+   id: number,
+   data: NewShippingDto
+ ): Promise<Shipping> {
+   return apiFetch<Shipping>(
+     `/api/shippings/${id}`,
+     {
+       method: "PUT",
+       headers: { "Content-Type": "application/json" },
+       body: JSON.stringify(data),
+       auth: true,
+     },
+     "Fehler beim Aktualisieren des Versands."
+   );
+ }
+ 
+ export async function fetchDeleteShipping(id: number): Promise<void> {
+   await apiFetch<void>(
+     `/api/shippings/${id}`,
+     { method: "DELETE", auth: true },
+     "Fehler beim Löschen des Versands."
    );
  }

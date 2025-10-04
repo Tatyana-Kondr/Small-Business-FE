@@ -19,7 +19,7 @@ export async function fetchAllPayments({
 
   return apiFetch<PaginatedResponse<Payment>>(
     `/api/payments?${queryParams.toString()}`,
-    undefined,
+    { auth: true }, 
     "Fehler beim Laden der Zahlungsiste."
   );
 }
@@ -31,6 +31,7 @@ export async function fetchAddPayment(newPayment: NewPaymentDto): Promise<Paymen
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(newPayment),
+      auth: true,
     },
     "Fehler beim Hinzufügen der Zahlung."
   );
@@ -43,6 +44,7 @@ export async function fetchUpdatePayment(id: number, updatePaymentDto: NewPaymen
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(updatePaymentDto),
+      auth: true,
     },
     "Fehler beim Aktualisieren der Zahlung."
   );
@@ -51,7 +53,7 @@ export async function fetchUpdatePayment(id: number, updatePaymentDto: NewPaymen
 export async function fetchDeletePayment(id: number): Promise<void> {
   await apiFetch<void>(
     `/api/payments/${id}`,
-    { method: "DELETE" },
+    { method: "DELETE", auth: true },
     "Fehler beim Löschen der Zahlung."
   );
 }
@@ -59,7 +61,7 @@ export async function fetchDeletePayment(id: number): Promise<void> {
 export async function fetchGetAllSaleIds(): Promise<number[]> {
   return apiFetch<number[]>(
     `/api/payments/all-sale-ids`,
-    undefined,
+    { auth: true }, 
     "Fehler beim Laden aller Sale IDs."
   );
 }
@@ -67,13 +69,13 @@ export async function fetchGetAllSaleIds(): Promise<number[]> {
 export async function fetchGetAllPurchaseIds(): Promise<number[]> {
   return apiFetch<number[]>(
     `/api/payments/all-purchase-ids`,
-    undefined,
+    { auth: true }, 
     "Fehler beim Laden aller Purchase IDs."
   );
 }
 
 export async function fetchPaymentById(id: number): Promise<Payment> {
-  return apiFetch<Payment>(`/api/payments/${id}`, undefined, "Fehler beim Laden der Zahlung.");
+  return apiFetch<Payment>(`/api/payments/${id}`, { auth: true },  "Fehler beim Laden der Zahlung.");
 }
 
 export async function fetchSearchPayments({
@@ -95,7 +97,7 @@ export async function fetchSearchPayments({
 
   return apiFetch<PaginatedResponse<Payment>>(
     `/api/payments/search/${encodeURIComponent(query)}?${queryParams.toString()}`,
-    undefined,
+    { auth: true }, 
     "Fehler bei der Suche nach Zahlungen."
   );
 }
@@ -156,7 +158,7 @@ export async function fetchPaymentsByFilter({
 
   return apiFetch<PaginatedResponse<Payment>>(
     `/api/payments/filter?${queryParams.toString()}`,
-    undefined,
+    { auth: true }, 
     "Fehler beim Filtern der Zahlungen."
   );
 }
@@ -164,7 +166,7 @@ export async function fetchPaymentsByFilter({
 export async function fetchPrefillDataForSale(saleId: number): Promise<PaymentPrefillDto> {
   return apiFetch<PaymentPrefillDto>(
     `/api/payments/prefill/sale/${saleId}`,
-    undefined,
+    { auth: true }, 
     "Fehler beim Laden der Vorausfüll-Daten für Verkauf."
   );
 }
@@ -172,7 +174,7 @@ export async function fetchPrefillDataForSale(saleId: number): Promise<PaymentPr
 export async function fetchPrefillDataForPurchase(purchaseId: number): Promise<PaymentPrefillDto> {
   return apiFetch<PaymentPrefillDto>(
     `/api/payments/prefill/purchase/${purchaseId}`,
-    undefined,
+    { auth: true }, 
     "Fehler beim Laden der Vorausfüll-Daten für Einkauf."
   );
 }
@@ -182,7 +184,7 @@ export async function fetchPrefillDataForPurchase(purchaseId: number): Promise<P
 export async function fetchAllPaymentMethods(): Promise<PaymentMethod[]> {
   return apiFetch<PaymentMethod[]>(
     `/api/payment-methods`,
-    undefined,
+    { auth: true }, 
     "Fehler beim Laden der Zahlungsmethoden."
   );
 }
@@ -190,7 +192,7 @@ export async function fetchAllPaymentMethods(): Promise<PaymentMethod[]> {
 export async function fetchPaymentMethodById(id: number): Promise<PaymentMethod> {
   return apiFetch<PaymentMethod>(
     `/api/payment-methods/${id}`,
-    undefined,
+    { auth: true }, 
     "Fehler beim Laden der Zahlungsmethode."
   );
 }
@@ -202,6 +204,7 @@ export async function fetchCreatePaymentMethod(data: NewPaymentMethodDto): Promi
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
+      auth: true,
     },
     "Fehler beim Erstellen der Zahlungsmethode."
   );
@@ -217,6 +220,7 @@ export async function fetchUpdatePaymentMethod(
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
+      auth: true,
     },
     "Fehler beim Aktualisieren der Zahlungsmethode."
   );
@@ -225,7 +229,7 @@ export async function fetchUpdatePaymentMethod(
 export async function fetchDeletePaymentMethod(id: number): Promise<void> {
   await apiFetch<void>(
     `/api/payment-methods/${id}`,
-    { method: "DELETE" },
+    { method: "DELETE", auth: true },
     "Fehler beim Löschen der Zahlungsmethode."
   );
 }
@@ -235,7 +239,7 @@ export async function fetchDeletePaymentMethod(id: number): Promise<void> {
 export async function fetchAllPaymentProcesses(): Promise<PaymentProcess[]> {
   return apiFetch<PaymentProcess[]>(
     `/api/payment-processes`,
-    undefined,
+    { auth: true }, 
     "Fehler beim Laden der Zahlungsprozesse."
   );
 }
@@ -243,7 +247,7 @@ export async function fetchAllPaymentProcesses(): Promise<PaymentProcess[]> {
 export async function fetchPaymentProcessById(id: number): Promise<PaymentProcess> {
   return apiFetch<PaymentProcess>(
     `/api/payment-processes/${id}`,
-    undefined,
+    { auth: true }, 
     "Fehler beim Laden des Zahlungsprozesses."
   );
 }
@@ -255,6 +259,7 @@ export async function fetchCreatePaymentProcess(data: NewPaymentProcessDto): Pro
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
+      auth: true,
     },
     "Fehler beim Erstellen des Zahlungsprozesses."
   );
@@ -270,6 +275,7 @@ export async function fetchUpdatePaymentProcess(
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
+      auth: true,
     },
     "Fehler beim Aktualisieren des Zahlungsprozesses."
   );
@@ -278,7 +284,7 @@ export async function fetchUpdatePaymentProcess(
 export async function fetchDeletePaymentProcess(id: number): Promise<void> {
   await apiFetch<void>(
     `/api/payment-processes/${id}`,
-    { method: "DELETE" },
+    { method: "DELETE", auth: true },
     "Fehler beim Löschen des Zahlungsprozesses."
   );
 }

@@ -12,8 +12,8 @@ export async function fetchProducts(page: number, size: number, sort = "name", s
 
   return apiFetch<PaginatedResponse<Product>>(
     `/api/products?${queryParams.toString()}`,
-    undefined,
-    "Fehler beim Laden der Produktiste."
+    { auth: true }, 
+    "Fehler beim Laden der Produktiste.",
   );
 }
 
@@ -22,6 +22,7 @@ export async function fetchAddProduct(newProduct: NewProductDto): Promise<Produc
       method: 'POST',
       headers: { 'Content-Type': 'application/json', },
       body: JSON.stringify(newProduct),
+      auth: true,
     },
   "Fehler beim Hinzufügen des Produkt."
 );
@@ -34,6 +35,7 @@ export async function fetchEditProduct({ id, updateProductDto }: { id: number, u
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(updateProductDto),
+      auth: true,
     },
     "Fehler beim Aktualisieren des Produkt."
   );
@@ -42,7 +44,7 @@ export async function fetchEditProduct({ id, updateProductDto }: { id: number, u
 export async function fetchProduct(id: number): Promise<Product> {
   return apiFetch<Product>(
     `/api/products/${id}`,
-    undefined,
+    { auth: true }, 
     "Fehler beim Laden der Produkt."
   );
 }
@@ -60,7 +62,7 @@ export async function fetchProductsByCategory(
 
   return apiFetch<PaginatedResponse<Product>>(
     `/api/products/category/${categoryId}?${queryParams.toString()}`,
-    undefined,
+    { auth: true }, 
     "Fehler beim Laden der Produktkategorien."
   );
 }
@@ -68,7 +70,7 @@ export async function fetchProductsByCategory(
 export async function fetchDeleteProduct(id: number): Promise<void> {
   return apiFetch<void>(
     `/api/products/${id}`,
-    { method: "DELETE" },
+    { method: "DELETE", auth: true },
     `Fehler beim Löschen des Produkt mit ID ${id}.`
   );
 }
@@ -82,6 +84,7 @@ export async function fetchAddProductCategory(newCategory: NewProductCategoryDto
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(newCategory),
+      auth: true,
     },
     "Fehler beim Hinzufügen des Produktkategorie."
   );
@@ -90,7 +93,7 @@ export async function fetchAddProductCategory(newCategory: NewProductCategoryDto
 export async function fetchProductCategory(id: number): Promise<ProductCategory> {
    return apiFetch<ProductCategory>(
     `/api/product-categories/${id}`,
-    undefined,
+    { auth: true }, 
     "Fehler beim Laden der Produktkategorie."
   );
 }
@@ -102,6 +105,7 @@ export async function fetchEditProductCategory({ id, newProductCategoryDto }: { 
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(newProductCategoryDto),
+      auth: true,
     },
     "Fehler beim Aktualisieren des Produktkategorie."
   );
@@ -111,7 +115,7 @@ export async function fetchEditProductCategory({ id, newProductCategoryDto }: { 
 export async function fetchDeleteProductCategory(id: number): Promise<void> {
   return apiFetch<void>(
     `/api/product-categories/${id}`,
-    { method: "DELETE" },
+    { method: "DELETE", auth: true },
     `Fehler beim Löschen des Produktkategorie mit ID ${id}.`
   );
 }
@@ -126,6 +130,7 @@ return apiFetch<ProductCategory[]>(
         Pragma: "no-cache",
         Expires: "0",
       },
+      auth: true,
     },
     "Fehler beim Laden der Produktkategorieiste."
   );
@@ -139,6 +144,7 @@ export async function fetchProductFiles(productId: number): Promise<any> {
     {
       method: "GET",
       headers: { "Content-Type": "application/json" },
+      auth: true,
     },
     "Fehler beim Abrufen von Produktdateien"
   );
@@ -153,6 +159,7 @@ export async function fetchUploadProductFile(productId: number, file: File): Pro
     {
       method: "POST",
       body: formData,
+      auth: true,
     },
     "Fehler beim Hochladen der Datei"
   );
@@ -161,7 +168,7 @@ export async function fetchUploadProductFile(productId: number, file: File): Pro
 export async function fetchDeleteProductFile(fileId: number): Promise<void> {
   return apiFetch<void>(
     `/api/products/photos/${fileId}`,
-    { method: "DELETE" },
+    { method: "DELETE", auth: true },
     "Fehler beim Löschen der Datei."
   );
 }
