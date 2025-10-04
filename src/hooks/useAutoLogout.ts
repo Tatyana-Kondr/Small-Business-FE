@@ -1,101 +1,67 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useAppDispatch, useAppSelector } from "../redux/hooks";
-import { logout, selectIsAuthenticated } from "../features/auth/authSlice";
+import { useAppDispatch } from "../redux/hooks";
+import { logout } from "../features/auth/authSlice";
 
-export const IDLE_TIMEOUT = 30 * 60 * 1000; 
-export const WARNING_TIME = 1 * 60 * 1000; // предупреждение за минуту
+interface AutoLogoutOptions {
+  timeout?: number; // общее время до выхода
+  warningTime?: number; // за сколько мс показывать предупреждение
+  checkInterval?: number; // проверка сна ПК
+}
 
-let globalResetTimer: (() => void) | null = null;
-let globalClearTimers: (() => void) | null = null;
+// берем время из .env (в минутах) и конвертируем в мс
+const envTimeoutMinutes = Number(import.meta.env.VITE_AUTOLOGOUT_TIMEOUT) || 30;
+const envTimeoutMs = envTimeoutMinutes * 60 * 1000;
 
-export function useAutoLogout() {
-    const dispatch = useAppDispatch();
-    const isAuthenticated = useAppSelector(selectIsAuthenticated);
+export function useAutoLogout({
+  timeout = envTimeoutMs,
+  warningTime = 60 * 1000,  // за 60 секунд до выхода
+  checkInterval = 60 * 1000,
+}: AutoLogoutOptions = {}) {
+  const dispatch = useAppDispatch();
 
-    const logoutTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const warningTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const endTimeRef = useRef<number>(Date.now() + IDLE_TIMEOUT);
+  const lastActivityRef = useRef(Date.now());
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [showWarning, setShowWarning] = useState(false);
-  const [endTime, setEndTime] = useState<number>(endTimeRef.current);
+  // состояние для модалки
+  const [showModal, setShowModal] = useState(false);
+  const [endTime, setEndTime] = useState(Date.now() + timeout);
 
-  const clearTimers = useCallback(() => {
-    if (warningTimeoutRef.current) {
-      clearTimeout(warningTimeoutRef.current);
-      warningTimeoutRef.current = null;
-    }
-    if (logoutTimeoutRef.current) {
-      clearTimeout(logoutTimeoutRef.current);
-      logoutTimeoutRef.current = null;
-    }
-  }, []);
+  const handleLogout = useCallback(() => {
+    setShowModal(false);
+    dispatch(logout());
+  }, [dispatch]);
 
-  //обновляет время до логаута, очищает таймеры.
   const resetTimer = useCallback(() => {
-    if (!isAuthenticated) return;
-    clearTimers();
+    lastActivityRef.current = Date.now();
+    setEndTime(Date.now() + timeout);
 
-    const now = Date.now();
-    const newEnd = now + IDLE_TIMEOUT;
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setShowModal(false);
 
-    endTimeRef.current = newEnd;
-    setEndTime(newEnd);
-    setShowWarning(false);
-
-    // показать модалку за WARNING_TIME до конца
-    warningTimeoutRef.current = setTimeout(() => {
-      setShowWarning(true);
-    }, IDLE_TIMEOUT - WARNING_TIME);
-
-    // авто-логаут
-    logoutTimeoutRef.current = setTimeout(() => {
-      dispatch(logout());
-      window.location.href = "/login";
-    }, IDLE_TIMEOUT);
-  }, [dispatch, isAuthenticated, clearTimers]);
+    const timeUntilWarning = timeout - warningTime;
+    timerRef.current = setTimeout(() => {
+      setShowModal(true);
+    }, timeUntilWarning);
+  }, [timeout, warningTime]);
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      clearTimers();
-      setShowWarning(false);
-      setEndTime(0);
-      return;
-    }
+    const events = ["mousemove", "keydown", "mousedown", "scroll", "touchstart"];
+    events.forEach((event) => window.addEventListener(event, resetTimer));
 
-    const activityEvents: (keyof WindowEventMap)[] = ["mousedown", "keydown", "scroll", "touchstart", "mousemove"];
-    const handleActivity = () => {
-       resetTimer();
-       setShowWarning(false);  // при активности сразу убираем модалку
-    };
+    const checkSleep = setInterval(() => {
+      if (Date.now() - lastActivityRef.current > timeout) {
+        handleLogout();
+      }
+    }, checkInterval);
 
-    activityEvents.forEach((e) => window.addEventListener(e, handleActivity));
     resetTimer();
 
-    // пробрасываем наружу ссылки
-    globalResetTimer = resetTimer;
-    globalClearTimers = clearTimers;
-
     return () => {
-      clearTimers();
-      activityEvents.forEach((e) => window.removeEventListener(e, handleActivity));
-      globalResetTimer = null;
-      globalClearTimers = null;
+      if (timerRef.current) clearTimeout(timerRef.current);
+      clearInterval(checkSleep);
+      events.forEach((event) => window.removeEventListener(event, resetTimer));
     };
-  }, [resetTimer, clearTimers, isAuthenticated]);
+  }, [resetTimer, handleLogout, checkInterval, timeout]);
 
-  return {
-    showWarning,
-    endTime,
-    warningTime: WARNING_TIME,
-  };
-}
-
-// для apiFetch
-export function resetAutoLogoutTimer() {
-  if (globalResetTimer) globalResetTimer();
-}
-
-// для кнопки "Выйти"
-export function clearAutoLogoutTimers() {
-  if (globalClearTimers) globalClearTimers();
+  return { showModal, endTime, warningTime, handleLogout };
 }
