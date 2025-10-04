@@ -11,6 +11,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import PaymentsIcon from '@mui/icons-material/Payments';
 import CreatePayment from "../../payments/components/CreatePayment";
 import DeleteSale from "./DeleteSale";
+import { selectUser } from "../../auth/authSlice";
 
 
 const StyledTableHead = styled(TableHead)({
@@ -34,6 +35,8 @@ const StyledSubTableHead = styled(TableHead)({
 export default function Sales() {
   const dispatch = useAppDispatch();
   const sales = useAppSelector(selectSales);
+  const currentUser = useAppSelector(selectUser);
+  const isAdmin = currentUser?.role === "ADMIN";
   const totalPages = useAppSelector(selectTotalPages);
   const [page, setPage] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
@@ -363,6 +366,7 @@ export default function Sales() {
                               <EditIcon />
                             </IconButton>
                           </Tooltip>
+                          {isAdmin && (
                           <DeleteSale
                             saleId={sale.id}
                             customerName={sale.customerName}
@@ -386,6 +390,8 @@ export default function Sales() {
                               </Tooltip>
                             }
                           />
+                          )}
+                          
                           {sale.paymentStatus !== "BEZAHLT" && (
                             <Tooltip title="Bezahlen" arrow>
                               <IconButton onClick={(e) => {
