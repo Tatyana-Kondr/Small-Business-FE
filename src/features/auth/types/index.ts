@@ -1,42 +1,59 @@
-// Пользователь из сессии (минимальный набор)
-export interface SessionUserDto {
-  id: number;
-  email: string;
-  role: string;
+export enum Role {
+  ADMIN = "ADMIN",
+  USER = "USER",
 }
 
-// Полный пользователь (например, из админки)
-export interface User {
+// ========== DTO для пользователя ==========
+export interface UserDto {
   id: number;
+  username: string;
   email: string;
-  password: string; // можно удалить, если не нужен
-  role: string;
-  state: string;
+  role: Role;
 }
 
-export interface UserCreateDto {
-  email: string;
+export interface NewUserDto {
+  username: string;
+  password: string;
+  email?: string; 
+}
+
+export interface UpdateUserDto {
+  username?: string;
+  email?: string;
+}
+
+export interface UpdateUserRoleDto {
+  role: Role;
+}
+
+export interface ChangePasswordDto {
+  oldPassword: string;
+  newPassword: string;
+}
+
+
+// ========== DTO для аутентификации ==========
+export interface AuthRequestDto {
+  username: string;
   password: string;
 }
 
-export interface UserLoginDto {
-  email: string;
-  password: string;
+export interface AuthResponseDto {
+  accessToken: string;
+  refreshToken: string;
+  role: Role;
 }
 
-// Больше не нужно:
-export interface LoginResponse {
-  message: string;
-  status: number;
-}
 
 // Состояние авторизации в хранилище
 export interface AuthState {
-  user: SessionUserDto | null;
-  isAuthenticated: boolean;
-  status: "idle" | "loading" | "failed";
+  usersList: UserDto[],
+  user: UserDto | null;
+  accessToken: string | null;
+  status: "idle" | "loading" | "authenticated" | "failed";
   error: string | null;
   loginErrorMessage?: string;
   registerErrorMessage?: string;
   isSessionChecked: boolean;
+  isAuthenticated: boolean;
 }
