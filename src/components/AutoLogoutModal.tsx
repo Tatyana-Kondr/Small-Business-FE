@@ -5,6 +5,7 @@ interface AutoLogoutModalProps {
   show: boolean;
   endTime: number;      // момент завершения сессии (Date.now() в мс)
   warningTime: number;  // длительность окна предупреждения (мс)
+  onLogout: () => void;
 }
 
 // плавное смешение цвета
@@ -17,34 +18,39 @@ function lerpColor(a: string, b: string, t: number) {
   return "#" + (rr << 16 | rg << 8 | rb).toString(16).padStart(6, "0");
 }
 
-const AutoLogoutModal: React.FC<AutoLogoutModalProps> = ({ show, endTime, warningTime }) => {
-  const [timeLeft, setTimeLeft] = useState<number>(Math.max(endTime - Date.now(), 0));
+const AutoLogoutModal: React.FC<AutoLogoutModalProps> = ({ show, endTime, warningTime, onLogout }) => {
+  const [timeLeft, setTimeLeft] = useState(Math.max(endTime - Date.now(), 0));
   const rafRef = useRef<number | null>(null);
 
-  // следим за таймером
   useEffect(() => {
     if (!show) return;
+
     const tick = () => {
       const left = Math.max(endTime - Date.now(), 0);
       setTimeLeft(left);
-      if (left > 0) rafRef.current = requestAnimationFrame(tick);
+
+      if (left <= 0) {
+        onLogout();
+      } else {
+        rafRef.current = requestAnimationFrame(tick);
+      }
     };
+
     rafRef.current = requestAnimationFrame(tick);
     return () => { if (rafRef.current != null) cancelAnimationFrame(rafRef.current); };
-  }, [show, endTime]);
+  }, [show, endTime, onLogout]);
 
- // вычисления всегда должны выполняться, даже если show = false
   const clamped = Math.min(Math.max(timeLeft, 0), warningTime);
   const secondsLeft = Math.ceil(clamped / 1000);
-  const percent = clamped / warningTime; // 1..0
+  const percent = clamped / warningTime;
 
   const color = useMemo(() => {
     if (percent > 0.5) {
-      const t = (1 - percent) / 0.5;           // 0..1
-      return lerpColor("#08dbd1", "#d9ff00", t); // зелёный -> жёлтый
+      const t = (1 - percent) / 0.5;
+      return lerpColor("#08dbd1", "#d9ff00", t);
     } else {
-      const t = (0.5 - percent) / 0.5;         // 0..1
-      return lerpColor("#d9ff00", "#f51808", t); // жёлтый -> красный
+      const t = (0.5 - percent) / 0.5;
+      return lerpColor("#d9ff00", "#f51808", t);
     }
   }, [percent]);
 
@@ -84,7 +90,6 @@ const AutoLogoutModal: React.FC<AutoLogoutModalProps> = ({ show, endTime, warnin
             />
           </svg>
 
-          {/* Пульсируют только цифры */}
           <Box
             sx={{
               position: "absolute",
