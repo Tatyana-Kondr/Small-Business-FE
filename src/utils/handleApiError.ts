@@ -1,3 +1,4 @@
+import { HttpError } from "./handleFetchError";
 import { showErrorToast } from "./toast";
 
 type ErrorWithMessage = {
@@ -52,17 +53,16 @@ export function handleApiError(
   let title = "Fehler";
   let message = fallbackMessage;
 
-  try {
-    const err = error as ErrorWithMessage;
-
-    // Если message — это строка и она есть в errorMap, используем перевод
-    if (err?.message && errorMap[err.message]) {
-      message = errorMap[err.message];
-    } else if (err?.message) {
-      message = err.message;
+  if (error instanceof HttpError) {
+    // используем сообщение из HttpError
+    message = errorMap[error.message] || error.message || fallbackMessage;
+  } else {
+    try {
+      const err = error as ErrorWithMessage;
+      message = errorMap[err?.message] || err?.message || fallbackMessage;
+    } catch {
+      // fallback
     }
-  } catch (e) {
-    console.warn("Fehler beim Verarbeiten der Fehlermeldung:", e);
   }
 
   showErrorToast(title, message);
