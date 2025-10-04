@@ -38,7 +38,8 @@ import { handleApiError } from '../../../utils/handleApiError';
 import { showSuccessToast } from '../../../utils/toast';
 import { NewSaleDto, NewSaleItemDto, NewShippingDimensionsDto } from '../types';
 import { getSaleById, updateSale } from '../salesSlice';
-import { Shipping, TermsOfPayment } from '../../../constants/enums';
+import { TermsOfPayment } from '../../../constants/enums';
+import { getShippings, selectShippings } from '../shippingsSlice';
 
 const StyledTableHead = styled(TableHead)(({
   backgroundColor: "#1a3d6d",
@@ -78,7 +79,7 @@ export default function SaleCard() {
     invoiceNumber: '',
     accountObject: '',
     typeOfOperation: 'VERKAUF',
-    shipping: '',
+    shippingId: 0,
     shippingDimensions: '',
     termsOfPayment: 'ÜBERWEISUNG_14_TAGE',
     salesDate: '',
@@ -96,6 +97,7 @@ export default function SaleCard() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const categories = useAppSelector(selectProductCategories);
   const products = useAppSelector(selectProducts);
+  const shippings = useAppSelector(selectShippings);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [weightInput, setWeightInput] = useState("");
@@ -114,7 +116,7 @@ export default function SaleCard() {
           invoiceNumber: s.invoiceNumber,
           accountObject: s.accountObject,
           typeOfOperation: s.typeOfOperation,
-          shipping: s.shipping,
+          shippingId: s.shippingId,
           shippingDimensions: s.shippingDimensions,
           termsOfPayment: s.termsOfPayment,
           salesDate: s.salesDate,
@@ -138,6 +140,7 @@ export default function SaleCard() {
       .then(c => setCustomers(c.content))
       .catch(error => handleApiError(error, "Fehler beim Laden der Kunden."));
 
+    dispatch(getShippings());
     dispatch(getProductCategories());
     dispatch(getProducts({ page: 0, size: 100 }));
   }, [dispatch, saleId]);
@@ -513,22 +516,21 @@ export default function SaleCard() {
 
                 <Grid container spacing={2}>
                   <Grid item xs={4}>
-                    <FormControl fullWidth>
-                      <InputLabel id="shipping-label" htmlFor="shipping-select">Versand</InputLabel>
-                      <Select
-                        id="shipping-select"
-                        labelId="shipping-label"
-                        label="Versand"
-                        value={sale.shipping}
-                        onChange={(e) => setSale(prev => ({ ...prev, shipping: e.target.value as Shipping }))}
-                      >
-                        {Shipping.map((type) => (
-                          <MenuItem key={type} value={type}>
-                            {type}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
+                    <Autocomplete
+                      fullWidth
+                      options={[...shippings].sort((a, b) => a.name.localeCompare(b.name))}
+                      getOptionLabel={(option) => option.name}
+                      onChange={(_, value) => {
+                        setSale(prev => ({
+                          ...prev,
+                          shippingId: value?.id ?? 0,
+                        }));
+                      }}
+                      value={shippings.find((v) => v.id === sale.shippingId) || null}
+                      renderInput={(params) => (
+                        <TextField {...params} label="Versand" />
+                      )}
+                    />
                   </Grid>
 
                   <Grid item xs={8}>

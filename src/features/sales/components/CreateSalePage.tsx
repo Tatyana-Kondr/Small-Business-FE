@@ -25,12 +25,13 @@ import { getProducts, getProductsByCategory, selectProducts } from '../../produc
 import { getProductCategories, selectProductCategories } from '../../products/productCategoriesSlice';
 import { NewSaleDto, NewSaleItemDto, NewShippingDimensionsDto } from '../types';
 import { addSale } from '../salesSlice';
-import { Shipping, TermsOfPayment } from '../../../constants/enums';
+import { TermsOfPayment } from '../../../constants/enums';
 import { Dialog } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import CreateCustomer from '../../customers/components/CreateCustomer';
 import { handleApiError } from '../../../utils/handleApiError';
 import { showSuccessToast } from '../../../utils/toast';
+import { getShippings, selectShippings } from '../shippingsSlice';
 
 const StyledTableHead = styled(TableHead)(({
     backgroundColor: "#1a3d6d",
@@ -68,7 +69,7 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
         invoiceNumber: '',
         accountObject: '',
         typeOfOperation: 'VERKAUF',
-        shipping: '',
+        shippingId: 0,
         termsOfPayment: 'ÜBERWEISUNG_14_TAGE',
         salesDate: '',
         paymentDate: '',
@@ -85,6 +86,7 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
     const [dateValue, setDateValue] = useState<Dayjs | null>(null);
     const categories = useAppSelector(selectProductCategories);
     const products = useAppSelector(selectProducts);
+    const shippings = useAppSelector(selectShippings);
     const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [weightInput, setWeightInput] = useState<string>('');
@@ -96,6 +98,7 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
 
     useEffect(() => {
         dispatch(getProductCategories());
+        dispatch(getShippings());
         dispatch(getCustomersWithCustomerNumber({ page: 0, size: 100 }))
             .unwrap()
             .then(customers => setCustomers(customers.content))
@@ -480,22 +483,19 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
 
                                 <Grid container spacing={2}>
                                     <Grid item xs={4}>
-                                        <FormControl fullWidth>
-                                            <InputLabel id="shipping-label" htmlFor="shipping-select">Versand</InputLabel>
-                                            <Select
-                                                id="shipping-select"
-                                                labelId="shipping-label"
-                                                label="Versand"
-                                                value={newSale.shipping}
-                                                onChange={(e) => setNewSale(prev => ({ ...prev, shipping: e.target.value as Shipping }))}
-                                            >
-                                                {Shipping.map((type) => (
-                                                    <MenuItem key={type} value={type}>
-                                                        {type}
-                                                    </MenuItem>
-                                                ))}
-                                            </Select>
-                                        </FormControl>
+                                        <Autocomplete
+                                            fullWidth
+                                            options={[...shippings].sort((a, b) => a.name.localeCompare(b.name))}
+                                            getOptionLabel={(option) => option.name}
+                                            onChange={(_, value) => {
+                                                setNewSale((prev) => ({
+                                                    ...prev,
+                                                    shippingId: value?.id ?? 0,
+                                                }));
+                                            }}
+                                            value={shippings.find((v) => v.id === newSale.shippingId) || null}
+                                            renderInput={(params) => <TextField {...params} label="Versand" />}
+                                        />
                                     </Grid>
 
                                     <Grid item xs={8}>
