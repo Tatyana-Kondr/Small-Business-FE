@@ -26,7 +26,6 @@ export default function ProductCard() {
     const [openModal, setOpenModal] = useState(false);
     const [editModalOpen, setEditModalOpen] = useState(false);
 
-    const BASE_URL = "http://localhost:8080";
     const NO_IMAGE_PATH = "/media/no.jpg"; // Путь к заглушке
 
     useEffect(() => {
@@ -54,6 +53,7 @@ export default function ProductCard() {
                     })
                 ).unwrap();
 
+                await dispatch(getProductFiles(Number(productId))).unwrap();
                 showSuccessToast("Erfolg", "Datei wurde erfolgreich hochgeladen!");
             } catch (error) {
                 handleApiError(error, "Fehler beim Hochladen der Datei");
@@ -66,7 +66,7 @@ export default function ProductCard() {
             try {
                 await dispatch(deleteProductFile(fileId)).unwrap();
                 await dispatch(getProductFiles(Number(productId))).unwrap();
-
+                setCurrentFileIndex((prev) => Math.min(prev, files.length - 2));
                 showSuccessToast("Erfolg", "Datei wurde erfolgreich gelöscht!");
             } catch (error) {
                 handleApiError(error, "Fehler beim Löschen der Datei");
@@ -108,7 +108,7 @@ export default function ProductCard() {
     const currentFile = isValidIndex ? files[currentFileIndex] : null;
 
     // Определяем, какое изображение использовать
-    const imageUrl = currentFile ? `${BASE_URL}${currentFile.fileUrl}` : NO_IMAGE_PATH;
+    const imageUrl = currentFile ? `${import.meta.env.VITE_API_URL}${currentFile.fileUrl}` : NO_IMAGE_PATH;
     const imageAlt = currentFile ? currentFile.originFileName : "No image available";
 
     if (loading) {
@@ -217,6 +217,7 @@ export default function ProductCard() {
                                     ["Abmessungen", product.newDimensions ? `${product.newDimensions.height} x ${product.newDimensions.length} x ${product.newDimensions.width} mm` : "—"],
                                     ["Kategorie", product.productCategory?.name || "—"],
                                     ["Beschreibung", product.description || "—"],
+                                    ["Lagerplatz", product.storageLocation || "—"],
                                     ["Erstellungsdatum", formattedDate],
                                 ].map(([label, value]) => (
                                     <Grid container key={label} spacing={2} alignItems="center" sx={{ height: '50px' }}>
@@ -257,6 +258,8 @@ export default function ProductCard() {
                                         maxWidth: "100%",
                                         maxHeight: "400px",
                                         objectFit: "contain",
+                                        borderRadius: 8,
+                                        cursor: currentFile ? "pointer" : "default",
                                     }}
                                     onClick={() => currentFile && handleOpenModal(currentFileIndex)}
                                 />
@@ -264,6 +267,50 @@ export default function ProductCard() {
                                     <ArrowForwardIos />
                                 </IconButton>
                             </Box>
+
+                            {/* Миниатюрная галерея */}
+                            {files.length > 0 && (
+                                <Box
+                                    sx={{
+                                        display: "flex",
+                                        justifyContent: "center",
+                                        flexWrap: "wrap",
+                                        gap: 1,
+                                        mt: 1,
+                                    }}
+                                >
+                                    {files.map((file, index) => (
+                                        <Box
+                                            key={file.id}
+                                            onClick={() => setCurrentFileIndex(index)}
+                                            sx={{
+                                                border:
+                                                    index === currentFileIndex
+                                                        ? "2px solid #0288d1"
+                                                        : "1px solid #ccc",
+                                                borderRadius: 2,
+                                                padding: "2px",
+                                                cursor: "pointer",
+                                                transition: "transform 0.2s ease",
+                                                "&:hover": {
+                                                    transform: "scale(1.05)",
+                                                },
+                                            }}
+                                        >
+                                            <img
+                                                src={`${import.meta.env.VITE_API_URL}${file.fileUrl}`}
+                                                alt={file.originFileName}
+                                                style={{
+                                                    width: 60,
+                                                    height: 60,
+                                                    objectFit: "cover",
+                                                    borderRadius: 4,
+                                                }}
+                                            />
+                                        </Box>
+                                    ))}
+                                </Box>
+                            )}
 
                             {/* Кнопки загрузки и удаления фото под изображением */}
                             <Box sx={{ display: "flex", justifyContent: "center", gap: 8, mt: 0 }}>
@@ -282,8 +329,8 @@ export default function ProductCard() {
 
                                 <Button
                                     color="error"
-                                    onClick={() => handleDeleteFile(files[currentFileIndex]?.id)}
-                                    disabled={files.length === 0}
+                                    onClick={() => currentFile && handleDeleteFile(currentFile.id)}
+                                    disabled={!currentFile}
                                 >
                                     Bild löschen
                                 </Button>

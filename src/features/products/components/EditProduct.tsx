@@ -39,6 +39,7 @@ export default function EditProduct({ productId, closeModal }: EditProductProps)
                 productCategory: selectedProduct.productCategory || { id: 0, name: "" },
                 description: selectedProduct.description || "",
                 customsNumber: selectedProduct.customsNumber || "",
+                storageLocation: selectedProduct.storageLocation || "",
             });
         }
     }, [selectedProduct]);
@@ -250,6 +251,16 @@ export default function EditProduct({ productId, closeModal }: EditProductProps)
                     ))}
                 </Select>
             </FormControl>
+
+              <TextField
+                fullWidth
+                margin="normal"
+                label="Lagerplatz"
+                name="storageLocation"
+                value={productData.storageLocation}
+                onChange={handleChange}
+            />
+            
             <TextField
                 fullWidth
                 margin="normal"
