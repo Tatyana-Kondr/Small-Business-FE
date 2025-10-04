@@ -1,71 +1,129 @@
-import { useAppDispatch, useAppSelector } from "../redux/hooks";
-import { Alert, Box, Button, Link, TextField, Typography } from "@mui/material";
-import { useSelector } from "react-redux";
-import { RootState } from "../redux/store";
+import { Alert, Box, Button, Dialog, DialogContent, DialogTitle, IconButton, InputAdornment, TextField } from "@mui/material";
 import { Formik, Form, Field, ErrorMessage } from "formik";
 import * as Yup from "yup";
-import { register } from "../features/auth/authSlice";
-import { useNavigate } from "react-router-dom";
-import { useEffect } from "react";
+import { NewUserDto } from "../features/auth/types";
+import { useAppDispatch, useAppSelector } from "../redux/hooks";
+import { getAllUsers, register, selectRegisterError, selectStatus } from "../features/auth/authSlice";
+import Visibility from "@mui/icons-material/Visibility";
+import VisibilityOff from "@mui/icons-material/VisibilityOff";
+import { useState } from "react";
 
-export default function Register() {
+interface Props {
+  onClose: () => void;
+}
+
+export default function Register({ onClose }: Props) {
   const dispatch = useAppDispatch();
-  const { status, registerErrorMessage } = useSelector((state: RootState) => state.auth);
-  const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
-  const navigate = useNavigate();
+  const status = useAppSelector(selectStatus);
+  const registerErrorMessage = useAppSelector(selectRegisterError);
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/');
-    }
-  }, [isAuthenticated, navigate]);
+  const [showPassword, setShowPassword] = useState(false);
 
   const validationSchema = Yup.object().shape({
-    email: Yup.string().email("Ungültiges E-Mail-Format").required("Erforderlich"),
+    username: Yup.string().required("Erforderlich"),
+    email: Yup.string().email("Ungültige E-Mail-Adresse").required("Erforderlich"),
     password: Yup.string()
       .min(4, "Das Passwort muss mindestens 4 Zeichen lang sein")
-      .max(8, "Das Passwort darf nicht mehr als 8 Zeichen lang sein")
-      .matches(/^(?=.*[A-Z])(?=.*\d)[A-Za-z\d]{4,8}$/, "Das Passwort muss mindestens einen Großbuchstaben und eine Zahl enthalten")
-      .required("Required"),
+      .max(8, "Das Passwort darf nicht mehr als 16 Zeichen lang sein")
+      .matches(
+        /^(?=.*[A-Z])(?=.*\d)[A-Za-z\d!@#$%^&*]{4,16}$/,
+        "Das Passwort muss mindestens einen Großbuchstaben, einen Kleinbuchstaben und eine Zahl enthalten"
+      )
+      .required("Erforderlich"),
   });
 
   return (
-    <Box sx={{ maxWidth: 400, mx: "auto", mt: 5, p: 3, bgcolor: "white", boxShadow: 3, borderRadius: 2 }}>
-      <Typography variant="h5" sx={{ fontWeight: "bold",  color: "#0277bd" }}  align="center" gutterBottom>ANMELDUNG</Typography>
-      {registerErrorMessage && <Alert severity="error">{registerErrorMessage}</Alert>}
-      <Formik
-        initialValues={{ email: "", password: "" }}
-        validationSchema={validationSchema}
-        onSubmit={(values, { setSubmitting }) => {
-          dispatch(register(values));
-          setSubmitting(false);
-        }}
-      >
-        {({ isSubmitting }) => (
-          <Form>
-            <Field as={TextField} label="Email" name="email" type="email" fullWidth margin="normal" />
-            <ErrorMessage name="email">
-              {(msg) => <div style={{ color: "red", fontSize: 12 }}>{msg}</div>}
-            </ErrorMessage>
+    <Dialog open onClose={onClose}>
+      <DialogTitle>Neuen Benutzer registrieren</DialogTitle>
+      <DialogContent>
+        <Box sx={{ mt: 1, minWidth: 300 }}>
+        {registerErrorMessage && <Alert severity="error">{registerErrorMessage}</Alert>}
 
-            <Field as={TextField} label="Passwort" name="password" type="password" fullWidth margin="normal" />
-            <ErrorMessage name="password">
-              {(msg) => <div style={{ color: "red", fontSize: 12 }}>{msg}</div>}
-            </ErrorMessage>
+        <Formik
+          initialValues={{ username: "", email: "", password: "" } as NewUserDto}
+          validationSchema={validationSchema}
+          onSubmit={async (values: NewUserDto, { setSubmitting, resetForm }) => {
+            try {
+              await dispatch(register(values)).unwrap();
+              await dispatch(getAllUsers());
+              resetForm();
+              onClose();
+            } catch (err) {
+              console.error("Registration failed", err);
+            } finally {
+              setSubmitting(false);
+            }
+          }}
+        >
+          {({ isSubmitting }) => (
+            <Form>
+              {/* Username */}
+              <Field
+                as={TextField}
+                label="Username"
+                name="username"
+                fullWidth
+                margin="normal"
+              />
+              <ErrorMessage name="username">
+                {(msg) => <div style={{ color: "red", fontSize: 12 }}>{msg}</div>}
+              </ErrorMessage>
 
-            <Button type="submit" variant="contained" sx={{ marginTop:2, backgroundImage: "linear-gradient(to right, #006064, #4dd0e1)"}} fullWidth disabled={isSubmitting || status === "loading"}>
-              Anmelden
-            </Button>
-          </Form>
-        )}
-      </Formik>
-      <Typography variant="body2" align="center" mt={2}>
-        Bereits registriert?{" "}
-        <Link href="/login" color="primary" underline="hover" sx={{transition: "color 0.2s", "&:hover": { color: "#1e88e5" } }}>
-          Einloggen
-        </Link>
-      </Typography>
+              {/* Email */}
+              <Field
+                as={TextField}
+                label="E-Mail"
+                name="email"
+                type="email"
+                fullWidth
+                margin="normal"
+              />
+              <ErrorMessage name="email">
+                {(msg) => <div style={{ color: "red", fontSize: 12 }}>{msg}</div>}
+              </ErrorMessage>
 
-    </Box>
+              {/* Passwort */}
+              <Field
+                as={TextField}
+                label="Passwort"
+                name="password"
+                type={showPassword ? "text" : "password"}
+                fullWidth
+                margin="normal"
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        edge="end"
+                      >
+                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+              <ErrorMessage name="password">
+                {(msg) => <div style={{ color: "red", fontSize: 12 }}>{msg}</div>}
+              </ErrorMessage>
+
+               <Box display="flex" justifyContent="space-between" mt={2}>
+                  <Button variant="outlined" onClick={onClose}>
+                    Abbrechen
+                  </Button>
+                  <Button
+                    type="submit"
+                    variant="contained"
+                    disabled={isSubmitting || status === "loading"}
+                  >
+                    {isSubmitting || status === "loading" ? "Speichern..." : "Benutzer registrieren"}
+                  </Button>
+                </Box>
+              </Form>
+            )}
+          </Formik>
+        </Box>
+      </DialogContent>
+    </Dialog>
   );
 }
