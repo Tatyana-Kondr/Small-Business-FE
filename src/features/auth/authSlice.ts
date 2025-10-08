@@ -3,6 +3,7 @@ import { createAppSlice } from "../../redux/createAppSlice";
 import { HttpError } from "../../utils/handleFetchError";
 import { fetchChangePassword, fetchEditUser, fetchLogin, fetchLogout, fetchRefreshToken, fetchRegister, fetchUpdateUserRole, fetchUser, fetchUserProfile, fetchUsers } from "./api";
 import { AuthRequestDto, AuthState, ChangePasswordDto, NewUserDto, Role, UpdateUserDto, UserDto, } from "./types";
+import { getCompany } from "../company/companiesSlice";
 
 const initialState: AuthState = {
   usersList: [],
@@ -45,14 +46,19 @@ export const authSlice = createAppSlice({
     ),
 
     login: create.asyncThunk<UserDto, AuthRequestDto>(
-      async (credentials) => {
+      async (credentials, { dispatch }) => {
         const authResponse = await fetchLogin(credentials);
 
         // сохраняем accessToken в localStorage для последующих запросов
         localStorage.setItem("accessToken", authResponse.accessToken);
 
-        // получаем профиль пользователя
-        return fetchUserProfile();
+         // Загружаем профиль пользователя
+        const userProfile = await fetchUserProfile();
+
+        // Загружаем данные компании сразу после login
+        await dispatch(getCompany());
+
+        return userProfile;
       },
       {
         pending: (state) => {
@@ -81,13 +87,15 @@ export const authSlice = createAppSlice({
         try {
           const authResponse = await fetchRefreshToken();
           localStorage.setItem("accessToken", authResponse.accessToken);
-          return await fetchUserProfile();
+          const userProfile = await fetchUserProfile();
+
+          // Загружаем компанию после refresh
+          await dispatch(getCompany());
+
+          return userProfile;
         } catch (err: any) {
-          if (
-            err instanceof HttpError &&
-            (err.status === 401 || err.status === 403)
-          ) {
-            dispatch(logout());
+          if (err instanceof HttpError && (err.status === 401 || err.status === 403)) {
+            dispatch(authSlice.actions.logout());
           }
           throw err;
         }
