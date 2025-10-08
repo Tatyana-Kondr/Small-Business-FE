@@ -12,6 +12,8 @@ import PaymentsIcon from '@mui/icons-material/Payments';
 import CreatePayment from "../../payments/components/CreatePayment";
 import DeleteSale from "./DeleteSale";
 import { selectUser } from "../../auth/authSlice";
+import axios from "axios";
+import { ACCESS_TOKEN_KEY } from "../../../utils/token";
 
 
 const StyledTableHead = styled(TableHead)({
@@ -172,6 +174,65 @@ export default function Sales() {
     }));
   };
 
+  const openInvoice = async (e: React.MouseEvent, sale: any) => {
+  e.stopPropagation();
+
+  const token = localStorage.getItem(ACCESS_TOKEN_KEY);
+  if (!token) {
+    alert("Fehlender Authentifizierungstoken. Bitte melden Sie sich erneut an.");
+    return;
+  }
+
+  const year = sale.invoiceNumber.split("-")[1];
+  const url = `${import.meta.env.VITE_API_URL}/api/sales/invoices/${year}/${sale.invoiceNumber}.pdf`;
+
+  try {
+    // axios с указанием типа Blob
+    const res = await axios.get<Blob>(url, {
+      headers: { Authorization: `Bearer ${token}` },
+      responseType: "blob",
+    });
+
+    // создаем объект Blob
+    const pdfBlob = new Blob([res.data], { type: "application/pdf" });
+    const pdfUrl = URL.createObjectURL(pdfBlob);
+
+    // открываем в новой вкладке
+    window.open(pdfUrl, "_blank");
+  } catch (err) {
+    console.error("Fehler beim Laden der Rechnung:", err);
+    alert("Rechnung konnte nicht geladen werden (Fehler 403/404).");
+  }
+};
+
+// ✅ Открытие Lieferschein (Delivery Bill PDF)
+const openDeliveryBill = async (e: React.MouseEvent, sale: any) => {
+  e.stopPropagation();
+
+  const token = localStorage.getItem(ACCESS_TOKEN_KEY);
+  if (!token) {
+    alert("Fehlender Authentifizierungstoken. Bitte melden Sie sich erneut an.");
+    return;
+  }
+
+  const year = sale.deliveryBill.split("-")[1];
+  const url = `${import.meta.env.VITE_API_URL}/api/sales/delivery-bill/${year}/${sale.deliveryBill}.pdf`;
+
+  try {
+    const res = await axios.get<Blob>(url, {
+      headers: { Authorization: `Bearer ${token}` },
+      responseType: "blob",
+    });
+
+    const pdfBlob = new Blob([res.data], { type: "application/pdf" });
+    const pdfUrl = URL.createObjectURL(pdfBlob);
+    window.open(pdfUrl, "_blank");
+  } catch (err) {
+    console.error("Fehler beim Laden des Lieferscheins:", err);
+    alert("Lieferschein konnte nicht geladen werden (Fehler 403/404).");
+  }
+};
+
   return (
     <Container>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
@@ -328,14 +389,7 @@ export default function Sales() {
                       <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{sale.paymentStatus}</TableCell>
                       <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>
                         <Tooltip title="Rechnung" arrow>
-                          <IconButton
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const year = sale.invoiceNumber.split("-")[1];
-                              const url = `${import.meta.env.VITE_API_URL}/invoices/${year}/${sale.invoiceNumber}.pdf`;
-                              window.open(url, "_blank");
-                            }}
-                          >
+                           <IconButton onClick={(e) => openInvoice(e, sale)}>
                             <Typography variant="button"
                               sx={{ fontWeight: "bold", transition: 'transform 0.2s ease-in-out', "&:hover": { color: "#bdbdbd", transform: 'scale(1.2)', backgroundColor: "transparent" } }}>
                               RE
@@ -343,14 +397,7 @@ export default function Sales() {
                           </IconButton>
                         </Tooltip>
                         <Tooltip title="Lieferschein" arrow>
-                          <IconButton
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const year = sale.deliveryBill.split("-")[1];
-                              const url = `${import.meta.env.VITE_API_URL}/delivery-bill/${year}/${sale.deliveryBill}.pdf`;
-                              window.open(url, "_blank");
-                            }}
-                          >
+                           <IconButton onClick={(e) => openDeliveryBill(e, sale)}>
                             <Typography variant="button"
                               sx={{ fontWeight: "bold", transition: 'transform 0.2s ease-in-out', "&:hover": { color: "#bdbdbd", transform: 'scale(1.2)', backgroundColor: "transparent" } }}>
                               LF
