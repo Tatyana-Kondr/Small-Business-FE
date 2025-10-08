@@ -1,4 +1,4 @@
-const ACCESS_TOKEN_KEY = "jwt_access_token";
+export const ACCESS_TOKEN_KEY = "accessToken";
 
 // Сохранить токен
 export function saveToken(token: string) {
