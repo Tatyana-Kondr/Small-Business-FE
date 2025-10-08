@@ -31,9 +31,6 @@ import { useAutoLogout } from './hooks/useAutoLogout';
 import AutoLogoutModal from './components/AutoLogoutModal';
 import AdminSettings from './components/AdminSettings';
 
-
-
-
 function App() {
   const dispatch = useAppDispatch();
   const isAuthenticated = useAppSelector(selectIsAuthenticated);
