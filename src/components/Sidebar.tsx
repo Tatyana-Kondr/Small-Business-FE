@@ -23,6 +23,7 @@ import {
   Payments as PaymentsIcon,
   People as PeopleIcon,
   Groups as GroupsIcon,
+  Factory as FactoryIcon,
 } from "@mui/icons-material";
 import { useEffect, useState } from "react";
 import { useAppDispatch, useAppSelector } from "../redux/hooks";
@@ -92,6 +93,20 @@ const navItems: NavItem[] = [
         label: "Neue Bestellung",
         modal: {
           name: "createPurchase",
+          props: {},
+        },
+      },
+    ],
+  },
+   {
+    label: "Hertellungen",
+    to: "/productions",
+    icon: <FactoryIcon />,
+    children: [
+      {
+        label: "Neue Herstellung",
+        modal: {
+          name: "createProduction",
           props: {},
         },
       },
@@ -253,6 +268,9 @@ export default function Sidebar() {
         {navItems.map(({ label, to, icon, children }) => {
           // Скрываем раздел "Zahlungen" для не-админов
           if (label === "Zahlungen" && !isAdmin) return null;
+
+           // Скрываем раздел "Herstellungen" для не-админов
+          if (label === "Hertellungen" && !isAdmin) return null;
 
            // скрываем Admin Settings для не-админов
           if (label === "Admin Settings" && !isAdmin) return null;
