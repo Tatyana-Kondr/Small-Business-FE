@@ -1,8 +1,8 @@
 import { NavigateFunction } from "react-router-dom";
-import { handleApiError } from "./handleApiError";
 import { HttpError } from "./handleFetchError";
 import { store } from "../redux/store";
-import { logout } from "../features/auth/authSlice";
+import { logout, refresh } from "../features/auth/authSlice";
+import { ACCESS_TOKEN_KEY } from "./token";
 
 let navigate: NavigateFunction | null = null;
 
@@ -10,6 +10,9 @@ let navigate: NavigateFunction | null = null;
 export const setNavigate = (nav: NavigateFunction) => {
   navigate = nav;
 };
+
+let isRefreshing = false;
+let refreshPromise: Promise<any> | null = null;
 
 export interface ApiFetchOptions extends RequestInit {
   auth?: boolean; // использовать ли accessToken
@@ -20,29 +23,26 @@ export async function apiFetch<T>(
   options: ApiFetchOptions = {},
   fallbackMessage = "Ein unbekannter Fehler ist aufgetreten."
 ): Promise<T> {
-  try {
-    const headers = new Headers(options.headers);
+  const headers = new Headers(options.headers);
 
-    // Если auth=true, добавляем токен
-    if (options.auth) {
-      const token = localStorage.getItem("accessToken");
-      if (token) headers.set("Authorization", `Bearer ${token}`);
-    }
+  // Если нужен токен
+  if (options.auth) {
+    const token = localStorage.getItem(ACCESS_TOKEN_KEY);
+    if (token) headers.set("Authorization", `Bearer ${token}`);
+  }
 
-    // Всегда ставим JSON, если не FormData
-    if (!headers.has("Content-Type") && !(options.body instanceof FormData)) {
-      headers.set("Content-Type", "application/json");
-    }
+  // JSON по умолчанию
+  if (!headers.has("Content-Type") && !(options.body instanceof FormData)) {
+    headers.set("Content-Type", "application/json");
+  }
 
-    console.log("apiFetch →", url, options);
-
+  const doFetch = async () => {
     const response = await fetch(url, {
       ...options,
       headers,
-      credentials: "include", // для refreshToken cookie
+      credentials: "include", // чтобы refreshToken кука ушла
     });
 
-     // читаем тело ответа (json или текст)
     let responseData: any = {};
     const text = await response.text();
     try {
@@ -51,27 +51,66 @@ export async function apiFetch<T>(
       responseData = { message: text };
     }
 
-    // logout для 401/403 (кроме login)
-    if ((response.status === 401 || response.status === 403) && !url.endsWith("/login")) {
-      localStorage.removeItem("accessToken");
-      store.dispatch(logout());
-      if (navigate) navigate("/login", { replace: true });
-    }
-
     if (!response.ok) {
-      const message = responseData?.message || fallbackMessage;
-      throw new HttpError(message, response.status);
+      throw new HttpError(responseData?.message || fallbackMessage, response.status);
     }
 
     if (response.status === 204) return undefined as unknown as T;
-
     return responseData as T;
-  } catch (err) {
-    if (err instanceof HttpError) {
-      handleApiError(err);
-    } else {
-      handleApiError(err, "Unbekannter Fehler beim Abrufen der API.");
+  };
+
+  try {
+    return await doFetch();
+  } catch (err: any) {
+    // проверка на 401/403
+    if (err instanceof HttpError && (err.status === 401 || err.status === 403)) {
+      // не рефрешим сам /login и /refresh
+      if (url.endsWith("/login") || url.endsWith("/refresh")) {
+        throw err;
+      }
+
+      try {
+        // если уже идёт рефреш → ждём его
+        if (isRefreshing && refreshPromise) {
+          await refreshPromise;
+        } else {
+          isRefreshing = true;
+          refreshPromise = store.dispatch(refresh()).unwrap();
+          await refreshPromise;
+        }
+
+        // после успешного refresh пробуем запрос снова
+        const retryHeaders = new Headers(options.headers);
+        const newToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+        if (newToken && options.auth) {
+          retryHeaders.set("Authorization", `Bearer ${newToken}`);
+        }
+
+        const retryResponse = await fetch(url, {
+          ...options,
+          headers: retryHeaders,
+          credentials: "include",
+        });
+
+        if (!retryResponse.ok) {
+          throw new HttpError("Retry failed", retryResponse.status);
+        }
+
+        const retryText = await retryResponse.text();
+        return retryText ? JSON.parse(retryText) : ({} as T);
+      } catch (refreshErr) {
+        // если refresh тоже упал → logout
+        localStorage.removeItem(ACCESS_TOKEN_KEY);
+        store.dispatch(logout());
+        const navigate = (setNavigate as any).navigate;
+        if (navigate) navigate("/login", { replace: true });
+        throw refreshErr;
+      } finally {
+        isRefreshing = false;
+        refreshPromise = null;
+      }
     }
+
     throw err;
   }
 }
