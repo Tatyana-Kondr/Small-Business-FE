@@ -26,14 +26,20 @@ export function useAutoLogout({
   const [showModal, setShowModal] = useState(false);
   const [endTime, setEndTime] = useState(Date.now() + timeout);
 
+  // ====== Логаут ======
   const handleLogout = useCallback(() => {
     setShowModal(false);
+    localStorage.setItem("forceLogout", String(Date.now())); // синхронизируем вкладки
     dispatch(logout());
   }, [dispatch]);
 
+  // ====== Сброс таймера ======
   const resetTimer = useCallback(() => {
-    lastActivityRef.current = Date.now();
-    setEndTime(Date.now() + timeout);
+    const now = Date.now();
+    lastActivityRef.current = now;
+    setEndTime(now + timeout);
+
+    localStorage.setItem("lastActivity", String(now));
 
     if (timerRef.current) clearTimeout(timerRef.current);
     setShowModal(false);
@@ -44,15 +50,45 @@ export function useAutoLogout({
     }, timeUntilWarning);
   }, [timeout, warningTime]);
 
+  // ====== Эффекты ======
   useEffect(() => {
+    // события активности
     const events = ["mousemove", "keydown", "mousedown", "scroll", "touchstart"];
     events.forEach((event) => window.addEventListener(event, resetTimer));
 
+    // проверка сна
     const checkSleep = setInterval(() => {
       if (Date.now() - lastActivityRef.current > timeout) {
         handleLogout();
       }
     }, checkInterval);
+
+    // вкладка ушла в background / проснулась
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        const last = Number(localStorage.getItem("lastActivity")) || 0;
+        if (Date.now() - last > timeout) {
+          handleLogout();
+        } else {
+          resetTimer();
+        }
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    // закрытие вкладки/браузера
+    const handleUnload = () => {
+      handleLogout();
+    };
+    window.addEventListener("beforeunload", handleUnload);
+
+    // синхронизация между вкладками
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === "forceLogout") {
+        handleLogout();
+      }
+    };
+    window.addEventListener("storage", handleStorage);
 
     resetTimer();
 
@@ -60,8 +96,11 @@ export function useAutoLogout({
       if (timerRef.current) clearTimeout(timerRef.current);
       clearInterval(checkSleep);
       events.forEach((event) => window.removeEventListener(event, resetTimer));
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("beforeunload", handleUnload);
+      window.removeEventListener("storage", handleStorage);
     };
-  }, [resetTimer, handleLogout, checkInterval, timeout]);
+  }, [resetTimer, handleLogout, timeout, checkInterval]);
 
   return { showModal, endTime, warningTime, handleLogout };
 }
