@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { TextField, Button, Box, Typography, Alert, Link } from "@mui/material";
+import { TextField, Button, Box, Typography, Alert } from "@mui/material";
 import { useAppDispatch, useAppSelector } from "../redux/hooks";
 import { login, selectIsAuthenticated, selectLoginError, selectStatus } from "../features/auth/authSlice";
 import { AuthRequestDto } from "../features/auth/types";
@@ -23,7 +23,7 @@ const LoginForm: React.FC = () => {
     try {
       await dispatch(login(form)).unwrap();
     } catch (err) {
-      handleApiError(err); // используем немецкие переводы из errorMap
+      handleApiError(err); 
     }
   };
 
@@ -74,22 +74,6 @@ const LoginForm: React.FC = () => {
         value={form.password}
         onChange={handleChange}
       />
-
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-        <Link
-          color="primary"
-          href="#"
-          underline="hover"
-          sx={{
-            marginTop: 1,
-            fontSize: 14,
-            transition: "color 0.2s",
-            "&:hover": { color: "#1e88e5" },
-          }}
-        >
-          Passwort vergessen?
-        </Link>
-      </Box>
 
       <Button
         type="submit"
