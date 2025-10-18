@@ -1,66 +1,102 @@
-import { handleFetchError } from "../../../utils/handleFetchError";
+import { apiFetch } from "../../../utils/apiFetch";
 import {
-  SessionUserDto,
-  User,
-  UserCreateDto,
-  UserLoginDto,
+  AuthRequestDto,
+  AuthResponseDto,
+  ChangePasswordDto,
+  NewUserDto,
+  Role,
+  UpdateUserDto,
+  UserDto,
 } from "../types";
 
-// 📌 Регистрация
-export async function fetchRegister(userCreateDto: UserCreateDto): Promise<User> {
-  const res = await fetch("/api/users/register", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      accept: "*/*",
-    },
-    body: JSON.stringify(userCreateDto),
-  });
 
-  if (res.status === 409) {
-    throw new Error("Conflict: User already exists.");
-  }
-  if (!res.ok) {
-    await handleFetchError(res, "Failed to register user.");
-  }
-  return res.json();
+// Регистрация нового пользователя (только для ADMIN)
+export async function fetchRegister(newUserDto: NewUserDto): Promise<UserDto> {
+  return apiFetch<UserDto>("/api/auth/register", {
+    method: "POST",
+    body: JSON.stringify(newUserDto),
+    auth: true, // нужно быть залогиненным
+  });
 }
 
-// 📌 Логин
-export async function fetchLogin(userLoginDto: UserLoginDto): Promise<void> {
-  const res = await fetch("/api/auth/login", {
+// Логин пользователя
+export async function fetchLogin(authRequestDto: AuthRequestDto): Promise<AuthResponseDto> {
+  return apiFetch<AuthResponseDto>("/api/auth/login", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      accept: "application/json",
-    },
-    credentials: "include",
-    body: JSON.stringify(userLoginDto),
+    body: JSON.stringify(authRequestDto),
   });
-
-  if (!res.ok) {
-    await handleFetchError(res, "Ошибка входа");
-  }
 }
 
-// 📌 Получить текущего пользователя из сессии
-export async function fetchCurrentUser(): Promise<SessionUserDto> {
-  const res = await fetch("/api/auth/me", {
+// Обновление accessToken по refreshToken
+export async function fetchRefreshToken(): Promise<AuthResponseDto> {
+  return apiFetch<AuthResponseDto>("/api/auth/refresh", {
+    method: "POST",
+    auth: true, // нужно, чтобы куки с refreshToken ушли на сервер
+  });
+}
+
+// Выход пользователя
+export async function fetchLogout(): Promise<void> {
+  return apiFetch<void>("/api/auth/logout", {
+    method: "POST",
+    auth: true,
+  });
+}
+
+// Получение профиля текущего пользователя
+export async function fetchUserProfile(): Promise<UserDto> {
+  return apiFetch<UserDto>("/api/auth/me", {
     method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      accept: "*/*",
-    },
-    credentials: "include", // 💡 Критично — тянем сессию
+    auth: true,
   });
+}
 
-  if (res.status === 401) {
-    throw new Error("Not authenticated");
-  }
+// -------------------- Users --------------------
 
-  if (!res.ok) {
-    throw new Error("Failed to fetch user");
-  }
+// Получение списка всех пользователей (только ADMIN)
+export async function fetchUsers(): Promise<UserDto[]> {
+  return apiFetch<UserDto[]>("/api/users", {
+    auth: true,
+  },
+"Fehler beim Laden der Liste der Benutzer."
+);
+}
 
-  return res.json();
+// Получение  пользователя по id 
+export async function fetchUser(id: number): Promise<UserDto> {
+  return apiFetch<UserDto>(`/api/users/${id}`, 
+    { auth: true, },
+    "Fehler beim Laden des Benutzers."
+  );
+}
+
+export async function fetchEditUser(userId: number, updateUserDto: UpdateUserDto): Promise<UserDto> {
+  return apiFetch<UserDto>(`/api/users/${userId}`, {
+    method: "PATCH",
+    body: JSON.stringify(updateUserDto),
+    auth: true,
+  },
+  "Fehler beim Aktualisieren des Benutzers."
+);
+}
+
+// Обновление роли пользователя (только ADMIN)
+export async function fetchUpdateUserRole(userId: number, role: Role): Promise<UserDto> {
+  return apiFetch<UserDto>(`/api/users/${userId}/role`, {
+    method: "PATCH",
+    body: JSON.stringify({ role }),
+    auth: true,
+  },
+ "Fehler beim Aktualisieren der Rolle."
+);
+}
+
+export async function fetchChangePassword(userId: number, changePasswordDto: ChangePasswordDto): Promise<UserDto> {
+  return apiFetch<UserDto>(`/api/users/${userId}/change-password`, {
+    method: "PATCH",
+    body: JSON.stringify(changePasswordDto),
+    auth: true,
+  },
+  "Fehler beim Ändern des Passworts."
+);
 }

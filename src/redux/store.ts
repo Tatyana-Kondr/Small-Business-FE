@@ -12,6 +12,9 @@ import { paymentsSlice } from "../features/payments/paymentsSlice";
 import { paymentMethodsSlice } from "../features/payments/paymentMethodsSlice";
 import { paymentProcessesSlice } from "../features/payments/paymentProcessesSlice";
 import { modalSlice } from "../modal/modalSlice";
+import { shippingsSlice } from "../features/sales/shippingsSlice";
+import { companiesSlice } from "../features/company/companiesSlice";
+import { ProductionsSlice } from "../features/productions/productionsSlice";
 
 
 const rootReducer = combineSlices(productsSlice, 
@@ -24,6 +27,9 @@ const rootReducer = combineSlices(productsSlice,
                                   paymentsSlice,
                                   paymentMethodsSlice,
                                   paymentProcessesSlice,
+                                  shippingsSlice,
+                                  companiesSlice,
+                                  ProductionsSlice,
                                   modalSlice,
 )
 

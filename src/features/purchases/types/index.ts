@@ -64,7 +64,7 @@ export interface PurchasesState {
 
 export interface PurchaseItemsState {
     purchaseItemsList: PurchaseItem[];
-    selectedPurchase: PurchaseItem | undefined;
+    selectedPurchaseItem: PurchaseItem | undefined;
 
 }
 

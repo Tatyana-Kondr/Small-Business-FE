@@ -4,6 +4,7 @@ import { useLocation } from "react-router-dom";
 import { useAppDispatch } from "../redux/hooks";
 import { getPurchases } from "../features/purchases/purchasesSlice";
 import { getSales } from "../features/sales/salesSlice";
+import { getProductions } from "../features/productions/productionsSlice";
 
 export function useReloadOnSuccess() {
   const dispatch = useAppDispatch();
@@ -25,6 +26,9 @@ export function useReloadOnSuccess() {
     }
     if (location.pathname.startsWith("/lieferanten")) {
       dispatch(getSales({ page: 0, size: 15 }));
+    } 
+    if (location.pathname.startsWith("/productions")) {
+      dispatch(getProductions({ page: 0, size: 15 }));
     } 
   }, [dispatch, location.pathname]);
 }

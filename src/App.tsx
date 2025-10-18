@@ -1,13 +1,12 @@
 import './App.css'
 import Layout from "./components/Layout"
 
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import NoSuchPage from './components/NoSuchPage';
 import Home from './components/Home';
 import LoginForm from './components/Login';
 import { useAppDispatch, useAppSelector } from './redux/hooks';
-import { selectIsAuthenticated, user } from './features/auth/authSlice';
-import { useEffect } from 'react';
+import { refresh, selectIsAuthenticated, selectSessionChecked, setSessionChecked } from './features/auth/authSlice';
 import Customers from './features/customers/components/Customers';
 import CustomersWithNumber from './features/customers/components/CustomersWithNumber';
 import CustomerCard from './features/customers/components/CustomerCard';
@@ -22,151 +21,114 @@ import PaymentMethodsList from './features/payments/components/paymentMetods/Pay
 import PaymentProcessesList from './features/payments/components/paymentProcesses/PaymentProcessesList';
 import { ModalManager } from './modal/ModalManager';
 import PrivateRoute from './components/PrivateRoute';
-import Register from './components/Register';
-import { useSessionCheck } from './hooks/useSessionCheck';
 import CreateProductCategory from './features/products/components/category/CreateProductCategory';
-import { Toaster } from 'react-hot-toast';
 import SaleCard from './features/sales/components/SaleCard';
-
+import Spinner from './components/Spinner';
+import { JSX, useEffect, useState } from 'react';
+import ShippingsList from './features/sales/components/shipping/ShippingsList';
+import { setNavigate } from './utils/apiFetch';
+import { useAutoLogout } from './hooks/useAutoLogout';
+import AutoLogoutModal from './components/AutoLogoutModal';
+import AdminSettings from './components/AdminSettings';
+import ProductionsList from './features/productions/components/ProductionsList';
+import EditProduction from './features/productions/components/EditProduction';
 
 function App() {
-  useSessionCheck();
-  const isAuthenticated = useAppSelector(selectIsAuthenticated);
-  const isSessionChecked = useAppSelector((state) => state.auth.isSessionChecked);
   const dispatch = useAppDispatch();
+  const isAuthenticated = useAppSelector(selectIsAuthenticated);
+  const isSessionChecked = useAppSelector(selectSessionChecked);
+  const navigate = useNavigate();
 
+   // Динамический таймер автологаута
+  const [autoLogoutMinutes, setAutoLogoutMinutes] = useState<number>(
+    Number(localStorage.getItem("autoLogoutMinutes")) ||
+      Number(import.meta.env.VITE_AUTOLOGOUT_TIMEOUT) ||
+      30
+  );
+
+  const { showModal, endTime, warningTime, handleLogout } = useAutoLogout({
+    timeout: autoLogoutMinutes * 60 * 1000, // в миллисекундах
+  });
+
+  // Передаем navigate в apiFetch
   useEffect(() => {
-    if (isAuthenticated) {
-      dispatch(user());
+    setNavigate(navigate);
+  }, [navigate]);
+
+  // Проверка сессии при загрузке
+  useEffect(() => {
+    const token = localStorage.getItem("accessToken");
+    if (token) {
+      dispatch(refresh());
+    } else {
+      dispatch(setSessionChecked(true));
     }
-  }, [isAuthenticated, dispatch]);
+  }, [dispatch]);
 
-  console.log("auth", isAuthenticated, isSessionChecked);
+  if (!isSessionChecked && location.pathname !== "/login") return <Spinner />;
 
-  if (!isSessionChecked) {
-    return <div>Laden...</div>; // или красивый спиннер
-  }
+  const Private = (component: JSX.Element, role?: "USER" | "ADMIN") => {
+    return <PrivateRoute role={role}>{component}</PrivateRoute>;
+  };
 
   return (
     <div className="App" style={{ textAlign: "center", marginTop: "50px" }}>
-      <Toaster position="top-center" reverseOrder={false} />
+
       <Routes>
         <Route path="/" element={<Layout />}>
-          <Route path="login" element={isAuthenticated ? <Navigate to="/" /> : <LoginForm />} />
-          <Route path="register" element={isAuthenticated ? <Navigate to="/" /> : <Register />} />
+          {/* Публичные страницы */}
+          <Route path="login" element={isAuthenticated ? <Navigate to="/" replace /> : <LoginForm />} />
 
-
-          {/* Если пользователь авторизован, показываем Home */}
-          <Route index element={
-            <PrivateRoute>
-              <Home />
-            </PrivateRoute>
-          }
-          />
+          {/* Защищённые страницы */}
+          <Route index element={Private(<Home />)} />     
+          <Route path="product-categories" element={Private(<ProductCategoryList />, "ADMIN")} />
+          <Route path="create-product-category" element={Private(<CreateProductCategory />, "ADMIN")} />
+          <Route path="lieferanten" element={Private(<Customers />)} />
+          <Route path="kunden" element={Private(<CustomersWithNumber />)} />
+          <Route path="customer/:customerId" element={Private(<CustomerCard />)} />
+          <Route path="kunde/:customerId" element={Private(<CustomerWithNumberCard />)} />
+          <Route path="product-card/:productId" element={Private(<ProductCard />)} />
+          <Route path="purchases" element={Private(<Purchases />)} />
+          <Route path="purchases/:purchaseId" element={Private(<PurchaseCard />, "ADMIN")} />
+          <Route path="sales" element={Private(<Sales />)} />
+          <Route path="sales/:saleId" element={Private(<SaleCard />)} />
+          <Route path="payments" element={Private(<Payments />, "ADMIN")} />
+          <Route path="payment-methods" element={Private(<PaymentMethodsList />, "ADMIN")} />
+          <Route path="payment-processes" element={Private(<PaymentProcessesList />, "ADMIN")} />
+          <Route path="shippings" element={Private(<ShippingsList />, "ADMIN")} />
+          <Route path="productions" element={Private(<ProductionsList />, "ADMIN")} />
+          <Route path="productions/:productionId" element={Private(<EditProduction />)} />
           <Route
-            path="/product-categories"
+            path="settings"
             element={
-              <PrivateRoute>
-                <ProductCategoryList />
-              </PrivateRoute>
+              Private(
+                <AdminSettings
+                  autoLogoutMinutes={autoLogoutMinutes}
+                  setAutoLogoutMinutes={(minutes) => {
+                    setAutoLogoutMinutes(minutes);
+                    localStorage.setItem("autoLogoutMinutes", String(minutes));
+                  }}
+                />,
+                "ADMIN"
+              )
             }
           />
-          <Route
-            path="/lieferanten"
-            element={
-              <PrivateRoute>
-                <Customers />
-              </PrivateRoute>} />
-          <Route
-            path="/kunden"
-            element={
-              <PrivateRoute>
-                <CustomersWithNumber />
-              </PrivateRoute>
-            } />
-          <Route
-            path="/customer/:customerId"
-            element={
-              <PrivateRoute>
-                <CustomerCard />
-              </PrivateRoute>} />
-          <Route
-            path="/kunde/:customerId"
-            element={
-              <PrivateRoute>
-                <CustomerWithNumberCard />
-              </PrivateRoute>} />
-          <Route
-            path="/product-card/:productId"
-            element={
-              <PrivateRoute>
-                <ProductCard />
-              </PrivateRoute>} />
-          <Route
-            path="/product-categories"
-            element={
-              <PrivateRoute>
-                <ProductCategoryList />
-              </PrivateRoute>} />
-          <Route
-            path="/create-product-category"
-            element={
-              <PrivateRoute>
-                <CreateProductCategory />
-              </PrivateRoute>} />
-          <Route
-            path="/purchases"
-            element={
-              <PrivateRoute>
-                <Purchases />
-              </PrivateRoute>} />
 
-          <Route
-            path="/purchases/:purchaseId"
-            element={
-              <PrivateRoute>
-                <PurchaseCard />
-              </PrivateRoute>} />
-          <Route
-            path="/sales"
-            element={
-              <PrivateRoute>
-                <Sales />
-              </PrivateRoute>} />
-          <Route
-            path="/sales/:saleId"
-            element={
-              <PrivateRoute>
-                <SaleCard />
-              </PrivateRoute>} />
-
-          <Route
-            path="/payments"
-            element={
-              <PrivateRoute>
-                <Payments />
-              </PrivateRoute>} />
-          <Route
-            path="/payment-methods"
-            element={
-              <PrivateRoute>
-                <PaymentMethodsList />
-              </PrivateRoute>} />
-          <Route
-            path="/payment-processes"
-            element={
-              <PrivateRoute>
-                <PaymentProcessesList />
-              </PrivateRoute>} />
-
-          {/* Страница 404 */}
+          {/* 404 страница */}
           <Route path="*" element={<NoSuchPage />} />
         </Route>
       </Routes>
       <ModalManager />
+      
+        <AutoLogoutModal
+        show={showModal}
+        endTime={endTime}
+        warningTime={warningTime}
+        onLogout={handleLogout}
+      />
+    
     </div>
-
-  )
+  );
 }
 
-export default App
+export default App;

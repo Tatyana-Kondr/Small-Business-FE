@@ -16,6 +16,7 @@ export interface Product{
     createdDate: string
     dateOfLastPurchase: string
     lastModifiedDate: string
+    storageLocation: string
 }
 
 export interface ProductCategory {
@@ -50,6 +51,7 @@ export interface NewProductDto{
   sellingPrice: number
   productCategory: ProductCategory
   unitOfMeasurement: string
+  storageLocation?: string
 }
 
 export interface UpdateProductDto {
@@ -64,6 +66,7 @@ export interface UpdateProductDto {
   newDimensions?: Dimensions;
   productCategory?: ProductCategory;
   description?: string;
+  storageLocation?: string
   customsNumber?: string;
   // Добавляем индексную сигнатуру
   [key: string]: string | number | Dimensions | ProductCategory | undefined;

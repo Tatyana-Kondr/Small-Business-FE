@@ -20,6 +20,7 @@ import {
   Autocomplete,
   InputLabel,
   Tooltip,
+  Alert,
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { Delete as DeleteIcon, Clear as ClearIcon } from '@mui/icons-material';
@@ -36,9 +37,10 @@ import { getCustomers } from '../../customers/customersSlice';
 import { Product } from '../../products/types';
 import { handleApiError } from '../../../utils/handleApiError';
 import { showSuccessToast } from '../../../utils/toast';
-import { NewSaleDto, NewSaleItemDto, NewShippingDimensionsDto } from '../types';
+import { NewSaleDto, NewSaleItemDto, NewShippingDimensionsDto, Shipping } from '../types';
 import { getSaleById, updateSale } from '../salesSlice';
-import { Shipping, TermsOfPayment } from '../../../constants/enums';
+import { TermsOfPayment } from '../../../constants/enums';
+import { getShippings, selectShippings } from '../shippingsSlice';
 
 const StyledTableHead = styled(TableHead)(({
   backgroundColor: "#1a3d6d",
@@ -78,7 +80,7 @@ export default function SaleCard() {
     invoiceNumber: '',
     accountObject: '',
     typeOfOperation: 'VERKAUF',
-    shipping: '',
+    shippingId: 0,
     shippingDimensions: '',
     termsOfPayment: 'ÜBERWEISUNG_14_TAGE',
     salesDate: '',
@@ -96,25 +98,33 @@ export default function SaleCard() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const categories = useAppSelector(selectProductCategories);
   const products = useAppSelector(selectProducts);
+  const shippings = useAppSelector(selectShippings);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
+  const [selectedShipping, setSelectedShipping] = useState<Shipping | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [weightInput, setWeightInput] = useState("");
   const [deliveryDateValue, setDeliveryDateValue] = useState<Dayjs | null>(
     sale.deliveryDate ? dayjs(sale.deliveryDate) : null
   );
 
+  const isPaid = sale.paymentStatus === "BEZAHLT";
+
+  // 1. Загружаем данные продажи и справочники
   useEffect(() => {
-    // Загрузка данных продажи
+    dispatch(getCustomers({ page: 0, size: 100 }))
+      .unwrap()
+      .then(c => setCustomers(c.content))
+      .catch(error => handleApiError(error, "Fehler beim Laden der Kunden."));
+
     dispatch(getSaleById(Number(saleId)))
       .unwrap()
       .then(s => {
-        console.log('Loaded sale:', s);
         setSale({
-          customerId: s.id,
+          customerId: s.customerId, // 👈 исправлено (у тебя было s.id)
           invoiceNumber: s.invoiceNumber,
           accountObject: s.accountObject,
           typeOfOperation: s.typeOfOperation,
-          shipping: s.shipping,
+          shippingId: s.shippingId,
           shippingDimensions: s.shippingDimensions,
           termsOfPayment: s.termsOfPayment,
           salesDate: s.salesDate,
@@ -133,14 +143,29 @@ export default function SaleCard() {
       })
       .catch(error => handleApiError(error, "Fehler beim Laden des Auftrags."));
 
-    dispatch(getCustomers({ page: 0, size: 100 }))
-      .unwrap()
-      .then(c => setCustomers(c.content))
-      .catch(error => handleApiError(error, "Fehler beim Laden der Kunden."));
-
+    dispatch(getShippings());
     dispatch(getProductCategories());
     dispatch(getProducts({ page: 0, size: 100 }));
   }, [dispatch, saleId]);
+
+  // 2. Автоматическая подстановка Kunde после загрузки customers + sale
+  useEffect(() => {
+    if (customers.length && sale.customerId) {
+      const customer = customers.find(c => c.id === sale.customerId) || null;
+      if (customer) {
+        setSale(prev => ({ ...prev, customerId: customer.id }));
+      }
+    }
+  }, [customers, sale.customerId]);
+
+  // 3. Автоматическая подстановка Versand после загрузки shippings + sale
+  useEffect(() => {
+    if (shippings.length && sale.shippingId) {
+      const shipping = shippings.find(s => s.id === sale.shippingId) || null;
+      setSelectedShipping(shipping);
+    }
+  }, [shippings, sale.shippingId]);
+
 
   useEffect(() => {
     if (sale.shippingDimensions && sale.shippingDimensions.weight != null) {
@@ -351,6 +376,7 @@ export default function SaleCard() {
   };
 
   const handleSubmit = () => {
+
     if (!sale.salesItems.length) {
       handleApiError(new Error("Der Auftrag enthält keine Artikel."));
       return;
@@ -390,6 +416,13 @@ export default function SaleCard() {
         {/* форма и добавленные товары */}
         <Grid item xs={12} md={12}>
           <Paper elevation={3} sx={{ p: 3 }}>
+
+            {isPaid && (
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                Dieser Auftrag ist bereits <b>bezahlt</b>.
+              </Alert>
+            )}
+
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
               <Typography variant="h5" sx={{ color: "#0277bd", fontWeight: "bold" }}>
                 {`Auftrag Nr. ${id} `}
@@ -402,9 +435,8 @@ export default function SaleCard() {
                     labelId="typeOfOperation-label"
                     value={sale.typeOfOperation}
                     label="Art der Operation"
-                    onChange={(e) =>
-                      setSale({ ...sale, typeOfOperation: e.target.value as SaleType })
-                    }
+                    onChange={(e) => setSale({ ...sale, typeOfOperation: e.target.value as SaleType })}
+                    disabled={isPaid} // блокируем если BEZAHLT
                   >
                     {typeOptions.map((type) => (
                       <MenuItem key={type} value={type}>
@@ -424,16 +456,14 @@ export default function SaleCard() {
                   sx={{ mb: 3 }}
                   options={[...customers].sort((a, b) => a.name.localeCompare(b.name))}
                   getOptionLabel={(option) => option.name}
-                  onChange={(_, value) => {
-                    setSale(prev => ({
-                      ...prev,
-                      customerId: value?.id ?? 0,
-                    }));
-                  }}
                   value={customers.find(v => v.id === sale.customerId) || null}
+                  onChange={(_, value) =>
+                    setSale(prev => ({ ...prev, customerId: value?.id ?? 0 }))
+                  }
                   renderInput={(params) => (
                     <TextField {...params} label="Kunde" />
                   )}
+                  disabled={isPaid} // блокируем если BEZAHLT
                 />
               </Grid>
               {/* Datum */}
@@ -454,6 +484,7 @@ export default function SaleCard() {
                       }));
                     }}
                     slotProps={{ textField: { fullWidth: true } }}
+                    disabled={isPaid}
                   />
                 </LocalizationProvider>
               </Grid>
@@ -467,6 +498,7 @@ export default function SaleCard() {
                   label="Rechnung"
                   value={sale.invoiceNumber}
                   onChange={(e) => setSale({ ...sale, invoiceNumber: e.target.value })}
+                  disabled={isPaid}
                   fullWidth
                 />
               </Grid>
@@ -513,22 +545,19 @@ export default function SaleCard() {
 
                 <Grid container spacing={2}>
                   <Grid item xs={4}>
-                    <FormControl fullWidth>
-                      <InputLabel id="shipping-label" htmlFor="shipping-select">Versand</InputLabel>
-                      <Select
-                        id="shipping-select"
-                        labelId="shipping-label"
-                        label="Versand"
-                        value={sale.shipping}
-                        onChange={(e) => setSale(prev => ({ ...prev, shipping: e.target.value as Shipping }))}
-                      >
-                        {Shipping.map((type) => (
-                          <MenuItem key={type} value={type}>
-                            {type}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
+                    <Autocomplete
+                      fullWidth
+                      options={[...shippings].sort((a, b) => a.name.localeCompare(b.name))}
+                      getOptionLabel={(option) => option.name}
+                      value={selectedShipping}
+                      onChange={(_, value) => {
+                        setSelectedShipping(value);
+                        setSale(prev => ({ ...prev, shippingId: value?.id ?? 0 }));
+                      }}
+                      renderInput={(params) => (
+                        <TextField {...params} label="Versand" />
+                      )}
+                    />
                   </Grid>
 
                   <Grid item xs={8}>
@@ -676,6 +705,7 @@ export default function SaleCard() {
                           : e.target.value,
                       }))
                     }
+                    disabled={isPaid}
                   >
                     <MenuItem value={0}>0%</MenuItem>
                     <MenuItem value={7}>7%</MenuItem>
@@ -700,6 +730,7 @@ export default function SaleCard() {
                           : e.target.value,
                       }))
                     }
+                    disabled={isPaid}
                   >
                     <MenuItem value={0}>0%</MenuItem>
                     <MenuItem value={5}>5%</MenuItem>
@@ -750,6 +781,7 @@ export default function SaleCard() {
                           onChange={(e) => handleItemChange(index, 'quantity', parseFloat(e.target.value))}
                           InputProps={{ disableUnderline: true, sx: { textAlign: "center" } }}
                           sx={{ fontSize: '0.875rem', '& .MuiInputBase-root': { border: 'none', }, '& .MuiInputBase-input': { fontSize: '0.875rem', padding: 0, textAlign: 'center' }, min: 0, step: 0.01 }}
+                          disabled={isPaid}
                         />
                       </TableCell>
                       <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", width: "70px" }}>
@@ -761,6 +793,7 @@ export default function SaleCard() {
                           onChange={(e) => handleItemChange(index, 'unitPrice', parseFloat(e.target.value))}
                           InputProps={{ disableUnderline: true, }}
                           sx={{ fontSize: '0.875rem', '& .MuiInputBase-root': { border: 'none', }, '& .MuiInputBase-input': { fontSize: '0.875rem', padding: 0, textAlign: 'right' }, min: 0, step: 0.01 }}
+                          disabled={isPaid}
                         />
                       </TableCell>
                       <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", width: 70 }}>
@@ -773,6 +806,7 @@ export default function SaleCard() {
                           onChange={(e) => handleItemChange(index, 'discount', parseFloat(e.target.value))}
                           InputProps={{ disableUnderline: true, }}
                           sx={{ fontSize: '0.875rem', '& .MuiInputBase-root': { border: 'none', }, '& .MuiInputBase-input': { fontSize: '0.875rem', padding: 0, textAlign: 'right' }, min: 0, step: 1 }}
+                          disabled={isPaid}
                         />
                       </TableCell>
                       <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", width: 70 }}>
@@ -785,6 +819,7 @@ export default function SaleCard() {
                           onChange={(e) => handleItemChange(index, 'tax', parseFloat(e.target.value))}
                           InputProps={{ disableUnderline: true, }}
                           sx={{ fontSize: '0.875rem', '& .MuiInputBase-root': { border: 'none', }, '& .MuiInputBase-input': { fontSize: '0.875rem', padding: 0, textAlign: 'right' }, min: 0, step: 1 }}
+                          disabled={isPaid}
                         />
                       </TableCell>
                       <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", width: 90, textAlign: "right" }}>
@@ -849,80 +884,80 @@ export default function SaleCard() {
               </Grid>
             </Grid>
 
-            <Box sx={{ mb: 2 }}>
-              <Grid container spacing={1} alignItems="center">
-                <Grid item xs={4}>
-                  <FormControl fullWidth>
-                    <Select
-                      value={selectedCategory || ''}
-                      onChange={(e) =>
-                        setSelectedCategory(e.target.value ? Number(e.target.value) : null)
-                      }
-                      displayEmpty
-                    >
-                      <MenuItem value="">Alle Kategorien</MenuItem>
-                      {categories.map((cat) => (
-                        <MenuItem key={cat.id} value={cat.id}>
-                          {cat.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={8}>
-                  <TextField
-                    fullWidth
-                    placeholder="Produktname, Artikel, Lieferanten-Artikel suchen..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    InputProps={{
-                      endAdornment: (
-                        <InputAdornment position="end">
-                          <IconButton onClick={() => setSearchTerm('')}>
-                            <ClearIcon />
-                          </IconButton>
-                        </InputAdornment>
-                      ),
-                    }}
-                  />
-                </Grid>
-              </Grid>
-
-              <Box sx={{ maxHeight: 263, overflowY: 'auto', mt: 1, border: "1px solid #ddd" }}>
-                <Table size="small">
-                  <StyledTableHead>
-                    <TableRow>
-                      <TableCell>Artikelname</TableCell>
-                      <TableCell>Artikel</TableCell>
-                      <TableCell>Lieferanten-Artikel</TableCell>
-                      <TableCell>Preis</TableCell>
-
-                    </TableRow>
-                  </StyledTableHead>
-                  <TableBody>
-                    {filteredProducts.map(product => (
-                      <StyledTableRow
-                        key={product.id}
-                        onClick={() => handleAddProductToCart(product)}
+            {!isPaid && (
+              <Box sx={{ mb: 2 }}>
+                <Grid container spacing={1} alignItems="center">
+                  <Grid item xs={4}>
+                    <FormControl fullWidth>
+                      <Select
+                        value={selectedCategory || ''}
+                        onChange={(e) =>
+                          setSelectedCategory(e.target.value ? Number(e.target.value) : null)
+                        }
+                        displayEmpty
                       >
-                        <TableCell>{product.name}</TableCell>
-                        <TableCell>{product.article}</TableCell>
-                        <TableCell>{product.vendorArticle}</TableCell>
-                        <TableCell>{product.purchasingPrice.toFixed(2)}</TableCell>
-                      </StyledTableRow>
-                    ))}
-                    {filteredProducts.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={4} align="center">
-                          Keine Produkte gefunden
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </Box>
-            </Box>
+                        <MenuItem value="">Alle Kategorien</MenuItem>
+                        {categories.map((cat) => (
+                          <MenuItem key={cat.id} value={cat.id}>
+                            {cat.name}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={8}>
+                    <TextField
+                      fullWidth
+                      placeholder="Produktname, Artikel, Lieferanten-Artikel suchen..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      InputProps={{
+                        endAdornment: (
+                          <InputAdornment position="end">
+                            <IconButton onClick={() => setSearchTerm('')}>
+                              <ClearIcon />
+                            </IconButton>
+                          </InputAdornment>
+                        ),
+                      }}
+                    />
+                  </Grid>
+                </Grid>
 
+                <Box sx={{ maxHeight: 263, overflowY: 'auto', mt: 1, border: "1px solid #ddd" }}>
+                  <Table size="small">
+                    <StyledTableHead>
+                      <TableRow>
+                        <TableCell>Artikelname</TableCell>
+                        <TableCell>Artikel</TableCell>
+                        <TableCell>Lieferanten-Artikel</TableCell>
+                        <TableCell>Preis</TableCell>
+                      </TableRow>
+                    </StyledTableHead>
+                    <TableBody>
+                      {filteredProducts.map(product => (
+                        <StyledTableRow
+                          key={product.id}
+                          onClick={() => handleAddProductToCart(product)}
+                        >
+                          <TableCell>{product.name}</TableCell>
+                          <TableCell>{product.article}</TableCell>
+                          <TableCell>{product.vendorArticle}</TableCell>
+                          <TableCell>{product.purchasingPrice.toFixed(2)}</TableCell>
+                        </StyledTableRow>
+                      ))}
+                      {filteredProducts.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={4} align="center">
+                            Keine Produkte gefunden
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </Box>
+              </Box>
+            )}
 
           </Paper>
         </Grid>

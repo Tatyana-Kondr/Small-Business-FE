@@ -11,6 +11,7 @@ import { styled } from "@mui/material/styles";
 import { useNavigate } from "react-router-dom";
 import ClearIcon from "@mui/icons-material/Clear";
 import debounce from "lodash.debounce";
+import { selectIsAuthenticated } from "../../auth/authSlice";
 
 // Стили для заголовков таблицы
 const StyledTableHead = styled(TableHead)({
@@ -29,6 +30,7 @@ const formatNumber = (value: number) => (
 
 export default function Products() {
   const dispatch = useAppDispatch();
+  const isAuthenticated = useAppSelector(selectIsAuthenticated);
   const products = useAppSelector(selectProducts);
   const totalPages = useAppSelector(selectTotalPages);  // Получаем количество страниц
   const [page, setPage] = useState(0);
@@ -44,8 +46,10 @@ export default function Products() {
   );
 
   useEffect(() => {
+    if (isAuthenticated) {
     dispatch(getProducts({ page, searchTerm }));
-  }, [dispatch, page, searchTerm]);
+    }
+  }, [dispatch, isAuthenticated, page, searchTerm]);
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const newSearchTerm = event.target.value;

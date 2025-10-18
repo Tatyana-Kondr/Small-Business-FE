@@ -15,7 +15,7 @@ export async function fetchPurchases(
 
   return apiFetch<PaginatedResponse<Purchase>>(
     `/api/purchases?${queryParams.toString()}`,
-    undefined,
+    {auth: true},
     "Fehler beim Laden der Bestellungen."
   );
 }
@@ -27,6 +27,7 @@ export async function fetchAddPurchase(newPurchase: NewPurchaseDto): Promise<Pur
       method: "POST",
       body: JSON.stringify(newPurchase),
       headers: { "Content-Type": "application/json" },
+      auth: true,
     },
     "Fehler beim Hinzufügen der Bestellung."
   );
@@ -39,6 +40,7 @@ export async function fetchUpdatePurchase(id: number, updatedPurchase: NewPurcha
       method: "PUT",
       body: JSON.stringify(updatedPurchase),
       headers: { "Content-Type": "application/json" },
+      auth: true,
     },
     `Fehler beim Aktualisieren der Bestellung mit der ID ${id}.`
   );
@@ -47,7 +49,7 @@ export async function fetchUpdatePurchase(id: number, updatedPurchase: NewPurcha
 export async function fetchDeletePurchase(id: number): Promise<void> {
   return apiFetch<void>(
     `/api/purchases/${id}`,
-    { method: "DELETE" },
+    { method: "DELETE", auth: true },
     `Fehler beim Löschen der Bestellung mit der ID ${id}.`
   );
 }
@@ -55,7 +57,7 @@ export async function fetchDeletePurchase(id: number): Promise<void> {
 export async function fetchPurchaseById(id: number): Promise<Purchase> {
   return apiFetch<Purchase>(
     `/api/purchases/${id}`,
-    undefined,
+    {auth: true},
     `Fehler beim Laden der Bestellung mit der ID ${id}.`
   );
 }
@@ -73,7 +75,7 @@ export async function fetchSearchPurchases(
 
   return apiFetch<PaginatedResponse<Purchase>>(
     `/api/purchases/search/${encodeURIComponent(query)}?${queryParams.toString()}`,
-    undefined,
+    {auth: true},
     "Fehler bei der Suche der Bestellungen."
   );
 }
@@ -113,7 +115,7 @@ export async function fetchPurchasesByFilter(
 
   return apiFetch<PaginatedResponse<Purchase>>(
     `/api/purchases/filter?${queryParams.toString()}`,
-    undefined,
+    {auth: true},
     "Fehler beim Laden der gefilterten Bestellungen."
   );
 }
@@ -121,7 +123,7 @@ export async function fetchPurchasesByFilter(
 export async function fetchUpdatePurchasePaymentStatus(id: number): Promise<Purchase> {
   return apiFetch<Purchase>(
     `/api/purchases/${id}/update-payment-status`,
-    { method: "PATCH", credentials: "include" },
+    { method: "PATCH", credentials: "include", auth: true },
     `Fehler beim Aktualisieren des Zahlungsstatus für Bestellung ${id}.`
   );
 }

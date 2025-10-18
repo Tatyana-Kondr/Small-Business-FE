@@ -40,22 +40,6 @@ export const TypesOfDocument: TypeOfDocument[] = [
   "BESTELLUNG",
 ];
 
-// Доставка
-export type Shipping  =
-  | "DHL_PAKET"
-  | "POST_MAXI_BRIEF"
-  | "HERMES"
-  | "ASH_LOGISTIK_LUFTFRACHT_TRANSPORTE_ZOLLSERVICE"
-  | "ABHOLUNG";
-
-export const Shipping: Shipping[] = [
-  "DHL_PAKET",
-  "POST_MAXI_BRIEF",
-  "HERMES",
-  "ASH_LOGISTIK_LUFTFRACHT_TRANSPORTE_ZOLLSERVICE",
-  "ABHOLUNG"
-];
-
 //Вид оплаты счета
 export type TermsOfPayment =
 | "BETRAG_IM_BAR"

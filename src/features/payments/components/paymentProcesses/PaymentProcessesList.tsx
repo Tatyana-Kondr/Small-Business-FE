@@ -1,8 +1,6 @@
 import { Box, Paper, styled, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography, Button, Container } from "@mui/material";
 import { useAppDispatch, useAppSelector } from "../../../../redux/hooks";
 import { useEffect, useState } from "react";
-import KeyboardDoubleArrowLeftOutlinedIcon from '@mui/icons-material/KeyboardDoubleArrowLeftOutlined';
-import { useNavigate } from "react-router-dom";
 import { getPaymentProcesses, selectPaymentProcesses } from "../../paymentProcessesSlice";
 import { PaymentProcess } from "../../types";
 import DeletePaymentProcess from "./DeletePaymentProcess";
@@ -31,7 +29,6 @@ export default function PaymentProcessesList() {
     const dispatch = useAppDispatch();
     const paymentProcesses = useAppSelector(selectPaymentProcesses);
     const [selectedPaymentProcess, setSelectedPaymentProcess] = useState<PaymentProcess | null>(null);
-    const navigate = useNavigate();
     const [openModal, setOpenModal] = useState(false);
     const [editOpen, setEditOpen] = useState(false);
 
@@ -46,37 +43,8 @@ export default function PaymentProcessesList() {
         setEditOpen(true);
     };
 
-    const handleGoBack = () => {
-        navigate(-1)
-    }
-
     return (
        <Container>
-        <Button
-                    onClick={handleGoBack}
-                    sx={{
-                        fontSize: 12,
-                        minWidth: 40,
-                        minHeight: 40,
-                        padding: 0,
-                        display: "flex",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        borderRadius: 1,
-                        backgroundColor: "transparent",
-                        "&:hover": {
-                            backgroundColor: "transparent", // фон не меняется при ховере
-                            "& .MuiSvgIcon-root": {
-                                color: "#00838f", // цвет иконки при наведении
-                            },
-                        },
-                        "& .MuiSvgIcon-root": {
-                            transition: "color 0.3s ease", // плавный переход цвета
-                        },
-                    }}
-                >
-                    <KeyboardDoubleArrowLeftOutlinedIcon fontSize="large" /> ZURÜCK
-                </Button>
 
             {/* Верхняя панель */}
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>

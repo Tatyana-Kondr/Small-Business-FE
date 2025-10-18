@@ -194,6 +194,13 @@ export default function CreateProduct({ onClose }: CreateProductProps) {
             value={String(newProduct.sellingPrice)}
             onChange={handleSellingPriceChange}
           />
+           <TextField
+            label="Lagerplatz"
+            fullWidth
+            name="storageLocation"
+            value={newProduct.storageLocation}
+            onChange={handleChange}
+          />
         </Box>
 
         <FormControl fullWidth>

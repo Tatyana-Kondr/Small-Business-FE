@@ -91,7 +91,6 @@ export default function PurchaseCard() {
     dispatch(getPurchaseById(Number(purchaseId)))
       .unwrap()
       .then(p => {
-        console.log('Loaded purchase:', p);
         setPurchase({
           vendorId: p.vendorId,
           purchasingDate: p.purchasingDate,

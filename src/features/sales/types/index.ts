@@ -30,7 +30,7 @@ export interface Sale {
   invoiceNumber: string;
   accountObject: string;
   typeOfOperation: string;
-  shipping: string;
+  shippingId: number;
   shippingDimensions: NewShippingDimensionsDto;
   termsOfPayment: string;
   salesDate: string;
@@ -47,6 +47,11 @@ export interface Sale {
   totalAmount: number;
   defaultDiscount: number;
   saleItems: SaleItem[];
+}
+
+export interface Shipping{
+    id: number;
+    name: string;  
 }
 
 export interface NewSaleItemDto {
@@ -69,7 +74,7 @@ export interface NewSaleDto {
   invoiceNumber: string;
   accountObject?: string;
   typeOfOperation: string;
-  shipping: string;
+  shippingId: number;
   shippingDimensions?: NewShippingDimensionsDto;
   termsOfPayment?: string;
   salesDate?: string;
@@ -84,6 +89,11 @@ export interface NewSaleDto {
   salesItems: NewSaleItemDto[];
 }
 
+export interface NewShippingDto{
+    name: string;  
+}
+
+
 export interface SalesState {
     salesList: Sale[];
     selectedSale: Sale | undefined;
@@ -97,6 +107,13 @@ export interface SalesState {
 export interface SaleItemsState {
     saleItemsList: SaleItem[];
     selectedSale: SaleItem | undefined;
+}
+
+export interface ShippingsState{
+  shippingsList: Shipping[];
+  selectedShipping: Shipping | undefined;
+  loading: boolean;
+  error: string | null;
 }
 
 export interface PaginatedResponse<T> {
