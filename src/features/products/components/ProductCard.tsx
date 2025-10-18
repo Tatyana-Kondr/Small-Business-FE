@@ -245,17 +245,17 @@ export default function ProductCard() {
                     </Grid>
 
                     {/* Правая часть с окном для просмотра картинок */}
-                    <Grid item xs={12} sm={7}>
+                    <Grid item xs={12} sm={7} >
                         <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, height: "100%" }}>
-                            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", mb: 0.5 }}>
-                                <IconButton onClick={handlePrevFile}>
+                            <Box sx={{ position: "relative", display: "flex", justifyContent: "center", width: "100%", mb: 1 }}>
+                                <IconButton onClick={handlePrevFile} sx={{ position: "absolute", left: 0, top: "50%", transform: "translateY(-50%)", zIndex: 1, }}>
                                     <ArrowBackIos />
                                 </IconButton>
                                 <img
                                     src={imageUrl}
                                     alt={imageAlt}
                                     style={{
-                                        maxWidth: "100%",
+                                        maxWidth: "calc(100% - 80px)", // оставляем место для обеих стрелок
                                         maxHeight: "400px",
                                         objectFit: "contain",
                                         borderRadius: 8,
@@ -263,7 +263,7 @@ export default function ProductCard() {
                                     }}
                                     onClick={() => currentFile && handleOpenModal(currentFileIndex)}
                                 />
-                                <IconButton onClick={handleNextFile}>
+                                <IconButton onClick={handleNextFile} sx={{ position: "absolute", right: 0, top: "50%", transform: "translateY(-50%)", zIndex: 1, }}>
                                     <ArrowForwardIos />
                                 </IconButton>
                             </Box>
