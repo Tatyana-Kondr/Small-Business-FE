@@ -78,7 +78,7 @@ const LoginForm: React.FC = () => {
       <Button
         type="submit"
         variant="contained"
-        sx={{ backgroundImage: "linear-gradient(to right, #006064, #4dd0e1)" }}
+        sx={{ backgroundImage: "linear-gradient(to right, #006064, #4dd0e1)", mt: 3 }}
         fullWidth
         disabled={status === "loading"}
       >
