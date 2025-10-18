@@ -267,7 +267,8 @@ export default function ProductionsList() {
               <TableRow>
                 <TableCell>ID</TableCell>
                 <TableCell>Datum</TableCell>
-                <TableCell>Produkt</TableCell>
+                <TableCell>Artikel</TableCell>
+                <TableCell>Productname</TableCell>
                 <TableCell>Betrag</TableCell>
                 {isAdmin && <TableCell>Aktionen</TableCell>}
               </TableRow>
@@ -295,7 +296,10 @@ export default function ProductionsList() {
                           : ""}
                       </TableCell>
                       <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>
-                        {getProductDetails(production.productId).article} / {getProductDetails(production.productId).name}
+                        {getProductDetails(production.productId).article} 
+                      </TableCell>
+                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>
+                        {getProductDetails(production.productId).name}
                       </TableCell>
                       <TableCell align="right" sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>
                         {production.amount} €
