@@ -76,7 +76,6 @@ export default function CreatePayment({
   });
 
   const amountLabel = form.saleId !== 0 || form.purchaseId !== 0 ? "Offener Betrag" : "Betrag";
-  const dokNumberLabel = form.saleId !== 0 || form.purchaseId !== 0 ? "Dokumentnummer" : "Referenz";
 
   useEffect(() => {
     dispatch(getCustomers({ page: 0, size: 100 }))
@@ -120,6 +119,7 @@ export default function CreatePayment({
           paymentMethodId: methods[0]?.id || 0,
           paymentProcessId: processes[0]?.id || 0,
         }));
+        console.log("prefillData for purchase", prefill);
       } catch (err) {
         handleApiError(err, "Fehler beim Laden der Zahlungsdaten.");
       } finally {
@@ -326,7 +326,7 @@ export default function CreatePayment({
           ) : (
             <TextField
               id="document"
-              label={dokNumberLabel}
+              label="Dokument"
               name="document"
               value={form.document}
               onChange={handleChange}
