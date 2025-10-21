@@ -4,11 +4,11 @@ import { store } from "../redux/store";
 import { logout, refresh } from "../features/auth/authSlice";
 import { ACCESS_TOKEN_KEY } from "./token";
 
-let navigate: NavigateFunction | null = null;
+let _navigate: NavigateFunction | null = null;
 
 // Функция для установки navigate из App
 export const setNavigate = (nav: NavigateFunction) => {
-  navigate = nav;
+  _navigate = nav;
 };
 
 let isRefreshing = false;
@@ -102,8 +102,7 @@ export async function apiFetch<T>(
         // если refresh тоже упал → logout
         localStorage.removeItem(ACCESS_TOKEN_KEY);
         store.dispatch(logout());
-        const navigate = (setNavigate as any).navigate;
-        if (navigate) navigate("/login", { replace: true });
+        if (_navigate) _navigate("/login", { replace: true });
         throw refreshErr;
       } finally {
         isRefreshing = false;
