@@ -32,12 +32,16 @@ export const PaymentStatuses: PaymentStatus[] = [
 export type TypeOfDocument =
   | "RECHNUNG"
   | "BON"
-  | "BESTELLUNG";
+  | "BESTELLUNG"
+  | "VERTRAG"
+  | "BESCHEID";
 
 export const TypesOfDocument: TypeOfDocument[] = [
   "RECHNUNG",
   "BON",
   "BESTELLUNG",
+  "VERTRAG",
+  "BESCHEID",
 ];
 
 //Вид оплаты счета
