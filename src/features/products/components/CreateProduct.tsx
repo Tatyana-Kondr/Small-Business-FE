@@ -31,7 +31,6 @@ export default function CreateProduct({ onClose }: CreateProductProps) {
   });
 
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
-  const [selectedUnitId, setSelectedUnitId] = useState<number | null>(null);
 
   useEffect(() => {
     dispatch(getProductCategories());
@@ -148,7 +147,6 @@ export default function CreateProduct({ onClose }: CreateProductProps) {
         storageLocation: "",
       });
       setSelectedCategoryId(null);
-      setSelectedUnitId(null);
 
       onClose();
     } catch (error) {
