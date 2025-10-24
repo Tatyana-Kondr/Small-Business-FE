@@ -1,6 +1,5 @@
 import { Box, Button, Grid, Paper, Tab, Tabs, TextField, Typography } from "@mui/material";
 import { useState, useEffect } from "react";
-import ShippingsList from "../features/sales/components/shipping/ShippingsList";
 import { useAppDispatch, useAppSelector } from "../redux/hooks";
 import { getAllUsers } from "../features/auth/authSlice";
 import UsersList from "../features/auth/components/UsersList";
@@ -8,6 +7,10 @@ import CompanyCard from "../features/company/components/CompanyCard";
 import RegisterCompany from "../features/company/components/RegisterCompany";
 import { getCompany, selectCompany } from "../features/company/companiesSlice";
 import { getShippings } from "../features/sales/shippingsSlice";
+import ShippingsList from "../features/sales/components/shipping/ShippingsList";
+import UnitsList from "../features/products/components/unitOfMeasurement/UnitsList";
+import { getUnits } from "../features/products/unitsOfMeasurementSlice";
+import DocumentTypesList from "../features/purchases/documentTypes/DocumentTypesList";
 
 interface AdminSettingsProps {
   autoLogoutMinutes: number;
@@ -34,6 +37,11 @@ useEffect(() => {
     dispatch(getShippings());
   }, [dispatch]);
 
+  useEffect(() => {
+    dispatch(getUnits());
+  }, [dispatch]);
+
+
   // При монтировании синхронизируем состояние с App
   useEffect(() => {
     setMinutes(autoLogoutMinutes);
@@ -55,6 +63,8 @@ useEffect(() => {
       <Tabs value={tab} onChange={(_, newValue) => setTab(newValue)}>
         <Tab label="Benutzer" />
         <Tab label="Versand" />
+        <Tab label="Maßeinheit" />
+        <Tab label="Dokumenttyp" />
         <Tab label="Unternehmen" />
         <Tab label="Einstellungen" />
       </Tabs>
@@ -74,11 +84,23 @@ useEffect(() => {
 
         {tab === 2 && (
           <Box>
+            <UnitsList />
+          </Box>
+        )}
+
+         {tab === 3 && (
+          <Box>
+            <DocumentTypesList />
+          </Box>
+        )}
+
+        {tab === 4 && (
+          <Box>
             {company && company.id ? <CompanyCard /> : <RegisterCompany />}
           </Box>
         )}
 
-        {tab === 3 && (
+        {tab === 5 && (
           <Box>
             <Typography variant="h6" gutterBottom>
               Auto-Logout-Einstellungen (in Minuten)

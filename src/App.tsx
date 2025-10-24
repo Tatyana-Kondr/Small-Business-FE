@@ -25,13 +25,15 @@ import CreateProductCategory from './features/products/components/category/Creat
 import SaleCard from './features/sales/components/SaleCard';
 import Spinner from './components/Spinner';
 import { JSX, useEffect, useState } from 'react';
-import ShippingsList from './features/sales/components/shipping/ShippingsList';
 import { setNavigate } from './utils/apiFetch';
 import { useAutoLogout } from './hooks/useAutoLogout';
 import AutoLogoutModal from './components/AutoLogoutModal';
 import AdminSettings from './components/AdminSettings';
 import ProductionsList from './features/productions/components/ProductionsList';
 import EditProduction from './features/productions/components/EditProduction';
+import ShippingsList from './features/sales/components/shipping/ShippingsList';
+import UnitsList from './features/products/components/unitOfMeasurement/UnitsList';
+import DocumentTypesList from './features/purchases/documentTypes/DocumentTypesList';
 
 function App() {
   const dispatch = useAppDispatch();
@@ -96,6 +98,8 @@ function App() {
           <Route path="payment-methods" element={Private(<PaymentMethodsList />, "ADMIN")} />
           <Route path="payment-processes" element={Private(<PaymentProcessesList />, "ADMIN")} />
           <Route path="shippings" element={Private(<ShippingsList />, "ADMIN")} />
+          <Route path="units" element={Private(<UnitsList />, "ADMIN")} />
+          <Route path="document-types" element={Private(<DocumentTypesList />, "ADMIN")} />
           <Route path="productions" element={Private(<ProductionsList />, "ADMIN")} />
           <Route path="productions/:productionId" element={Private(<EditProduction />)} />
           <Route
