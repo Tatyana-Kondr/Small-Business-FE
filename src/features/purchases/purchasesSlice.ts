@@ -119,7 +119,7 @@ export const purchasesSlice = createAppSlice({
         sort?: string;
         id?: number;
         vendorId?: number;
-        document?: string;
+        documentId?: number;
         documentNumber?: string;
         total?: number;
         paymentStatus?: string;
@@ -133,7 +133,7 @@ export const purchasesSlice = createAppSlice({
           sort = "purchasingDate,DESC",
           id,
           vendorId,
-          document,
+          documentId,
           documentNumber,
           total,
           paymentStatus,
@@ -145,7 +145,7 @@ export const purchasesSlice = createAppSlice({
         return await fetchPurchasesByFilter(page, size, sort, {
           id,
           vendorId,
-          document,
+          documentId,
           documentNumber,
           total,
           paymentStatus,
