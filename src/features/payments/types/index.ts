@@ -1,3 +1,5 @@
+import { TypeOfDocument } from "../../purchases/types";
+
 export interface Payment{
     id: number;
     paymentDate: string;
@@ -7,7 +9,7 @@ export interface Payment{
     amount: number;
     saleId: number;
     purchaseId: number;
-    document: string;
+    document: TypeOfDocument;
     documentNumber: string;
     paymentMethodId: number;
     paymentProcessId: number;
@@ -21,7 +23,8 @@ export interface NewPaymentDto{
     amount: number;
     saleId?: number;
     purchaseId?: number;
-    document: string;
+    documentId: number;
+    documentName: string;
     documentNumber: string;
     paymentMethodId: number;
     paymentProcessId: number;
@@ -34,7 +37,8 @@ export interface PaymentPrefillDto{
     amountLeft: number;
     saleId: number;
     purchaseId: number;
-    document: string;
+    documentId: number;
+    documentName: string;
     documentNumber: string;
     type: string;
 }
