@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
 import { editProduct, selectProduct } from "../productsSlice";
-import { UpdateProductDto } from "../types";
+import { UnitOfMeasurement, UpdateProductDto } from "../types";
 import { getProductCategories, selectProductCategories } from "../productCategoriesSlice";
 import { Box, Button, TextField, MenuItem, Select, SelectChangeEvent, FormControl, InputLabel, Typography } from "@mui/material";
 import { showSuccessToast } from "../../../utils/toast";
 import { handleApiError } from "../../../utils/handleApiError";
+import { getUnits, selectUnits } from "../unitsOfMeasurementSlice";
 
 interface EditProductProps {
     productId: number;
@@ -16,8 +17,9 @@ export default function EditProduct({ productId, closeModal }: EditProductProps)
     const dispatch = useAppDispatch();
     const selectedProduct = useAppSelector(selectProduct);
     const categories = useAppSelector(selectProductCategories);
+    const units = useAppSelector(selectUnits);
 
-    const [productData, setProductData] = useState<UpdateProductDto | null>(null);
+    const [productData, setProductData] = useState<(UpdateProductDto & { unitOfMeasurement?: UnitOfMeasurement }) | null>(null);
 
     useEffect(() => {
         if (selectedProduct) {
@@ -29,7 +31,7 @@ export default function EditProduct({ productId, closeModal }: EditProductProps)
                 purchasingPrice: selectedProduct.purchasingPrice,
                 markupPercentage: selectedProduct.markupPercentage,
                 sellingPrice: selectedProduct.sellingPrice,
-                unitOfMeasurement: selectedProduct.unitOfMeasurement || "",
+                unitOfMeasurement: selectedProduct.unitOfMeasurement || { id: 0, name: "" },
                 weight: selectedProduct.weight || 0,
                 newDimensions: {
                     height: selectedProduct.newDimensions?.height || 0,
@@ -48,8 +50,14 @@ export default function EditProduct({ productId, closeModal }: EditProductProps)
         dispatch(getProductCategories());
     }, [dispatch]);
 
+    useEffect(() => {
+        dispatch(getUnits());
+    }, [dispatch]);
+
+
     if (!productData) return <p>Loading...</p>;
     if (!categories.length) return <p>Loading categories...</p>;
+    if (!units.length) return <p>Loading units of measurement...</p>;
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -72,10 +80,15 @@ export default function EditProduct({ productId, closeModal }: EditProductProps)
         const categoryId = Number(e.target.value);
         const category = categories.find((cat) => cat.id === categoryId);
         if (category) {
-            setProductData((prev) => ({
-                ...prev!,
-                productCategory: category,
-            }));
+            setProductData((prev) => ({ ...prev!, productCategory: category }));
+        }
+    };
+
+    const handleUnitChange = (e: SelectChangeEvent<number>) => {
+        const unitId = Number(e.target.value);
+        const unit = units.find((cat) => cat.id === unitId);
+        if (unit) {
+            setProductData((prev) => ({ ...prev!, unitOfMeasurement: unit }));
         }
     };
 
@@ -186,14 +199,25 @@ export default function EditProduct({ productId, closeModal }: EditProductProps)
                 onChange={handleSellingPriceChange}
             />
 
-            <TextField
-                fullWidth
-                margin="normal"
-                label="Maßeinheit"
-                name="unitOfMeasurement"
-                value={productData.unitOfMeasurement}
-                onChange={handleChange}
-            />
+            <FormControl fullWidth variant="outlined" sx={{ mt: 2 }}>
+                <InputLabel id="unit-label">Maßeinheit</InputLabel>
+                <Select
+                    labelId="unit-label"
+                    value={productData.unitOfMeasurement?.id || ""}
+                    onChange={handleUnitChange}
+                    label="Maßeinheit"
+                >
+                    <MenuItem disabled value="">
+                        Wählen Sie eine Maßeinheit
+                    </MenuItem>
+                    {units.map((unit) => (
+                        <MenuItem key={unit.id} value={unit.id}>
+                            {unit.name}
+                        </MenuItem>
+                    ))}
+                </Select>
+            </FormControl>
+
             <TextField
                 fullWidth
                 margin="normal"
@@ -252,7 +276,7 @@ export default function EditProduct({ productId, closeModal }: EditProductProps)
                 </Select>
             </FormControl>
 
-              <TextField
+            <TextField
                 fullWidth
                 margin="normal"
                 label="Lagerplatz"
@@ -260,7 +284,7 @@ export default function EditProduct({ productId, closeModal }: EditProductProps)
                 value={productData.storageLocation}
                 onChange={handleChange}
             />
-            
+
             <TextField
                 fullWidth
                 margin="normal"

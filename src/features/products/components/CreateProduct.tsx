@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { Box, Typography, TextField, Button, FormControl, InputLabel, Select, MenuItem, SelectChangeEvent, Dialog } from "@mui/material";
-import { useAppDispatch } from "../../../redux/hooks";
-import { NewProductDto, ProductCategory } from "../types";
-import { fetchProductCategories } from "../api";
+import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
+import { NewProductDto } from "../types";
 import { addProduct } from "../productsSlice";
-import { UnitOfMeasurement, unitOfMeasurements } from "../../../constants/unitOfMeasurements";
 import { handleApiError } from "../../../utils/handleApiError";
-import { showSuccessToast } from "../../../utils/toast";
+import { showErrorToast, showSuccessToast } from "../../../utils/toast";
+import { getUnits, selectUnits } from "../unitsOfMeasurementSlice";
+import { getProductCategories, selectProductCategories } from "../productCategoriesSlice";
 
 
 type CreateProductProps = {
@@ -16,6 +16,8 @@ type CreateProductProps = {
 
 export default function CreateProduct({ onClose }: CreateProductProps) {
   const dispatch = useAppDispatch();
+  const categories = useAppSelector(selectProductCategories);
+  const units = useAppSelector(selectUnits);
   const [newProduct, setNewProduct] = useState<NewProductDto>({
     name: "",
     vendorArticle: "",
@@ -23,25 +25,19 @@ export default function CreateProduct({ onClose }: CreateProductProps) {
     markupPercentage: 20,
     sellingPrice: 0,
     productCategory: { id: 0, name: "", artName: "" },
-    unitOfMeasurement: "ST"
+    unitOfMeasurementId: 0,
+    unitOfMeasurement: { id: 0, name: "" },
+    storageLocation: "",
   });
 
-  const [categories, setCategories] = useState<ProductCategory[]>([]); // Состояние для списка категорий
-  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
+  const [selectedUnitId, setSelectedUnitId] = useState<number | null>(null);
 
   useEffect(() => {
-    // Загружаем категории при монтировании компонента
-    const loadCategories = async () => {
-      try {
-        const fetchedCategories = await fetchProductCategories();
-        setCategories(fetchedCategories); // Обновляем состояние с категориями
-      } catch (error) {
-        console.error("Failed to fetch categories", error);
-      }
-    };
+    dispatch(getProductCategories());
+    dispatch(getUnits());
+  }, [dispatch]);
 
-    loadCategories();
-  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -51,30 +47,28 @@ export default function CreateProduct({ onClose }: CreateProductProps) {
     }));
   };
 
-  const handleCategoryChange = (e: SelectChangeEvent) => {
+  const handleCategoryChange = (e: SelectChangeEvent<number>) => {
     const categoryId = Number(e.target.value);
-    setSelectedCategory(categoryId);
-    setNewProduct(prev => ({
-      ...prev,
-      productCategory: categories.find(cat => cat.id === categoryId) ?? { id: 0, name: '', artName: '' }
-    }));
-  };
-
-  useEffect(() => {
-    if (categories.length > 0) {
-      setSelectedCategory(categories[0].id);
-      setNewProduct(prev => ({
+    const category = categories.find((cat) => cat.id === categoryId);
+    setSelectedCategoryId(categoryId);
+    if (category) {
+      setNewProduct((prev) => ({
         ...prev,
-        productCategory: categories[0],
+        productCategory: category,
       }));
     }
-  }, [categories]);
+  };
 
-  const handleUnitChange = (e: SelectChangeEvent<string>) => {
-    setNewProduct((prevState) => ({
-      ...prevState,
-      unitOfMeasurement: e.target.value as UnitOfMeasurement,
-    }));
+  const handleUnitChange = (e: SelectChangeEvent<number>) => {
+    const unitId = Number(e.target.value);
+    const unit = units.find((u) => u.id === unitId);
+    if (unit) {
+      setNewProduct((prev) => ({
+        ...prev,
+        unitOfMeasurementId: unit.id,
+        unitOfMeasurement: unit,
+      }));
+    }
   };
 
   const calculateSellingPrice = (purchasingPrice: number, markupPercentage: number) => {
@@ -113,30 +107,54 @@ export default function CreateProduct({ onClose }: CreateProductProps) {
     }));
   };
 
- const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-  try {
-    const createdProduct = await dispatch(addProduct(newProduct)).unwrap();
+    if (!newProduct.name.trim()) {
+      showErrorToast("Fehler", "Bitte geben Sie einen Produktnamen ein.");
+      return;
+    }
 
-    showSuccessToast("Erfolg", `${createdProduct.name} wurde erfolgreich erstellt.`);
+    if (!newProduct.productCategory || newProduct.productCategory.id === 0) {
+      showErrorToast("Fehler", "Bitte wählen Sie eine Kategorie aus.");
+      return;
+    }
 
-    setNewProduct({
-      name: "",
-      vendorArticle: "",
-      purchasingPrice: 0,
-      markupPercentage: 20,
-      sellingPrice: 0,
-      productCategory: { id: 0, name: "", artName: "" },
-      unitOfMeasurement: "ST",
-    });
+    console.log("Selected unit ID:", newProduct.unitOfMeasurementId);
+    if (!newProduct.unitOfMeasurementId || newProduct.unitOfMeasurementId === 0) {
+      showErrorToast("Fehler", "Bitte wählen Sie eine Maßeinheit aus.");
+      return;
+    }
 
-    onClose();
-  } catch (error) {
-    handleApiError(error, "Das Produkt konnte nicht erstellt werden.");
-  }
-};
+    try {
+      const dtoToSend = {
+        ...newProduct,
+        unitOfMeasurementId: newProduct.unitOfMeasurement?.id, // Отправляем только ID
+      };
 
+      const createdProduct = await dispatch(addProduct(dtoToSend)).unwrap();
+
+      showSuccessToast("Erfolg", `${createdProduct.name} wurde erfolgreich erstellt.`);
+      // Сброс формы
+      setNewProduct({
+        name: "",
+        vendorArticle: "",
+        purchasingPrice: 0,
+        markupPercentage: 20,
+        sellingPrice: 0,
+        productCategory: { id: 0, name: "", artName: "" },
+        unitOfMeasurementId: 0,
+        unitOfMeasurement: { id: 0, name: "" },
+        storageLocation: "",
+      });
+      setSelectedCategoryId(null);
+      setSelectedUnitId(null);
+
+      onClose();
+    } catch (error) {
+      handleApiError(error, "Das Produkt konnte nicht erstellt werden.");
+    }
+  };
 
   return (
     <Dialog open={true} onClose={onClose} maxWidth="sm" fullWidth>
@@ -151,7 +169,7 @@ export default function CreateProduct({ onClose }: CreateProductProps) {
           gap: 2,
         }}
       >
-        <Typography variant="h6" sx={{ textAlign:"left", fontWeight: "bold", textDecoration: 'underline', color: "#0277bd"}} fontWeight={600} gutterBottom>
+        <Typography variant="h6" sx={{ textAlign: "left", fontWeight: "bold", textDecoration: 'underline', color: "#0277bd" }} fontWeight={600} gutterBottom>
           Neues Produkt hinzufügen
         </Typography>
 
@@ -194,7 +212,7 @@ export default function CreateProduct({ onClose }: CreateProductProps) {
             value={String(newProduct.sellingPrice)}
             onChange={handleSellingPriceChange}
           />
-           <TextField
+          <TextField
             label="Lagerplatz"
             fullWidth
             name="storageLocation"
@@ -206,12 +224,15 @@ export default function CreateProduct({ onClose }: CreateProductProps) {
         <FormControl fullWidth>
           <InputLabel>Kategorie</InputLabel>
           <Select
-            value={selectedCategory !== null ? String(selectedCategory) : ""}
+            value={selectedCategoryId ?? ""}
             onChange={handleCategoryChange}
             label="Kategorie"
           >
+            <MenuItem disabled value="">
+              Kategorie wählen
+            </MenuItem>
             {categories.map((category) => (
-              <MenuItem key={category.id} value={String(category.id)}>
+              <MenuItem key={category.id} value={category.id}>
                 {category.name}
               </MenuItem>
             ))}
@@ -221,17 +242,21 @@ export default function CreateProduct({ onClose }: CreateProductProps) {
         <FormControl fullWidth>
           <InputLabel>Maßeinheit</InputLabel>
           <Select
-            value={newProduct.unitOfMeasurement || ""}
+            value={newProduct.unitOfMeasurementId || ""}
             onChange={handleUnitChange}
             label="Maßeinheit"
           >
-            {unitOfMeasurements.map((unit) => (
-              <MenuItem key={unit} value={unit}>
-                {unit}
+            <MenuItem disabled value="">
+              Maßeinheit wählen
+            </MenuItem>
+            {units.map((unit) => (
+              <MenuItem key={unit.id} value={unit.id}>
+                {unit.name}
               </MenuItem>
             ))}
           </Select>
         </FormControl>
+
 
         <Box display="flex" justifyContent="flex-end" gap={2} mt={1}>
           <Button onClick={onClose}>

@@ -133,7 +133,7 @@ export default function Products() {
                     <TableCell sx={{ width: "200px", padding: "6px 12px", borderRight: "1px solid #ddd" }}>{product.vendorArticle}</TableCell>
                     <TableCell align="right" sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{formatNumber(product.purchasingPrice)} €</TableCell>
                     <TableCell align="right" sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{formatNumber(product.sellingPrice)} €</TableCell>
-                    <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{product.unitOfMeasurement}</TableCell>
+                    <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{product.unitOfMeasurement.name}</TableCell>
                     <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{product.weight ? formatNumber(product.weight) : ""} </TableCell>
                     <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>
                       {product.newDimensions

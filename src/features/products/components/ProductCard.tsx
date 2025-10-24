@@ -212,7 +212,7 @@ export default function ProductCard() {
                                     ["Kaufpreis", `${product.purchasingPrice} €`],
                                     ["Aufschlag", `${product.markupPercentage} %`],
                                     ["Verkaufspreis", `${product.sellingPrice} €`],
-                                    ["Maßeinheit", product.unitOfMeasurement || "—"],
+                                    ["Maßeinheit", product.unitOfMeasurement.name || "—"],
                                     ["Gewicht", product.weight ? `${product.weight} kg` : "—"],
                                     ["Abmessungen", product.newDimensions ? `${product.newDimensions.height} x ${product.newDimensions.length} x ${product.newDimensions.width} mm` : "—"],
                                     ["Kategorie", product.productCategory?.name || "—"],
