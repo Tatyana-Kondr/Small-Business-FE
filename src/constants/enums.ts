@@ -28,22 +28,6 @@ export const PaymentStatuses: PaymentStatus[] = [
   "BEZAHLT",
 ];
 
-// Тип документа
-export type TypeOfDocument =
-  | "RECHNUNG"
-  | "BON"
-  | "BESTELLUNG"
-  | "VERTRAG"
-  | "BESCHEID";
-
-export const TypesOfDocument: TypeOfDocument[] = [
-  "RECHNUNG",
-  "BON",
-  "BESTELLUNG",
-  "VERTRAG",
-  "BESCHEID",
-];
-
 //Вид оплаты счета
 export type TermsOfPayment =
 | "BETRAG_IM_BAR"
