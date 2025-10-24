@@ -1,5 +1,5 @@
 import { apiFetch } from "../../../utils/apiFetch";
-import { NewProductCategoryDto, NewProductDto, PaginatedResponse, Product, ProductCategory, UpdateProductDto } from "../types"
+import { NewProductCategoryDto, NewProductDto, NewUnitOfMeasurementDto, PaginatedResponse, Product, ProductCategory, UnitOfMeasurement, UpdateProductDto } from "../types"
 
 export async function fetchProducts(page: number, size: number, sort = "name", searchTerm = ""): Promise<PaginatedResponse<Product>> {
   const queryParams = new URLSearchParams();
@@ -172,3 +172,57 @@ export async function fetchDeleteProductFile(fileId: number): Promise<void> {
     "Fehler beim Löschen der Datei."
   );
 }
+
+// UnitOfMeasurement
+export async function fetchAllUnits(): Promise<UnitOfMeasurement[]> {
+   return apiFetch<UnitOfMeasurement[]>(
+     `/api/units`,
+     {auth: true},
+     "Fehler beim Laden der Maßeinheiten."
+   );
+ }
+ 
+ export async function fetchUnitById(id: number): Promise<UnitOfMeasurement> {
+   return apiFetch<UnitOfMeasurement>(
+     `/api/units/${id}`,
+     {auth: true},
+     "Fehler beim Laden der Maßeinheit."
+   );
+ }
+ 
+ export async function fetchCreateUnit(data: NewUnitOfMeasurementDto): Promise<UnitOfMeasurement> {
+   return apiFetch<UnitOfMeasurement>(
+     `/api/units`,
+     {
+       method: "POST",
+       headers: { "Content-Type": "application/json" },
+       body: JSON.stringify(data),
+       auth: true, 
+     },
+     "Fehler beim Erstellen der Maßeinheit."
+   );
+ }
+ 
+ export async function fetchUpdateUnit(
+   id: number,
+   data: NewUnitOfMeasurementDto
+ ): Promise<UnitOfMeasurement> {
+   return apiFetch<UnitOfMeasurement>(
+     `/api/units/${id}`,
+     {
+       method: "PUT",
+       headers: { "Content-Type": "application/json" },
+       body: JSON.stringify(data),
+       auth: true,
+     },
+     "Fehler beim Aktualisieren der Maßeinheit."
+   );
+ }
+ 
+ export async function fetchDeleteUnit(id: number): Promise<void> {
+   await apiFetch<void>(
+     `/api/units/${id}`,
+     { method: "DELETE", auth: true },
+     "Fehler beim Löschen der Maßeinheit."
+   );
+ }

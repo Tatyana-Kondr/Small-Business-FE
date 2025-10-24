@@ -7,7 +7,7 @@ export interface Product{
     purchasingPrice: number
     markupPercentage: number
     sellingPrice: number
-    unitOfMeasurement: string
+    unitOfMeasurement: UnitOfMeasurement
     weight: number
     newDimensions: Dimensions
     productCategory: ProductCategory
@@ -38,6 +38,11 @@ export interface ProductFile {
   fileUrl: string;
 }
 
+export interface UnitOfMeasurement{
+    id: number;
+    name: string;  
+}
+
 export interface NewProductCategoryDto{
   name: string;
   artName: string;
@@ -50,8 +55,13 @@ export interface NewProductDto{
   markupPercentage: number
   sellingPrice: number
   productCategory: ProductCategory
-  unitOfMeasurement: string
+  unitOfMeasurementId?: number
+  unitOfMeasurement?: UnitOfMeasurement
   storageLocation?: string
+}
+
+export interface NewUnitOfMeasurementDto{
+    name: string;  
 }
 
 export interface UpdateProductDto {
@@ -61,7 +71,8 @@ export interface UpdateProductDto {
   purchasingPrice?: number;
   markupPercentage?: number;
   sellingPrice?: number;
-  unitOfMeasurement?: string;
+  unitOfMeasurementId?: number;
+  unitOfMeasurement?: UnitOfMeasurement;
   weight?: number;
   newDimensions?: Dimensions;
   productCategory?: ProductCategory;
@@ -69,7 +80,7 @@ export interface UpdateProductDto {
   storageLocation?: string
   customsNumber?: string;
   // Добавляем индексную сигнатуру
-  [key: string]: string | number | Dimensions | ProductCategory | undefined;
+  [key: string]: string | number | Dimensions | ProductCategory | UnitOfMeasurement | undefined;
 }
 
 export interface ProductsState {
@@ -89,6 +100,13 @@ export interface ProductCategoriesState {
 
 export interface ProductFilesState {
   files: ProductFile[];
+}
+
+export interface UnitsOfMeasurementState{
+  unitsList: UnitOfMeasurement[];
+  selectedUnit: UnitOfMeasurement | undefined;
+  loading: boolean;
+  error: string | null;
 }
 
 // Интерфейс для ответа с пагинацией
