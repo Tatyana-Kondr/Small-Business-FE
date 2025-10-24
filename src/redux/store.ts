@@ -15,6 +15,8 @@ import { modalSlice } from "../modal/modalSlice";
 import { shippingsSlice } from "../features/sales/shippingsSlice";
 import { companiesSlice } from "../features/company/companiesSlice";
 import { ProductionsSlice } from "../features/productions/productionsSlice";
+import { unitsOfMeasurementSlice } from "../features/products/unitsOfMeasurementSlice";
+import { TypeOfDocumentSlice } from "../features/purchases/typeOfDocumentSlice";
 
 
 const rootReducer = combineSlices(productsSlice, 
@@ -30,6 +32,8 @@ const rootReducer = combineSlices(productsSlice,
                                   shippingsSlice,
                                   companiesSlice,
                                   ProductionsSlice,
+                                  unitsOfMeasurementSlice,
+                                  TypeOfDocumentSlice,
                                   modalSlice,
 )
 
