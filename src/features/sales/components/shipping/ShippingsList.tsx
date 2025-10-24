@@ -90,7 +90,7 @@ export default function ShippingsList() {
                             ))
                         ) : (
                             <TableRow>
-                                <TableCell colSpan={4} align="center">Keine Zahlungsvorgänge vorhanden</TableCell>
+                                <TableCell colSpan={4} align="center">Keine Versandarten vorhanden</TableCell>
                             </TableRow>
                         )}
                     </TableBody>
