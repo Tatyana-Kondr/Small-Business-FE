@@ -43,6 +43,7 @@ export default function EditPayment({ payment, onClose }: EditPaymentProps) {
     type: payment.type,
     amount: payment.amount,
     documentId: payment.document.id,
+    documentName: payment.document.name,
     documentNumber: payment.documentNumber,
     paymentMethodId: payment.paymentMethodId,
     paymentProcessId: payment.paymentProcessId,
