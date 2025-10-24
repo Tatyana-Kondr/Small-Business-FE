@@ -5,7 +5,7 @@ export interface Purchase {
     vendorName: string
     purchasingDate: string
     type: string
-    document: string
+    document: TypeOfDocument
     documentNumber: string
     subtotal: number
     taxSum: number
@@ -18,7 +18,8 @@ export interface NewPurchaseDto {
     vendorId: number
     purchasingDate: string
     type: string
-    document: string
+    documentId?: number
+    document?: TypeOfDocument
     documentNumber: string
     paymentStatus: string
     purchaseItems: NewPurchaseItemDto[]
@@ -52,6 +53,15 @@ export interface NewPurchaseItemDto {
     position: number
 }
 
+export interface TypeOfDocument{
+    id: number;
+    name: string;
+}
+
+export interface NewTypeOfDocumentDto{
+    name: string;
+}
+
 export interface PurchasesState {
     purchasesList: Purchase[];
     selectedPurchase: Purchase | undefined;
@@ -65,7 +75,13 @@ export interface PurchasesState {
 export interface PurchaseItemsState {
     purchaseItemsList: PurchaseItem[];
     selectedPurchaseItem: PurchaseItem | undefined;
+}
 
+export interface TypeOfDocumentState{
+  documentTypesList: TypeOfDocument[];
+  selectedDocumentType: TypeOfDocument | undefined;
+  loading: boolean;
+  error: string | null;
 }
 
 export interface PaginatedResponse<T> {

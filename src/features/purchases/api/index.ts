@@ -1,5 +1,5 @@
 import { apiFetch } from "../../../utils/apiFetch";
-import { NewPurchaseDto, PaginatedResponse, Purchase } from "../types";
+import { NewPurchaseDto, NewTypeOfDocumentDto, PaginatedResponse, Purchase, TypeOfDocument } from "../types";
 
 export async function fetchPurchases(
   page: number,
@@ -87,7 +87,7 @@ export async function fetchPurchasesByFilter(
   filters?: {
     id?: number;
     vendorId?: number;
-    document?: string;
+    documentId?: number;
     documentNumber?: string;
     total?: number;
     paymentStatus?: string;
@@ -104,7 +104,7 @@ export async function fetchPurchasesByFilter(
   if (filters) {
     if (filters.id !== undefined) queryParams.append("id", filters.id.toString());
     if (filters.vendorId !== undefined) queryParams.append("vendorId", filters.vendorId.toString());
-    if (filters.document) queryParams.append("document", filters.document);
+    if (filters.documentId !== undefined) queryParams.append("documentId", filters.documentId.toString());
     if (filters.documentNumber) queryParams.append("documentNumber", filters.documentNumber);
     if (filters.total !== undefined) queryParams.append("total", filters.total.toString());
     if (filters.paymentStatus) queryParams.append("paymentStatus", filters.paymentStatus);
@@ -127,3 +127,57 @@ export async function fetchUpdatePurchasePaymentStatus(id: number): Promise<Purc
     `Fehler beim Aktualisieren des Zahlungsstatus für Bestellung ${id}.`
   );
 }
+
+// Type of Document
+export async function fetchAllTypesOfDocument(): Promise<TypeOfDocument[]> {
+   return apiFetch<TypeOfDocument[]>(
+     `/api/document-types`,
+     {auth: true},
+     "Fehler beim Laden der Dokumenttypen."
+   );
+ }
+ 
+ export async function fetchTypeOfDocumentById(id: number): Promise<TypeOfDocument> {
+   return apiFetch<TypeOfDocument>(
+     `/api/document-types/${id}`,
+     {auth: true},
+     "Fehler beim Laden des Dokumenttyps."
+   );
+ }
+ 
+ export async function fetchCreateTypeOfDocument(data: NewTypeOfDocumentDto): Promise<TypeOfDocument> {
+   return apiFetch<TypeOfDocument>(
+     `/api/document-types`,
+     {
+       method: "POST",
+       headers: { "Content-Type": "application/json" },
+       body: JSON.stringify(data),
+       auth: true, 
+     },
+     "Fehler beim Erstellen des Dokumenttyps."
+   );
+ }
+ 
+ export async function fetchUpdateTypeOfDocument(
+   id: number,
+   data: NewTypeOfDocumentDto
+ ): Promise<TypeOfDocument> {
+   return apiFetch<TypeOfDocument>(
+     `/api/document-types/${id}`,
+     {
+       method: "PUT",
+       headers: { "Content-Type": "application/json" },
+       body: JSON.stringify(data),
+       auth: true,
+     },
+     "Fehler beim Aktualisieren des Dokumenttyps."
+   );
+ }
+ 
+ export async function fetchDeleteTypeOfDocument(id: number): Promise<void> {
+   await apiFetch<void>(
+     `/api/document-types/${id}`,
+     { method: "DELETE", auth: true },
+     "Fehler beim Löschen des Dokumenttyps."
+   );
+ }
