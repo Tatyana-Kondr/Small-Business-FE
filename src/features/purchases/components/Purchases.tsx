@@ -35,13 +35,15 @@ import { useCallback, useEffect, useState } from "react";
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { ClearIcon } from "@mui/x-date-pickers";
-import { PaymentStatuses, TypesOfDocument } from "../../../constants/enums";
+import { PaymentStatuses } from "../../../constants/enums";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import PaymentsIcon from '@mui/icons-material/Payments';
 import CreatePayment from "../../payments/components/CreatePayment";
 import DeletePurchase from "./DeletePurchase";
 import { selectUser } from "../../auth/authSlice";
+import { getDocumentTypes, selectTypeOfDocuments } from "../typeOfDocumentSlice";
+import { TypeOfDocument } from "../types";
 
 
 const StyledTableHead = styled(TableHead)({
@@ -68,7 +70,8 @@ export default function Purchases() {
   const purchases = useAppSelector(selectPurchases);
   const totalPages = useAppSelector(selectTotalPages);
   const currentUser = useAppSelector(selectUser);
-  const isAdmin = currentUser?.role === "ADMIN"; 
+  const documentTypes = useAppSelector(selectTypeOfDocuments);
+  const isAdmin = currentUser?.role === "ADMIN";
   const [page, setPage] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [filtersVisible, setFiltersVisible] = useState(false);
@@ -77,16 +80,20 @@ export default function Purchases() {
   const [selectedOperationType, setSelectedOperationType] = useState<string | null>(null);
 
   const [filters, setFilters] = useState({
-    document: "",
+    documentId: "",
     paymentStatus: "",
     startDate: "",
     endDate: "",
   });
 
+  useEffect(() => {
+    dispatch(getDocumentTypes());
+  }, [dispatch]);
+
   const debouncedSearch = useCallback(
     debounce((searchTerm: string) => {
       const hasFilters =
-        filters.document ||
+        filters.documentId ||
         filters.paymentStatus ||
         filters.startDate ||
         filters.endDate;
@@ -118,9 +125,11 @@ export default function Purchases() {
       filters.startDate ||
       filters.endDate ||
       filters.paymentStatus ||
-      filters.document;
+      filters.documentId;
 
     if (hasFilters) {
+      console.log("FILTER PARAMS:", convertFiltersToParams(filters));
+
       dispatch(
         getPurchasesByFilter({
           page,
@@ -156,7 +165,7 @@ export default function Purchases() {
 
   const handleClearFilters = () => {
     setFilters({
-      document: "",
+      documentId: "",
       paymentStatus: "",
       startDate: "",
       endDate: "",
@@ -180,7 +189,7 @@ export default function Purchases() {
       filters.startDate ||
       filters.endDate ||
       filters.paymentStatus ||
-      filters.document;
+      filters.documentId;
 
     if (hasFilters) {
       dispatch(
@@ -290,26 +299,28 @@ export default function Purchases() {
             />
 
             {/* Тип документа */}
-            <FormControl size="small" sx={{ minWidth: 160 }}>
-              <InputLabel id="document-type-label">Dokuments</InputLabel>
+            <FormControl size="small" sx={{ minWidth: 180 }}>
+              <InputLabel id="document-type-label">Dokumenttyp</InputLabel>
               <Select
                 labelId="document-type-label"
                 id="document-type-select"
-                value={filters.document}
+                value={filters.documentId || ""}
                 onChange={(e: SelectChangeEvent) =>
-                  handleFilterChange("document", e.target.value)
+                  handleFilterChange("documentId", e.target.value)
                 }
-                label="Dokuments"
-                aria-label="Typ des Dokuments"
+                label="Dokumenttyp"
+                aria-label="Dokumenttyp"
               >
                 <MenuItem value="">ALLE</MenuItem>
-                {TypesOfDocument.map((type) => (
-                  <MenuItem key={type} value={type}>
-                    {type}
+                {documentTypes.map((doc: TypeOfDocument) => (
+                  <MenuItem key={doc.id} value={doc.id.toString()}>
+                    {doc.name}
                   </MenuItem>
                 ))}
               </Select>
             </FormControl>
+
+
 
             {/* Zahlungsstatus */}
             <FormControl size="small" sx={{ minWidth: 160 }}>
@@ -355,7 +366,7 @@ export default function Purchases() {
                 <TableCell >Dokument</TableCell>
                 <TableCell >Dokument-Nr</TableCell>
                 <TableCell >Zahlungsstatus</TableCell>
-                 {isAdmin && <TableCell>Aktionen</TableCell>} 
+                {isAdmin && <TableCell>Aktionen</TableCell>}
               </TableRow>
             </StyledTableHead>
 
@@ -376,54 +387,54 @@ export default function Purchases() {
                           : ""}
                       </TableCell>
                       <TableCell align="right" sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{purchase.total} €</TableCell>
-                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{purchase.document}</TableCell>
+                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{purchase.document.name}</TableCell>
                       <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{purchase.documentNumber}</TableCell>
                       <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{purchase.paymentStatus}</TableCell>
-                       {isAdmin && (
-                      <TableCell sx={{ padding: "2px 12px" }}>
-                        <Box display="flex" sx={{ padding: "2px 12px" }} gap={1} >
-                          <Tooltip title="Bearbeiten" arrow>
-                            <IconButton onClick={(e) => { e.stopPropagation(); navigate(`/purchases/${purchase.id}`); }} sx={{  p: 0.5, transition: 'transform 0.2s ease-in-out', "&:hover": { color: "#bdbdbd", transform: 'scale(1.2)', backgroundColor: "transparent" } }}>
-                              <EditIcon />
-                            </IconButton>
-                          </Tooltip>
-                          <DeletePurchase
-                            purchaseId={purchase.id}
-                            vendorName={purchase.vendorName}
-                            purchasingDate={purchase.purchasingDate}
-                            onSuccessDelete={() => { }}
-                            trigger={
-                              <Tooltip title="Löschen" arrow>
-                                <IconButton
-                                  sx={{
-                                     p: 0.5,
-                                    transition: "transform 0.2s ease-in-out",
-                                    "&:hover": {
-                                      color: "#bdbdbd",
-                                      transform: "scale(1.2)",
-                                      backgroundColor: "transparent",
-                                    },
-                                  }}
-                                >
-                                  <DeleteIcon />
-                                </IconButton>
-                              </Tooltip>
-                            }
-                          />
-                          {purchase.paymentStatus !== "BEZAHLT" && (
-                            <Tooltip title="Bezahlen" arrow>
-                              <IconButton onClick={(e) => {
-                                e.stopPropagation();
-                                setOpenPaymentDialogId(purchase.id);
-                                setSelectedOperationType(purchase.type);
-                              }}
-                                sx={{  p: 0.5, transition: 'transform 0.2s ease-in-out', "&:hover": { color: "#bdbdbd", transform: 'scale(1.2)', backgroundColor: "transparent" } }}>
-                                <PaymentsIcon />
+                      {isAdmin && (
+                        <TableCell sx={{ padding: "2px 12px" }}>
+                          <Box display="flex" sx={{ padding: "2px 12px" }} gap={1} >
+                            <Tooltip title="Bearbeiten" arrow>
+                              <IconButton onClick={(e) => { e.stopPropagation(); navigate(`/purchases/${purchase.id}`); }} sx={{ p: 0.5, transition: 'transform 0.2s ease-in-out', "&:hover": { color: "#bdbdbd", transform: 'scale(1.2)', backgroundColor: "transparent" } }}>
+                                <EditIcon />
                               </IconButton>
                             </Tooltip>
-                          )}
-                        </Box>
-                      </TableCell>
+                            <DeletePurchase
+                              purchaseId={purchase.id}
+                              vendorName={purchase.vendorName}
+                              purchasingDate={purchase.purchasingDate}
+                              onSuccessDelete={() => { }}
+                              trigger={
+                                <Tooltip title="Löschen" arrow>
+                                  <IconButton
+                                    sx={{
+                                      p: 0.5,
+                                      transition: "transform 0.2s ease-in-out",
+                                      "&:hover": {
+                                        color: "#bdbdbd",
+                                        transform: "scale(1.2)",
+                                        backgroundColor: "transparent",
+                                      },
+                                    }}
+                                  >
+                                    <DeleteIcon />
+                                  </IconButton>
+                                </Tooltip>
+                              }
+                            />
+                            {purchase.paymentStatus !== "BEZAHLT" && (
+                              <Tooltip title="Bezahlen" arrow>
+                                <IconButton onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenPaymentDialogId(purchase.id);
+                                  setSelectedOperationType(purchase.type);
+                                }}
+                                  sx={{ p: 0.5, transition: 'transform 0.2s ease-in-out', "&:hover": { color: "#bdbdbd", transform: 'scale(1.2)', backgroundColor: "transparent" } }}>
+                                  <PaymentsIcon />
+                                </IconButton>
+                              </Tooltip>
+                            )}
+                          </Box>
+                        </TableCell>
                       )}
 
                     </TableRow>
@@ -505,7 +516,7 @@ export default function Purchases() {
 
 const convertFiltersToParams = (filters: any) => {
   return {
-    document: filters.document || undefined,
+    documentId: filters.documentId ? Number(filters.documentId) : undefined,
     paymentStatus: filters.paymentStatus || undefined,
     startDate: filters.startDate || undefined,
     endDate: filters.endDate || undefined,

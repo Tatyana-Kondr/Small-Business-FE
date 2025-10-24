@@ -13,6 +13,10 @@ import {
   Typography,
   Grid,
   Autocomplete,
+  FormControl,
+  InputLabel,
+  Select,
+  SelectChangeEvent,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
@@ -21,12 +25,12 @@ import { NewPaymentDto, PaymentMethod, PaymentPrefillDto, PaymentProcess } from 
 import { fetchAllPaymentMethods, fetchAllPaymentProcesses, fetchPrefillDataForPurchase, fetchPrefillDataForSale } from "../api";
 import { updatePurchasePaymentStatus } from "../../purchases/purchasesSlice";
 import { updateSalePaymentStatus } from "../../sales/salesSlice";
-import { TypesOfDocument } from "../../../constants/enums";
 import { getCustomers } from "../../customers/customersSlice";
 import { Customer } from "../../customers/types";
 import CreateCustomer from "../../customers/components/CreateCustomer";
 import { handleApiError } from "../../../utils/handleApiError";
 import { showSuccessToast } from "../../../utils/toast";
+import { getDocumentTypes, selectTypeOfDocuments } from "../../purchases/typeOfDocumentSlice";
 
 
 interface CreatePaymentProps {
@@ -51,6 +55,7 @@ export default function CreatePayment({
 }: CreatePaymentProps) {
   const dispatch = useAppDispatch();
   const loading = useAppSelector(selectLoading);
+  const documentTypes = useAppSelector(selectTypeOfDocuments);
   const error = useAppSelector(selectError);
 
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -68,7 +73,8 @@ export default function CreatePayment({
     amount: 0,
     saleId: 0,
     purchaseId: 0,
-    document: "",
+    documentId: 0,
+    documentName: "",
     documentNumber: "",
     type: typeOfOperation ? TYPE_MAP[typeOfOperation] : "AUSGABE",
     paymentMethodId: 0,
@@ -76,6 +82,10 @@ export default function CreatePayment({
   });
 
   const amountLabel = form.saleId !== 0 || form.purchaseId !== 0 ? "Offener Betrag" : "Betrag";
+
+  useEffect(() => {
+    dispatch(getDocumentTypes());
+  }, [dispatch]);
 
   useEffect(() => {
     dispatch(getCustomers({ page: 0, size: 100 }))
@@ -114,7 +124,8 @@ export default function CreatePayment({
           amount: prefill?.amountLeft ?? 0,
           saleId: prefill?.saleId ?? 0,
           purchaseId: prefill?.purchaseId ?? 0,
-          document: prefill?.document ?? "",
+          documentId: prefill?.documentId ?? 0,
+          documentName: prefill?.documentName ?? "",
           documentNumber: prefill?.documentNumber ?? "",
           paymentMethodId: methods[0]?.id || 0,
           paymentProcessId: processes[0]?.id || 0,
@@ -136,7 +147,7 @@ export default function CreatePayment({
     const { name, value } = e.target;
     setForm((prev) => ({
       ...prev,
-      [name]: ["amount", "customerId", "saleId", "purchaseId", "paymentMethodId", "paymentProcessId"].includes(name)
+      [name]: ["amount", "customerId", "saleId", "purchaseId", "paymentMethodId", "paymentProcessId", "documentId"].includes(name)
         ? Number(value)
         : value,
     }));
@@ -307,32 +318,41 @@ export default function CreatePayment({
           )}
 
           {!typeOfOperation ? (
-            <TextField
-              id="document"
-              select
-              label="Dokumenttyp"
-              name="document"
-              value={form.document}
-              onChange={handleChange}
-              required
-              inputProps={{ 'aria-label': 'Dokumenttyp auswählen' }}
-            >
-              {TypesOfDocument.map((doc) => (
-                <MenuItem key={doc} value={doc}>
-                  {doc}
-                </MenuItem>
-              ))}
-            </TextField>
+            <FormControl fullWidth>
+              <InputLabel id="document-type-label">Dokumenttyp</InputLabel>
+              <Select
+                labelId="document-type-label"
+                id="document-type"
+                name="documentId"
+                value={form.documentId || ""}
+                onChange={(e: SelectChangeEvent<number>) => {
+                  const selectedId = Number(e.target.value);
+                  setForm((prev) => ({
+                    ...prev,
+                    documentId: selectedId,
+                  }));
+                }}
+                label="Dokumenttyp"
+              >
+                <MenuItem value="">Bitte wählen</MenuItem>
+                {documentTypes.map((doc) => (
+                  <MenuItem key={doc.id} value={doc.id}>
+                    {doc.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           ) : (
             <TextField
               id="document"
-              label="Dokument"
-              name="document"
-              value={form.document}
-              onChange={handleChange}
-              inputProps={{ 'aria-label': 'Dokumentname eingeben' }}
+              label="Dokumenttyp"
+              name="documentName"
+              value={form.documentName || ""}
+              disabled
+              inputProps={{ 'aria-label': 'Dokumenttyp (nicht bearbeitbar)' }}
             />
           )}
+
 
           <TextField
             id="documentNumber"

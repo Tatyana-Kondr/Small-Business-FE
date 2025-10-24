@@ -8,9 +8,6 @@ import {
   DialogActions,
   Autocomplete,
   MenuItem,
-  FormControl,
-  InputLabel,
-  Select,
 } from "@mui/material";
 import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
 import { NewPaymentDto, Payment, PaymentMethod, PaymentProcess } from "../types";
@@ -18,11 +15,12 @@ import { updatePayment } from "../paymentsSlice";
 import { showSuccessToast } from "../../../utils/toast";
 import { handleApiError } from "../../../utils/handleApiError";
 import { Customer } from "../../customers/types";
-import { TypeOfDocument, TypesOfDocument } from "../../../constants/enums";
 import { getCustomers } from "../../customers/customersSlice";
 import { getPaymentMethods } from "../paymentMethodsSlice";
 import { getPaymentProcesses } from "../paymentProcessesSlice";
 import KeyboardDoubleArrowLeftOutlinedIcon from '@mui/icons-material/KeyboardDoubleArrowLeftOutlined';
+import { getDocumentTypes } from "../../purchases/typeOfDocumentSlice";
+import { TypeOfDocument } from "../../purchases/types";
 
 interface EditPaymentProps {
   payment: Payment;
@@ -36,6 +34,7 @@ export default function EditPayment({ payment, onClose }: EditPaymentProps) {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [paymentProcesses, setPaymentProcesses] = useState<PaymentProcess[]>([]);
+  const [documentTypes, setDocumentTypes] = useState<TypeOfDocument[]>([]);
 
   const [form, setForm] = useState<NewPaymentDto>({
     paymentDate: payment.paymentDate.substring(0, 10),
@@ -43,7 +42,7 @@ export default function EditPayment({ payment, onClose }: EditPaymentProps) {
     customerName: payment.customerName,
     type: payment.type,
     amount: payment.amount,
-    document: payment.document,
+    documentId: payment.document.id,
     documentNumber: payment.documentNumber,
     paymentMethodId: payment.paymentMethodId,
     paymentProcessId: payment.paymentProcessId,
@@ -55,14 +54,16 @@ export default function EditPayment({ payment, onClose }: EditPaymentProps) {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [customerData, methodsData, processesData] = await Promise.all([
+        const [customerData, methodsData, processesData, docTypesData] = await Promise.all([
           dispatch(getCustomers({ page: 0, size: 100 })).unwrap(),
           dispatch(getPaymentMethods()).unwrap(),
           dispatch(getPaymentProcesses()).unwrap(),
+          dispatch(getDocumentTypes()).unwrap(),
         ]);
         setCustomers(customerData.content);
         setPaymentMethods(methodsData);
         setPaymentProcesses(processesData);
+        setDocumentTypes(docTypesData)
       } catch (err) {
         handleApiError(err, "Fehler beim Laden der Daten.");
       }
@@ -77,7 +78,7 @@ export default function EditPayment({ payment, onClose }: EditPaymentProps) {
     const { name, value } = e.target;
     setForm((prev) => ({
       ...prev,
-      [name]: ["amount", "customerId", "paymentMethodId", "paymentProcessId", "saleId", "purchaseId"].includes(name)
+      [name]: ["amount", "customerId", "paymentMethodId", "paymentProcessId", "saleId", "purchaseId", "documentId"].includes(name)
         ? Number(value)
         : value,
     }));
@@ -186,24 +187,22 @@ export default function EditPayment({ payment, onClose }: EditPaymentProps) {
             required
           />
 
-          <FormControl margin="dense" fullWidth>
-            <InputLabel>Dokument</InputLabel>
-            <Select
-              name="document"
-              value={form.document}
-              onChange={(e) =>
-                !isLocked &&
-                setForm((prev) => ({ ...prev, document: e.target.value as TypeOfDocument }))
-              }
-              disabled={isLocked}
-            >
-              {TypesOfDocument.map((type) => (
-                <MenuItem key={type} value={type}>
-                  {type}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          <TextField
+            id="documentType"
+            select
+            label="Dokumenttyp"
+            name="documentId"
+            value={form.documentId}
+            onChange={handleChange}
+            margin="dense"
+            fullWidth
+          >
+            {documentTypes.map((type) => (
+              <MenuItem key={type.id} value={type.id}>
+                {type.name}
+              </MenuItem>
+            ))}
+          </TextField>
 
           <TextField
             label="Dokumentnummer"
@@ -253,7 +252,7 @@ export default function EditPayment({ payment, onClose }: EditPaymentProps) {
       <DialogActions sx={{ justifyContent: "space-between", padding: "8px 24px", mb: "12px" }}>
         <Button
           onClick={onClose}
-          disabled={loading}
+            disabled={loading}
           sx={{
             fontSize: 12,
             minWidth: 40,

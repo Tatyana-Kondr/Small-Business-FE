@@ -138,7 +138,7 @@ export const paymentsSlice = createAppSlice({
         customerId?: number;
         saleId?: number;
         purchaseId?: number;
-        document?: string;
+        documentId?: number;
         documentNumber?: string;
         amount?: number;
         startDate?: string;

@@ -28,13 +28,14 @@ import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
 import { useCallback, useEffect, useState } from "react";
 import React from "react";
 import { ClearIcon } from "@mui/x-date-pickers";
-import { TypesOfDocument } from "../../../constants/enums";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { getAllPurchaseIds, getAllSaleIds, getPayments, getPaymentsByFilter, searchPayments, selectPayments, selectTotalPages } from "../paymentsSlice";
 import DeletePayment from "./DeletePayment";
 import EditPayment from "./EditPayment";
 import { Payment } from "../types";
+import { getDocumentTypes, selectTypeOfDocuments } from "../../purchases/typeOfDocumentSlice";
+import { TypeOfDocument } from "../../purchases/types";
 
 const StyledTableHead = styled(TableHead)({
     backgroundColor: "#014D69",
@@ -47,7 +48,7 @@ const StyledTableHead = styled(TableHead)({
 });
 
 type PaymentFilters = {
-    document: string;
+    documentId: string;
     documentNumber: string;
     saleId: number | "";
     purchaseId: number | "";
@@ -58,7 +59,7 @@ type PaymentFilters = {
 function convertFiltersToParams(f: PaymentFilters) {
     const params: Record<string, any> = {};
 
-    if (f.document) params.document = f.document;
+    if (f.documentId && f.documentId !== "") params.documentId = Number(f.documentId);
     if (f.documentNumber) params.documentNumber = f.documentNumber;
     if (f.startDate) params.startDate = f.startDate;
     if (f.endDate) params.endDate = f.endDate;
@@ -72,6 +73,7 @@ export default function Payments() {
     const dispatch = useAppDispatch();
     const payments = useAppSelector(selectPayments);
     const totalPages = useAppSelector(selectTotalPages);
+    const documentTypes = useAppSelector(selectTypeOfDocuments);
     const [page, setPage] = useState(0);
     const [searchTerm, setSearchTerm] = useState("");
     const [filtersVisible, setFiltersVisible] = useState(false);
@@ -81,14 +83,18 @@ export default function Payments() {
     const [purchaseOptions, setPurchaseOptions] = useState<number[]>([]);
 
     const [filters, setFilters] = useState<PaymentFilters>({
-        document: "",
+        documentId: "",
         documentNumber: "",
         saleId: "",
         purchaseId: "",
         startDate: "",
         endDate: "",
     });
-    
+
+    useEffect(() => {
+        dispatch(getDocumentTypes());
+    }, [dispatch]);
+
     useEffect(() => {
         if (filtersVisible) {
             dispatch(getAllSaleIds()).then((res: any) => {
@@ -103,7 +109,7 @@ export default function Payments() {
     const debouncedSearch = useCallback(
         debounce((searchTerm: string) => {
             const hasFilters =
-                filters.document ||
+                filters.documentId ||
                 filters.documentNumber ||
                 filters.saleId ||
                 filters.purchaseId ||
@@ -139,7 +145,7 @@ export default function Payments() {
             filters.documentNumber ||
             filters.saleId ||
             filters.purchaseId ||
-            filters.document;
+            filters.documentId;
 
         if (hasFilters) {
             dispatch(getPaymentsByFilter({ page, size: 15, ...convertFiltersToParams(filters), searchQuery: searchTerm, }));
@@ -167,7 +173,7 @@ export default function Payments() {
 
     const handleClearFilters = () => {
         setFilters({
-            document: "",
+            documentId: "",
             documentNumber: "",
             saleId: "",
             purchaseId: "",
@@ -193,7 +199,7 @@ export default function Payments() {
             filters.documentNumber ||
             filters.saleId ||
             filters.purchaseId ||
-            filters.document;
+            filters.documentId;
 
         if (hasFilters) {
             dispatch(
@@ -304,25 +310,26 @@ export default function Payments() {
                         />
                         {/* Тип документа */}
                         <FormControl size="small" sx={{ minWidth: 160 }}>
-                            <InputLabel id="filter-document-label">Typ des Dokuments</InputLabel>
+                            <InputLabel id="filter-document-label">Dokumenttyp</InputLabel>
                             <Select
                                 labelId="filter-document-label"
-                                id="filter-document"
-                                value={filters.document}
-                                onChange={(e: SelectChangeEvent) =>
-                                    handleFilterChange("document", e.target.value)
+                                id="document-type-select"
+                                value={filters.documentId || ""}
+                                onChange={(e: SelectChangeEvent<string>) =>
+                                    handleFilterChange("documentId", e.target.value)
                                 }
-                                label="Typ des Dokuments"
-                                inputProps={{ 'aria-label': 'Typ des Dokuments auswählen' }}
+                                label="Dokumenttyp"
+                                aria-label="Dokumenttyp"
                             >
                                 <MenuItem value="">ALLE</MenuItem>
-                                {TypesOfDocument.map((type) => (
-                                    <MenuItem key={type} value={type}>
-                                        {type}
+                                {documentTypes.map((doc: TypeOfDocument) => (
+                                    <MenuItem key={doc.id} value={doc.id.toString()}>
+                                        {doc.name}
                                     </MenuItem>
                                 ))}
                             </Select>
                         </FormControl>
+
 
                         {/* Sale ID */}
                         <FormControl size="small" sx={{ minWidth: 160 }}>
@@ -405,7 +412,7 @@ export default function Payments() {
                                                     : ""}
                                             </TableCell>
                                             <TableCell align="right" sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{payment.amount} €</TableCell>
-                                            <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{payment.document}</TableCell>
+                                            <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{payment.document.name}</TableCell>
                                             <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{payment.documentNumber}</TableCell>
                                             <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px", textAlign: "center" }}>{payment.saleId}</TableCell>
                                             <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px", textAlign: "center" }}>{payment.purchaseId}</TableCell>

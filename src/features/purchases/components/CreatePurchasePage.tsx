@@ -8,6 +8,7 @@ import {
     Paper,
     InputAdornment,
     Dialog,
+    SelectChangeEvent,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { NewPurchaseDto, NewPurchaseItemDto } from '../types';
@@ -23,12 +24,12 @@ import { deDE } from '@mui/x-date-pickers/locales';
 import { getProducts, getProductsByCategory, selectProducts } from '../../products/productsSlice';
 import { getProductCategories, selectProductCategories } from '../../products/productCategoriesSlice';
 import { addPurchase } from '../purchasesSlice';
-import { TypeOfDocument, TypesOfDocument } from '../../../constants/enums';
 import AddIcon from "@mui/icons-material/Add";
 import { useReloadOnSuccess } from '../../../hooks/useReloadOnSuccess';
 import CreateCustomer from '../../customers/components/CreateCustomer';
 import { handleApiError } from '../../../utils/handleApiError';
 import { showSuccessToast } from '../../../utils/toast';
+import { getDocumentTypes, selectTypeOfDocuments } from '../typeOfDocumentSlice';
 
 const StyledTableHead = styled(TableHead)(({
     backgroundColor: "#1a3d6d",
@@ -66,7 +67,7 @@ export default function CreatePurchasePage({ onClose, onSubmitSuccess }: CreateP
         vendorId: 0,
         purchasingDate: '',
         type: 'EINKAUF',
-        document: '',
+        documentId: 0,
         documentNumber: '',
         purchaseItems: [],
     });
@@ -75,9 +76,14 @@ export default function CreatePurchasePage({ onClose, onSubmitSuccess }: CreateP
     const [dateValue, setDateValue] = useState<Dayjs | null>(null);
     const categories = useAppSelector(selectProductCategories);
     const products = useAppSelector(selectProducts);
+    const documentTypes = useAppSelector(selectTypeOfDocuments);
     const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [showCreateCustomer, setShowCreateCustomer] = useState(false);
+
+    useEffect(() => {
+        dispatch(getDocumentTypes());
+    }, [dispatch]);
 
     useEffect(() => {
         dispatch(getProductCategories());
@@ -331,21 +337,24 @@ export default function CreatePurchasePage({ onClose, onSubmitSuccess }: CreateP
                                         labelId="purchase-document-label"
                                         id="purchase-document"
                                         label="Dokument"
-                                        value={newPurchase.document}
-                                        onChange={(e) =>
+                                        value={newPurchase.documentId || ""}
+                                        onChange={(e: SelectChangeEvent<number>) => {
+                                            const selectedId = Number(e.target.value);
                                             setNewPurchase((prev) => ({
                                                 ...prev,
-                                                document: e.target.value as TypeOfDocument,
-                                            }))
-                                        }
+                                                documentId: selectedId, // ✅ теперь сохраняем id, а не сам объект
+                                            }));
+                                        }}
                                     >
-                                        {TypesOfDocument.map((type) => (
-                                            <MenuItem key={type} value={type}>
-                                                {type}
+                                        <MenuItem value="">Bitte wählen</MenuItem>
+                                        {documentTypes.map((doc) => (
+                                            <MenuItem key={doc.id} value={doc.id}>
+                                                {doc.name}
                                             </MenuItem>
                                         ))}
                                     </Select>
                                 </FormControl>
+
                             </Grid>
 
                             <Grid item xs={4}>

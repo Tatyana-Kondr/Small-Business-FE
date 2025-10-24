@@ -110,7 +110,7 @@ export async function fetchPaymentsByFilter({
   customerId,
   saleId,
   purchaseId,
-  document,
+  documentId,
   documentNumber,
   amount,
   startDate,
@@ -124,7 +124,7 @@ export async function fetchPaymentsByFilter({
   customerId?: number;
   saleId?: number;
   purchaseId?: number;
-  document?: string;
+  documentId?: number;
   documentNumber?: string;
   amount?: number;
   startDate?: string;
@@ -142,7 +142,7 @@ export async function fetchPaymentsByFilter({
     customerId,
     saleId,
     purchaseId,
-    document,
+    documentId,
     documentNumber,
     amount,
     startDate,

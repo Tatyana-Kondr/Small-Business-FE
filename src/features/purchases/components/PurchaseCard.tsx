@@ -18,7 +18,8 @@ import {
   TextField,
   Typography,
   Autocomplete,
-  InputLabel
+  InputLabel,
+  SelectChangeEvent
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { Delete as DeleteIcon, Clear as ClearIcon } from '@mui/icons-material';
@@ -28,17 +29,17 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, { Dayjs } from 'dayjs';
 import { deDE } from '@mui/x-date-pickers/locales';
 import { useAppDispatch, useAppSelector } from '../../../redux/hooks';
-import { NewPurchaseDto, NewPurchaseItemDto } from '../types';
+import { NewPurchaseDto, NewPurchaseItemDto, TypeOfDocument } from '../types';
 import { Customer } from '../../customers/types';
 import { getProductCategories, selectProductCategories } from '../../products/productCategoriesSlice';
 import { getProducts, getProductsByCategory, selectProducts } from '../../products/productsSlice';
 import { getPurchaseById, updatePurchase } from '../purchasesSlice';
 import { getCustomers } from '../../customers/customersSlice';
 import { Product } from '../../products/types';
-import { TypeOfDocument, TypesOfDocument } from '../../../constants/enums';
 import KeyboardDoubleArrowLeftOutlinedIcon from '@mui/icons-material/KeyboardDoubleArrowLeftOutlined';
 import { handleApiError } from '../../../utils/handleApiError';
 import { showSuccessToast } from '../../../utils/toast';
+import { getDocumentTypes, selectTypeOfDocuments } from '../typeOfDocumentSlice';
 
 const StyledTableHead = styled(TableHead)(({
   backgroundColor: "#1a3d6d",
@@ -74,7 +75,7 @@ export default function PurchaseCard() {
     vendorId: 0,
     purchasingDate: '',
     type: 'EINKAUF',
-    document: '',
+    documentId: 0,
     documentNumber: '',
     purchaseItems: [],
     paymentStatus: '',
@@ -83,8 +84,14 @@ export default function PurchaseCard() {
   const [vendors, setVendors] = useState<Customer[]>([]);
   const categories = useAppSelector(selectProductCategories);
   const products = useAppSelector(selectProducts);
+  const documentTypes = useAppSelector(selectTypeOfDocuments);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  
+
+  useEffect(() => {
+    dispatch(getDocumentTypes());
+  }, [dispatch]);
 
   useEffect(() => {
     // Загрузка данных покупки
@@ -242,14 +249,14 @@ export default function PurchaseCard() {
 
   const handleSubmit = () => {
     if (!purchase.purchaseItems.length) {
-            handleApiError(new Error("Die Bestellung enthält keine Artikel."));
-            return;
-        }
+      handleApiError(new Error("Die Bestellung enthält keine Artikel."));
+      return;
+    }
 
-        if (!purchase.vendorId || !purchase.purchasingDate) {
-            handleApiError(new Error("Bitte füllen Sie alle Pflichtfelder korrekt aus."));
-            return;
-        }
+    if (!purchase.vendorId || !purchase.purchasingDate) {
+      handleApiError(new Error("Bitte füllen Sie alle Pflichtfelder korrekt aus."));
+      return;
+    }
 
     const updatedPurchaseItems = purchase.purchaseItems.map((item, index) => ({
       ...item,
@@ -262,7 +269,8 @@ export default function PurchaseCard() {
 
     const updatedPurchaseToSend: NewPurchaseDto = {
       ...purchase,
-      purchaseItems: updatedPurchaseItems
+      purchaseItems: updatedPurchaseItems,
+      documentId: purchase.documentId,
     };
 
     dispatch(updatePurchase({ id, updatedPurchase: updatedPurchaseToSend }))
@@ -348,16 +356,24 @@ export default function PurchaseCard() {
                   <InputLabel>Dokument</InputLabel>
                   <Select
                     label="Dokument"
-                    value={purchase.document}
-                    onChange={(e) => setPurchase(prev => ({ ...prev, document: e.target.value as TypeOfDocument }))}
+                    value={purchase.documentId || ""}
+                    onChange={(e: SelectChangeEvent<number>) => {
+                      const selectedId = Number(e.target.value);
+                      setPurchase(prev => ({
+                        ...prev,
+                        documentId: selectedId,
+                      }));
+                    }}
                   >
-                    {TypesOfDocument.map((type) => (
-                      <MenuItem key={type} value={type}>
-                        {type}
+                    <MenuItem value="">Bitte wählen</MenuItem>
+                    {documentTypes.map((doc: TypeOfDocument) => (
+                      <MenuItem key={doc.id} value={doc.id}>
+                        {doc.name}
                       </MenuItem>
                     ))}
                   </Select>
                 </FormControl>
+
               </Grid>
               <Grid item xs={4}>
                 <TextField
