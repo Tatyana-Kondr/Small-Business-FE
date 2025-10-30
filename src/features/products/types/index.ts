@@ -29,6 +29,7 @@ export interface Dimensions {
   height: number;
   length: number;
   width: number;
+  diameter: number;
 }
 
 export interface ProductFile {

@@ -153,6 +153,26 @@ export default function ProductCard() {
         ? new Date(product.createdDate).toLocaleDateString("de-DE") // Формат для Германии (день.месяц.год)
         : "—";
 
+    type Dimensions = {
+        length?: number;
+        width?: number;
+        height?: number;
+        diameter?: number;
+    };
+
+    const formatDimensions = (dims?: Dimensions): string => {
+        if (!dims) return "—";
+        const parts: string[] = [];
+
+        if (dims.length && dims.length > 0) parts.push(`L-${dims.length}`);
+        if (dims.width && dims.width > 0) parts.push(`B-${dims.width}`);
+        if (dims.height && dims.height > 0) parts.push(`H-${dims.height}`);
+        if (dims.diameter && dims.diameter > 0) parts.push(`D-${dims.diameter}`);
+
+        return parts.length > 0 ? parts.join(", ") + " mm" : "—";
+    };
+
+    
     return (
 
         <Container>
@@ -214,7 +234,7 @@ export default function ProductCard() {
                                     ["Verkaufspreis", `${product.sellingPrice} €`],
                                     ["Maßeinheit", product.unitOfMeasurement.name || "—"],
                                     ["Gewicht", product.weight ? `${product.weight} kg` : "—"],
-                                    ["Abmessungen", product.newDimensions ? `${product.newDimensions.height} x ${product.newDimensions.length} x ${product.newDimensions.width} mm` : "—"],
+                                    ["Abmessungen", formatDimensions(product.newDimensions)],
                                     ["Kategorie", product.productCategory?.name || "—"],
                                     ["Beschreibung", product.description || "—"],
                                     ["Lagerplatz", product.storageLocation || "—"],

@@ -37,6 +37,7 @@ export default function EditProduct({ productId, closeModal }: EditProductProps)
                     height: selectedProduct.newDimensions?.height || 0,
                     length: selectedProduct.newDimensions?.length || 0,
                     width: selectedProduct.newDimensions?.width || 0,
+                    diameter: selectedProduct.newDimensions?.diameter || 0,
                 },
                 productCategory: selectedProduct.productCategory || { id: 0, name: "" },
                 description: selectedProduct.description || "",
@@ -69,7 +70,7 @@ export default function EditProduct({ productId, closeModal }: EditProductProps)
         setProductData((prev) => ({
             ...prev!,
             newDimensions: {
-                ...(prev?.newDimensions ?? { height: 0, length: 0, width: 0 }),
+                ...(prev?.newDimensions ?? { height: 0, length: 0, width: 0, diameter: 0 }),
                 [name]: Number(value),
             },
         }));
@@ -253,6 +254,16 @@ export default function EditProduct({ productId, closeModal }: EditProductProps)
                 name="height"
                 type="number"
                 value={productData.newDimensions?.height ?? ""}
+                onChange={handleDimensionsChange}
+            />
+
+            <TextField
+                fullWidth
+                margin="normal"
+                label="Durchmesser (mm)"
+                name="diameter"
+                type="number"
+                value={productData.newDimensions?.diameter ?? ""}
                 onChange={handleDimensionsChange}
             />
 
