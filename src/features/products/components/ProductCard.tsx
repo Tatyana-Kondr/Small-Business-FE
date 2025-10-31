@@ -164,10 +164,10 @@ export default function ProductCard() {
         if (!dims) return "—";
         const parts: string[] = [];
 
-        if (dims.length && dims.length > 0) parts.push(`L-${dims.length}`);
-        if (dims.width && dims.width > 0) parts.push(`B-${dims.width}`);
-        if (dims.height && dims.height > 0) parts.push(`H-${dims.height}`);
-        if (dims.diameter && dims.diameter > 0) parts.push(`D-${dims.diameter}`);
+        if (dims.length && dims.length > 0) parts.push(`L${dims.length}`);
+        if (dims.width && dims.width > 0) parts.push(`B${dims.width}`);
+        if (dims.height && dims.height > 0) parts.push(`H${dims.height}`);
+        if (dims.diameter && dims.diameter > 0) parts.push(`D${dims.diameter}`);
 
         return parts.length > 0 ? parts.join(", ") + " mm" : "—";
     };
