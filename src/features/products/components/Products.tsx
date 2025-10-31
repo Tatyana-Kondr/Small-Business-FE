@@ -67,6 +67,25 @@ export default function Products() {
     dispatch(getProducts({ page: 0, size: 15 }));
   };
 
+  type Dimensions = {
+        length?: number;
+        width?: number;
+        height?: number;
+        diameter?: number;
+    };
+
+    const formatDimensions = (dims?: Dimensions): string => {
+        if (!dims) return "—";
+        const parts: string[] = [];
+
+        if (dims.length && dims.length > 0) parts.push(`L-${dims.length}`);
+        if (dims.width && dims.width > 0) parts.push(`B-${dims.width}`);
+        if (dims.height && dims.height > 0) parts.push(`H-${dims.height}`);
+        if (dims.diameter && dims.diameter > 0) parts.push(`D-${dims.diameter}`);
+
+        return parts.length > 0 ? parts.join(", ") + " mm" : "—";
+    };
+
   return (
     <Box sx={{ p: 0, m: 0, width: "100%" }}>
 
@@ -136,9 +155,7 @@ export default function Products() {
                     <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{product.unitOfMeasurement.name}</TableCell>
                     <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{product.weight ? formatNumber(product.weight) : ""} </TableCell>
                     <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>
-                      {product.newDimensions
-                        ? `${product.newDimensions.height} * ${product.newDimensions.length} * ${product.newDimensions.width} mm`
-                        : ""}
+                      {formatDimensions(product.newDimensions)}
                     </TableCell>
                     <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{product.productCategory?.name}</TableCell>
                   </TableRow>
