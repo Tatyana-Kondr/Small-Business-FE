@@ -3,15 +3,23 @@ import {
   Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, Paper, Box, Pagination,
   TextField,
-  IconButton
+  IconButton,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  SelectChangeEvent
 } from "@mui/material";
 import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
-import { getProducts, selectProducts, selectTotalPages } from "../productsSlice";
+import { getProducts, getProductsByCategory, selectProducts, selectTotalPages } from "../productsSlice";
 import { styled } from "@mui/material/styles";
 import { useNavigate } from "react-router-dom";
 import ClearIcon from "@mui/icons-material/Clear";
 import debounce from "lodash.debounce";
 import { selectIsAuthenticated } from "../../auth/authSlice";
+import { getProductCategories, selectProductCategories } from "../productCategoriesSlice";
+import { useSearchParams } from "react-router-dom";
+
 
 // Стили для заголовков таблицы
 const StyledTableHead = styled(TableHead)({
@@ -23,6 +31,16 @@ const StyledTableHead = styled(TableHead)({
   },
 });
 
+// Стили для полей в таблице
+const cellStyle = {
+  whiteSpace: "nowrap",  // запрещаем перенос строк
+  overflow: "hidden",  // обрезаем всё, что не помещается
+  textOverflow: "ellipsis",  // добавляем "..."
+  borderRight: "1px solid #ddd",
+  padding: "6px 12px",
+};
+
+
 // Функция для окрашивания чисел
 const formatNumber = (value: number) => (
   <span style={{ color: value < 0 ? "red" : "inherit" }}>{value}</span>
@@ -32,24 +50,91 @@ export default function Products() {
   const dispatch = useAppDispatch();
   const isAuthenticated = useAppSelector(selectIsAuthenticated);
   const products = useAppSelector(selectProducts);
-  const totalPages = useAppSelector(selectTotalPages);  // Получаем количество страниц
-  const [page, setPage] = useState(0);
-  const [searchTerm, setSearchTerm] = useState("");
+  const totalPages = useAppSelector(selectTotalPages);  
+  const categories = useAppSelector(selectProductCategories);
   const navigate = useNavigate();
 
-  // Используем debounce для оптимизации запросов
-  const debouncedSearch = useCallback(
-    debounce((searchTerm: string) => {
-      dispatch(getProducts({ page, searchTerm })); // Делаем запрос с новым searchTerm
-    }, 500), // Задержка в 500 мс
-    []
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [page, setPage] = useState(Number(searchParams.get("page")) || 0);
+  const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "");
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>(
+    searchParams.get("category") || ""
   );
 
   useEffect(() => {
-    if (isAuthenticated) {
-    dispatch(getProducts({ page, searchTerm }));
+    dispatch(getProductCategories());
+  }, [dispatch]);
+
+  // ===== Синхронизация с URL при изменении =====
+  useEffect(() => {
+    setSearchParams({
+      page: page.toString(),
+      search: searchTerm,
+      category: selectedCategoryId,
+    });
+  }, [page, searchTerm, selectedCategoryId, setSearchParams]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const categoryIdNum = selectedCategoryId ? Number(selectedCategoryId) : null;
+
+    if (categoryIdNum) {
+      dispatch(getProductsByCategory({
+        categoryId: categoryIdNum,
+        page,
+        size: 15,
+        sort: "name",
+        searchTerm,
+      }));
+    } else {
+      dispatch(getProducts({ page, searchTerm }));
     }
-  }, [dispatch, isAuthenticated, page, searchTerm]);
+  const savedScroll = sessionStorage.getItem("products_scrollY");
+  if (savedScroll) {
+    setTimeout(() => {
+      window.scrollTo({
+        top: Number(savedScroll),
+        behavior: "smooth",
+      });
+      sessionStorage.removeItem("products_scrollY"); // очищаем
+    }, 300);
+  }
+}, [dispatch, isAuthenticated, selectedCategoryId, page, searchTerm]);
+
+ // ===== Скролл вверх при смене фильтров =====
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [selectedCategoryId, searchTerm]);
+
+  // ===== Поиск с debounce =====
+  const debouncedSearch = useCallback(
+    debounce((term: string) => {
+      setPage(0);
+      setSearchParams({
+        page: "0",
+        search: term,
+        category: selectedCategoryId,
+      });
+
+      const categoryIdNum = selectedCategoryId ? Number(selectedCategoryId) : null;
+
+      if (categoryIdNum) {
+        dispatch(
+          getProductsByCategory({
+            categoryId: categoryIdNum,
+            page: 0,
+            size: 15,
+            sort: "name",
+            searchTerm: term,
+          })
+        );
+      } else {
+        dispatch(getProducts({ page: 0, searchTerm: term }));
+      }
+    }, 500),
+    [selectedCategoryId]
+  );
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const newSearchTerm = event.target.value;
@@ -58,33 +143,51 @@ export default function Products() {
   };
 
   const handlePageChange = (_: any, value: number) => {
-    setPage(value - 1); // Обновляем текущую страницу
+    const newPage = value - 1;
+    setPage(newPage);
+    setSearchParams({
+      page: newPage.toString(),
+      search: searchTerm,
+      category: selectedCategoryId,
+    });
+  };
+
+  const handleCategoryChange = (e: SelectChangeEvent<string>) => {
+    const value = e.target.value;
+    setSelectedCategoryId(value);
+    setPage(0);
+    setSearchParams({
+      page: "0",
+      search: searchTerm,
+      category: value,
+    });
   };
 
   const handleClearSearch = () => {
     setSearchTerm("");
     setPage(0);
-    dispatch(getProducts({ page: 0, size: 15 }));
+    setSearchParams({
+      page: "0",
+      search: "",
+      category: selectedCategoryId,
+    });
+
+    const categoryIdNum = selectedCategoryId ? Number(selectedCategoryId) : null;
+
+    if (categoryIdNum) {
+      dispatch(
+        getProductsByCategory({
+          categoryId: categoryIdNum,
+          page: 0,
+          size: 15,
+          sort: "name",
+          searchTerm: "",
+        })
+      );
+    } else {
+      dispatch(getProducts({ page: 0, size: 15 }));
+    }
   };
-
-  type Dimensions = {
-        length?: number;
-        width?: number;
-        height?: number;
-        diameter?: number;
-    };
-
-    const formatDimensions = (dims?: Dimensions): string => {
-        if (!dims) return " ";
-        const parts: string[] = [];
-
-        if (dims.length && dims.length > 0) parts.push(`L${dims.length}`);
-        if (dims.width && dims.width > 0) parts.push(`B${dims.width}`);
-        if (dims.height && dims.height > 0) parts.push(`H${dims.height}`);
-        if (dims.diameter && dims.diameter > 0) parts.push(`D${dims.diameter}`);
-
-        return parts.length > 0 ? parts.join(", ") + " mm" : " ";
-    };
 
   return (
     <Box sx={{ p: 0, m: 0, width: "100%" }}>
@@ -102,7 +205,23 @@ export default function Products() {
           padding: "10px 0", // Отступы
         }}
       >
-        <Box display="flex" gap={1}>
+        <Box display="flex" gap={2}>
+          <FormControl size="small" sx={{ minWidth: 200, backgroundColor: "white" }}>
+            <InputLabel id="category-select-label">Kategorie</InputLabel>
+            <Select
+              labelId="category-select-label"
+              value={selectedCategoryId ?? ""}
+              label="Kategorie"
+              onChange={handleCategoryChange}>
+              <MenuItem value="">Alle Kategorien</MenuItem>
+              {categories.map((c) => (
+                <MenuItem key={c.id} value={String(c.id)}>
+                  {c.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
           <TextField
             id="search-input"
             label="Suche"
@@ -112,14 +231,10 @@ export default function Products() {
             onChange={handleSearchChange}
             sx={{ width: 400, backgroundColor: "white" }}
           />
-          <IconButton
-            aria-label="Suche zurücksetzen"
-            onClick={handleClearSearch}
-          >
+          <IconButton aria-label="Suche zurücksetzen" onClick={handleClearSearch}>
             <ClearIcon />
           </IconButton>
         </Box>
-
       </Box>
 
       {/* Таблица */}
@@ -130,14 +245,13 @@ export default function Products() {
               <TableRow>
                 <TableCell style={{ display: "none" }}>ID</TableCell>
                 <TableCell>Name</TableCell>
-                <TableCell>Artikel</TableCell>
-                <TableCell>Artikel des Lieferanten</TableCell>
-                <TableCell>EKpreis</TableCell>
-                <TableCell>VKpreis</TableCell>
-                <TableCell>Maßeinheit</TableCell>
+                <TableCell align="center">Artikel Nr</TableCell>
+                <TableCell align="center">Lieferanten Nr</TableCell>
+                <TableCell align="center">EK preis</TableCell>
+                <TableCell align="center">VK preis</TableCell>
+                <TableCell align="center">ME</TableCell>
                 <TableCell align="center">Gewicht, kg</TableCell>
-                <TableCell>Abmessungen</TableCell>
-                <TableCell>Kategorie</TableCell>
+                <TableCell align="center">Kategorie</TableCell>
               </TableRow>
             </StyledTableHead>
             <TableBody>
@@ -145,19 +259,20 @@ export default function Products() {
                 products.map((product) => (
                   <TableRow key={product.id}>
                     <TableCell style={{ display: "none", padding: "6px 12px" }}>{product.id}</TableCell>
-                    <TableCell sx={{ minWidth: "300px", padding: "6px 12px", borderRight: "1px solid #ddd" }}
-                      onDoubleClick={() => navigate(`/product-card/${product.id}`)}>{product.name}</TableCell>
-                    <TableCell sx={{ padding: "6px 12px", borderRight: "1px solid #ddd" }}
-                    >{product.article}</TableCell>
-                    <TableCell sx={{ width: "200px", padding: "6px 12px", borderRight: "1px solid #ddd" }}>{product.vendorArticle}</TableCell>
-                    <TableCell align="right" sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{formatNumber(product.purchasingPrice)} €</TableCell>
-                    <TableCell align="right" sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{formatNumber(product.sellingPrice)} €</TableCell>
-                    <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{product.unitOfMeasurement.name}</TableCell>
-                    <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{product.weight ? formatNumber(product.weight) : ""} </TableCell>
-                    <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>
-                      {formatDimensions(product.newDimensions)}
-                    </TableCell>
-                    <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{product.productCategory?.name}</TableCell>
+                    <TableCell sx={{ ...cellStyle, maxWidth: 300 }}
+                      onDoubleClick={() => {
+                        // сохраняем позицию скролла перед уходом
+                        sessionStorage.setItem("products_scrollY", window.scrollY.toString());
+                        navigate(`/product-card/${product.id}`);
+                      }}
+                    >{product.name}</TableCell>
+                    <TableCell sx={{ ...cellStyle, maxWidth: 150 }}>{product.article}</TableCell>
+                    <TableCell sx={{ ...cellStyle, maxWidth: 150 }}>{product.vendorArticle}</TableCell>
+                    <TableCell sx={{ ...cellStyle, textAlign: "right", maxWidth: 100 }}>{formatNumber(product.purchasingPrice)} €</TableCell>
+                    <TableCell sx={{ ...cellStyle, textAlign: "right", maxWidth: 100 }}>{formatNumber(product.sellingPrice)} €</TableCell>
+                    <TableCell sx={{ ...cellStyle }}>{product.unitOfMeasurement.name}</TableCell>
+                    <TableCell sx={{ ...cellStyle, maxWidth: 80 }}>{product.weight ? formatNumber(product.weight) : ""} </TableCell>
+                    <TableCell sx={{ ...cellStyle, maxWidth: 180 }}>{product.productCategory?.name}</TableCell>
                   </TableRow>
                 ))
               ) : (
