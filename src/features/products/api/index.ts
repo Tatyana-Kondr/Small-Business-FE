@@ -53,19 +53,25 @@ export async function fetchProductsByCategory(
   categoryId: number,
   page: number,
   size: number,
-  sort = "name"
+  sort = "name",
+  searchTerm = ""
 ): Promise<PaginatedResponse<Product>> {
   const queryParams = new URLSearchParams();
   queryParams.append("page", page.toString());
   queryParams.append("size", size.toString());
   queryParams.append("sort", sort);
 
+  if (searchTerm.trim() !== "") {
+    queryParams.append("search", searchTerm);
+  }
+
   return apiFetch<PaginatedResponse<Product>>(
     `/api/products/category/${categoryId}?${queryParams.toString()}`,
-    { auth: true }, 
+    { auth: true },
     "Fehler beim Laden der Produktkategorien."
   );
 }
+
 
 export async function fetchDeleteProduct(id: number): Promise<void> {
   return apiFetch<void>(

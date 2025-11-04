@@ -56,13 +56,15 @@ export const productsSlice = createAppSlice({
         page = 0,
         size = 15,
         sort = "name",
+        searchTerm = "",
       }: {
         categoryId: number;
         page?: number;
         size?: number;
         sort?: string;
+        searchTerm?: string;
       }) => {
-        return await fetchProductsByCategory(categoryId, page, size, sort);
+        return await fetchProductsByCategory(categoryId, page, size, sort, searchTerm);
       },
       {
         pending: (state) => {
