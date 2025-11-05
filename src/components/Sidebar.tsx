@@ -31,10 +31,9 @@ import { closeModal, openModal } from "../modal/modalSlice";
 import { selectUser } from "../features/auth/authSlice";
 import SettingsIcon from "@mui/icons-material/Settings";
 
-
-
 const drawerWidth = 200;
 const collapsedWidth = 60;
+const headerHeight = 64;
 
 type ModalConfig = {
   name: string;
@@ -98,7 +97,7 @@ const navItems: NavItem[] = [
       },
     ],
   },
-   {
+  {
     label: "Hertellungen",
     to: "/productions",
     icon: <FactoryIcon />,
@@ -163,7 +162,8 @@ const navItems: NavItem[] = [
   },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ mobileOpen, onDrawerToggle, onCollapseChange, }: { mobileOpen: boolean; onDrawerToggle: () => void; onCollapseChange?: (collapsed: boolean) => void; }) {
+
   const [collapsed, setCollapsed] = useState(false);
   const [openMenus, setOpenMenus] = useState<{ [key: string]: boolean }>({});
   const location = useLocation();
@@ -217,76 +217,130 @@ export default function Sidebar() {
     }));
   };
 
+  const handleCollapseToggle = () => {
+    setCollapsed((prev) => {
+      const newVal = !prev;
+      onCollapseChange?.(newVal);
+      return newVal;
+    });
+  };
 
   return (
-    <Drawer
-      variant="permanent"
-      sx={{
-        width: collapsed ? collapsedWidth : drawerWidth,
-        flexShrink: 0,
-        whiteSpace: "nowrap",
-        mt: 8,
-        [`& .MuiDrawer-paper`]: {
-          mt: 8,
-          width: collapsed ? collapsedWidth : drawerWidth,
-          boxSizing: "border-box",
-          overflow: "visible",
-          transition: "width 0.3s",
-        },
-      }}
-    >
+    <>
+      {/* 📱 Мобильный Drawer */}
+      <Drawer
+        variant="temporary"
+        open={mobileOpen}
+        onClose={onDrawerToggle}
+        ModalProps={{ keepMounted: true }}
+        sx={{
+          display: { xs: "block", sm: "none" },
+          "& .MuiDrawer-paper": {
+            width: collapsed ? collapsedWidth : drawerWidth,
+            boxSizing: "border-box",
+            top: headerHeight,
+            height: `calc(100vh - ${headerHeight}px)`,
+          },
+        }}
+      >
+        <SidebarContent
+          collapsed={collapsed}
+          setCollapsed={setCollapsed}
+          openMenus={openMenus}
+          handleCollapseToggle={handleCollapseToggle}
+          handleParentClick={handleParentClick}
+          handleOpenModal={handleOpenModal}
+          isAdmin={isAdmin}
+          location={location}
+          navigate={navigate}
+        />
+      </Drawer>
+
+      {/* 💻 Постоянный Drawer для десктопа */}
+      <Drawer
+        variant="permanent"
+        sx={{
+          position: "fixed", // ← фиксируем Sidebar
+          zIndex: 1200,
+          "& .MuiDrawer-paper": {
+            position: "fixed", // ← чтобы сама бумага не влияла на layout
+            top: headerHeight,
+            height: `calc(100vh - ${headerHeight}px)`,
+            width: collapsed ? collapsedWidth : drawerWidth,
+            transition: "width 0.3s",
+            boxSizing: "border-box",
+            borderRight: "1px solid #e0e0e0",
+          },
+        }}
+        open
+      >
+        <SidebarContent
+          collapsed={collapsed}
+          openMenus={openMenus}
+          handleCollapseToggle={handleCollapseToggle}
+          handleParentClick={handleParentClick}
+          handleOpenModal={handleOpenModal}
+          isAdmin={isAdmin}
+          location={location}
+          navigate={navigate}
+        />
+      </Drawer>
+    </>
+  );
+}
+
+function SidebarContent({
+  collapsed,
+  openMenus,
+  handleCollapseToggle,
+  handleParentClick,
+  handleOpenModal,
+  isAdmin,
+  location,
+  navigate,
+}: any) {
+  return (
+    <Box sx={{ height: "100%", display: "flex", flexDirection: "column", overflowY: "auto" }}>
       {/* Collapse кнопка */}
       <Box
         sx={{
-          position: "absolute",
-          top: 9,
-          right: -22,
+          position: "fixed", // ← фиксируем относительно окна
+          top: headerHeight + 8, // ← чуть ниже хедера
+          left: collapsed ? collapsedWidth  : drawerWidth , // ← на краю панели
           width: 20,
           height: 30,
           backgroundColor: "white",
           border: "1px solid #ccc",
           borderLeft: "none",
           borderRadius: "0 6px 6px 0",
-          zIndex: 1,
-          display: "flex",
+          display: { xs: "none", sm: "flex" },
           alignItems: "center",
           justifyContent: "center",
           cursor: "pointer",
+          zIndex: 1301, // чуть выше Drawer
+          transition: "left 0.3s ease",
         }}
-        onClick={() => setCollapsed(!collapsed)}
+
+        onClick={handleCollapseToggle}
       >
-        {collapsed ? (
-          <ChevronRightIcon fontSize="small" />
-        ) : (
-          <ChevronLeftIcon fontSize="small" />
-        )}
+        {collapsed ? <ChevronRightIcon fontSize="small" /> : <ChevronLeftIcon fontSize="small" />}
       </Box>
 
       <Divider />
 
       <List>
         {navItems.map(({ label, to, icon, children }) => {
-          // Скрываем раздел "Zahlungen" для не-админов
           if (label === "Zahlungen" && !isAdmin) return null;
-
-           // Скрываем раздел "Herstellungen" для не-админов
           if (label === "Hertellungen" && !isAdmin) return null;
-
-           // скрываем Admin Settings для не-админов
           if (label === "Admin Settings" && !isAdmin) return null;
 
-          // Скрываем "Produktkategorien" внутри Home для не-админов
-           const filteredChildren =
+          const filteredChildren =
             label === "Home" && !isAdmin
-              ? (children ?? []).filter(
-                  (child) => child.label !== "Produktkategorien"
-                )
+              ? (children ?? []).filter((child) => child.label !== "Produktkategorien")
               : children ?? [];
 
-          
           const isOpen = openMenus[label];
           const hasChildren = !!children?.length;
-
           const isActive =
             to
               ? to === "/"
@@ -308,13 +362,9 @@ export default function Sidebar() {
                   "&:hover": {
                     color: "#0097a7",
                     backgroundColor: (theme) => theme.palette.action.hover,
-                    "& .MuiListItemIcon-root": {
-                      color: "#0097a7",
-                    },
+                    "& .MuiListItemIcon-root": { color: "#0097a7" },
                   },
-                  "& .MuiListItemIcon-root": {
-                    color: isActive ? "#0097a7" : undefined,
-                  },
+                  "& .MuiListItemIcon-root": { color: isActive ? "#0097a7" : undefined },
                 }}
               >
                 <Tooltip title={collapsed ? label : ""} placement="right">
@@ -343,7 +393,6 @@ export default function Sidebar() {
                     {filteredChildren.map((child) => {
                       const isLink = !!child.to;
                       const isModal = !!child.modal;
-
                       const isChildActive = child.to
                         ? location.pathname === child.to
                         : false;
@@ -356,7 +405,7 @@ export default function Sidebar() {
                         }
                       };
 
-                      const icon = isModal ? (
+                      const bulletIcon = isModal ? (
                         <Box
                           sx={{
                             fontWeight: "bold",
@@ -404,7 +453,7 @@ export default function Sidebar() {
                               },
                             }}
                           >
-                            {icon}
+                            {bulletIcon}
                             {!collapsed && (
                               <ListItemText
                                 primary={child.label}
@@ -422,6 +471,6 @@ export default function Sidebar() {
           );
         })}
       </List>
-    </Drawer>
+    </Box>
   );
 }
