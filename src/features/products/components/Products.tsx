@@ -19,6 +19,8 @@ import debounce from "lodash.debounce";
 import { selectIsAuthenticated } from "../../auth/authSlice";
 import { getProductCategories, selectProductCategories } from "../productCategoriesSlice";
 import { useSearchParams } from "react-router-dom";
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
+import ArrowDropUpIcon from '@mui/icons-material/ArrowDropUp';
 
 
 // Стили для заголовков таблицы
@@ -50,12 +52,13 @@ export default function Products() {
   const dispatch = useAppDispatch();
   const isAuthenticated = useAppSelector(selectIsAuthenticated);
   const products = useAppSelector(selectProducts);
-  const totalPages = useAppSelector(selectTotalPages);  
+  const totalPages = useAppSelector(selectTotalPages);
   const categories = useAppSelector(selectProductCategories);
   const navigate = useNavigate();
 
   const [searchParams, setSearchParams] = useSearchParams();
   const [page, setPage] = useState(Number(searchParams.get("page")) || 0);
+  const [sort, setSort] = useState(searchParams.get("sort") || "name");
   const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "");
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>(
     searchParams.get("category") || ""
@@ -71,8 +74,9 @@ export default function Products() {
       page: page.toString(),
       search: searchTerm,
       category: selectedCategoryId,
+      sort,
     });
-  }, [page, searchTerm, selectedCategoryId, setSearchParams]);
+  }, [page, searchTerm, selectedCategoryId, sort, setSearchParams]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -84,25 +88,25 @@ export default function Products() {
         categoryId: categoryIdNum,
         page,
         size: 15,
-        sort: "name",
+        sort,
         searchTerm,
       }));
     } else {
-      dispatch(getProducts({ page, searchTerm }));
+      dispatch(getProducts({ page, searchTerm, sort }));
     }
-  const savedScroll = sessionStorage.getItem("products_scrollY");
-  if (savedScroll) {
-    setTimeout(() => {
-      window.scrollTo({
-        top: Number(savedScroll),
-        behavior: "smooth",
-      });
-      sessionStorage.removeItem("products_scrollY"); // очищаем
-    }, 300);
-  }
-}, [dispatch, isAuthenticated, selectedCategoryId, page, searchTerm]);
+    const savedScroll = sessionStorage.getItem("products_scrollY");
+    if (savedScroll) {
+      setTimeout(() => {
+        window.scrollTo({
+          top: Number(savedScroll),
+          behavior: "smooth",
+        });
+        sessionStorage.removeItem("products_scrollY"); // очищаем
+      }, 300);
+    }
+  }, [dispatch, isAuthenticated, selectedCategoryId, page, searchTerm, sort]);
 
- // ===== Скролл вверх при смене фильтров =====
+  // ===== Скролл вверх при смене фильтров =====
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [selectedCategoryId, searchTerm]);
@@ -115,6 +119,7 @@ export default function Products() {
         page: "0",
         search: term,
         category: selectedCategoryId,
+        sort
       });
 
       const categoryIdNum = selectedCategoryId ? Number(selectedCategoryId) : null;
@@ -125,15 +130,15 @@ export default function Products() {
             categoryId: categoryIdNum,
             page: 0,
             size: 15,
-            sort: "name",
+            sort,
             searchTerm: term,
           })
         );
       } else {
-        dispatch(getProducts({ page: 0, searchTerm: term }));
+        dispatch(getProducts({ page: 0, searchTerm: term, sort }));
       }
     }, 500),
-    [selectedCategoryId]
+    [selectedCategoryId, sort]
   );
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -149,6 +154,7 @@ export default function Products() {
       page: newPage.toString(),
       search: searchTerm,
       category: selectedCategoryId,
+      sort
     });
   };
 
@@ -170,6 +176,7 @@ export default function Products() {
       page: "0",
       search: "",
       category: selectedCategoryId,
+      sort
     });
 
     const categoryIdNum = selectedCategoryId ? Number(selectedCategoryId) : null;
@@ -185,12 +192,25 @@ export default function Products() {
         })
       );
     } else {
-      dispatch(getProducts({ page: 0, size: 15 }));
+      dispatch(getProducts({ page: 0, size: 15, sort }));
     }
   };
 
+  const handleSort = (field: string, direction: "asc" | "desc") => {
+    const nextSort = direction === "desc" ? `${field},desc` : field;
+    setSort(nextSort);
+    setPage(0);
+    setSearchParams({
+      page: "0",
+      search: searchTerm,
+      category: selectedCategoryId,
+      sort: nextSort,
+    });
+  };
+
+
   return (
-    <Box sx={{ p: 0, m: 0, width: "100%" }}>
+    <Box sx={{ p: 0, m: 0, width: "100%", display: "flex", flexDirection: "column", alignItems: "stretch", }}>
 
       {/* Верхняя панель */}
       <Box
@@ -202,7 +222,8 @@ export default function Products() {
           position: "sticky", // Сделаем панель фиксированной
           top: 0, // Закрепим сверху
           zIndex: 1000, // Повышаем приоритет на случай, если другие элементы будут сверху
-          padding: "10px 0", // Отступы
+          pl: 0, 
+          pr: { xs: 1, sm: 2 },
         }}
       >
         <Box display="flex" gap={2}>
@@ -238,15 +259,92 @@ export default function Products() {
       </Box>
 
       {/* Таблица */}
-      <Box sx={{ minHeight: "600px" }}>
-        <TableContainer component={Paper}>
+      <Box sx={{ width: "100%", maxWidth: "100%", overflowX: "auto", mb:2 }}>
+        <TableContainer component={Paper} sx={{ mt: 1, ml:0 }}>
           <Table>
             <StyledTableHead>
               <TableRow>
                 <TableCell style={{ display: "none" }}>ID</TableCell>
-                <TableCell>Name</TableCell>
-                <TableCell align="center">Artikel Nr</TableCell>
-                <TableCell align="center">Lieferanten Nr</TableCell>
+                {/* ===== NAME ===== */}
+                <TableCell sx={{ userSelect: "none" }}>
+                  <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <span style={{ cursor: "default" }}>Name</span>
+                    <Box display="flex" flexDirection="column" ml={0.5} >
+                      <ArrowDropUpIcon
+                        fontSize="small"
+                        onClick={() => handleSort("name", "asc")}
+                        sx={{
+                          cursor: "pointer",
+                          color: sort === "name" ? "#00CBD0" : "#FFFFFF",
+                          "&:hover": { color: "#00CBD0" },
+                        }}
+                      />
+                      <ArrowDropDownIcon
+                        fontSize="small"
+                        onClick={() => handleSort("name", "desc")}
+                        sx={{
+                          cursor: "pointer",
+                          color: sort === "name,desc" ? "#00CBD0" : "#FFFFFF",
+                          "&:hover": { color: "#00CBD0" },
+                        }}
+                      />
+                    </Box>
+                  </Box>
+                </TableCell>
+
+                {/* ===== ARTICLE ===== */}
+                <TableCell align="center" sx={{ userSelect: "none" }}>
+                  <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <span style={{ cursor: "default" }}>Artikel Nr</span>
+                    <Box display="flex" flexDirection="column" ml={0.5} >
+                      <ArrowDropUpIcon
+                        fontSize="small"
+                        onClick={() => handleSort("article", "asc")}
+                        sx={{
+                          cursor: "pointer",
+                          color: sort === "article" ? "#00CBD0" : "#FFFFFF",
+                          "&:hover": { color: "#00CBD0" },
+                        }}
+                      />
+                      <ArrowDropDownIcon
+                        fontSize="small"
+                        onClick={() => handleSort("article", "desc")}
+                        sx={{
+                          cursor: "pointer",
+                          color: sort === "article,desc" ? "#00CBD0" : "#FFFFFF",
+                          "&:hover": { color: "#00CBD0" },
+                        }}
+                      />
+                    </Box>
+                  </Box>
+                </TableCell>
+
+                {/* ===== VENDOR ARTICLE ===== */}
+                <TableCell align="center" sx={{ userSelect: "none" }}>
+                  <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <span style={{ cursor: "default" }}>Lieferanten Nr</span>
+                    <Box display="flex" flexDirection="column" ml={0.5} >
+                      <ArrowDropUpIcon
+                        fontSize="small"
+                        onClick={() => handleSort("vendorArticle", "asc")}
+                        sx={{
+                          cursor: "pointer",
+                          color: sort === "vendorArticle" ? "#00CBD0" : "#FFFFFF",
+                          "&:hover": { color: "#00CBD0" },
+                        }}
+                      />
+                      <ArrowDropDownIcon
+                        fontSize="small"
+                        onClick={() => handleSort("vendorArticle", "desc")}
+                        sx={{
+                          cursor: "pointer",
+                          color: sort === "vendorArticle,desc" ? "#00CBD0" : "#FFFFFF",
+                          "&:hover": { color: "#00CBD0" },
+                        }}
+                      />
+                    </Box>
+                  </Box>
+                </TableCell>
                 <TableCell align="center">EK preis</TableCell>
                 <TableCell align="center">VK preis</TableCell>
                 <TableCell align="center">ME</TableCell>
@@ -259,7 +357,7 @@ export default function Products() {
                 products.map((product) => (
                   <TableRow key={product.id}>
                     <TableCell style={{ display: "none", padding: "6px 12px" }}>{product.id}</TableCell>
-                    <TableCell sx={{ ...cellStyle, maxWidth: 300 }}
+                    <TableCell sx={{ ...cellStyle, maxWidth: 500, borderLeft: "1px solid #ddd", }}
                       onDoubleClick={() => {
                         // сохраняем позицию скролла перед уходом
                         sessionStorage.setItem("products_scrollY", window.scrollY.toString());
