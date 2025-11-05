@@ -11,6 +11,7 @@ import ClearIcon from '@mui/icons-material/Clear';
 import DeleteProduct from "./DeleteProduct"
 import { showSuccessToast } from "../../../utils/toast"
 import { handleApiError } from "../../../utils/handleApiError"
+import { selectRoles } from "../../auth/authSlice"
 
 
 export default function ProductCard() {
@@ -20,6 +21,9 @@ export default function ProductCard() {
     const files = useAppSelector(selectProductFiles)
     const loading = useAppSelector(selectLoading)
     const error = useAppSelector(selectError)
+    const userRole = useAppSelector(selectRoles);
+    const isAdmin = userRole === "ADMIN";
+
     const navigate = useNavigate()
 
     const [currentFileIndex, setCurrentFileIndex] = useState(0)
@@ -171,7 +175,6 @@ export default function ProductCard() {
 
         return parts.length > 0 ? parts.join(", ") + " mm" : "—";
     };
-
     
     return (
 
@@ -254,12 +257,14 @@ export default function ProductCard() {
                                 <Button variant="contained" onClick={handleOpenEditModal}>
                                     Daten bearbeiten
                                 </Button>
-                                <DeleteProduct
-                                    productId={product.id}
-                                    productName={product.name}
-                                    productArticle={product.article}
-                                    onSuccessDelete={() => navigate("/")}
-                                />
+                                {isAdmin && ( // 👇 видит только ADMIN
+                                    <DeleteProduct
+                                        productId={product.id}
+                                        productName={product.name}
+                                        productArticle={product.article}
+                                        onSuccessDelete={() => navigate("/")}
+                                    />
+                                )}
                             </Box>
                         </Box>
                     </Grid>
