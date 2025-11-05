@@ -3,7 +3,6 @@ import Layout from "./components/Layout"
 
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import NoSuchPage from './components/NoSuchPage';
-import Home from './components/Home';
 import LoginForm from './components/Login';
 import { useAppDispatch, useAppSelector } from './redux/hooks';
 import { refresh, selectIsAuthenticated, selectSessionChecked, setSessionChecked } from './features/auth/authSlice';
@@ -34,6 +33,7 @@ import EditProduction from './features/productions/components/EditProduction';
 import ShippingsList from './features/sales/components/shipping/ShippingsList';
 import UnitsList from './features/products/components/unitOfMeasurement/UnitsList';
 import DocumentTypesList from './features/purchases/documentTypes/DocumentTypesList';
+import Products from './features/products/components/Products';
 
 function App() {
   const dispatch = useAppDispatch();
@@ -82,7 +82,7 @@ function App() {
           <Route path="login" element={isAuthenticated ? <Navigate to="/" replace /> : <LoginForm />} />
 
           {/* Защищённые страницы */}
-          <Route index element={Private(<Home />)} />     
+          <Route path="/" element={<Products />} />     
           <Route path="product-categories" element={Private(<ProductCategoryList />, "ADMIN")} />
           <Route path="create-product-category" element={Private(<CreateProductCategory />, "ADMIN")} />
           <Route path="lieferanten" element={Private(<Customers />)} />
