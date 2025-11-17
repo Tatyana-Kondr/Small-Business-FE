@@ -384,7 +384,7 @@ export default function EditProduction() {
               </Table>
             </Box>
 
-            <Grid container spacing={2} sx={{ mb: 2 }}>
+            <Grid container spacing={2} sx={{ mb: 2, textAlign: "left" }}>
               {/* Итоги слева */}
               <Grid item xs={8}>
                 <Box sx={{ pt: 2, mt: 2 }}>
@@ -402,7 +402,7 @@ export default function EditProduction() {
 
               {/* Кнопки справа */}
               <Grid item xs={4}>
-                <Box sx={{ display: 'flex', justifyContent: "space-between", mt: 3 }}>
+                <Box sx={{ mt: 8, textAlign: "right" }}>
                   <Button
                     variant="contained"
                     color="primary"
