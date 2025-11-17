@@ -34,7 +34,8 @@ export interface Dimensions {
 
 export interface ProductFile {
   id: number;
-  productId: number;
+  productId?: number; 
+  product?: Product;
   originFileName: string;
   fileUrl: string;
 }
