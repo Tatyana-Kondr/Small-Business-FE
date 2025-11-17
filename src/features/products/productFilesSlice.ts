@@ -3,6 +3,7 @@ import {
   fetchProductFiles,
   fetchDeleteProductFile,
   fetchUploadProductFile,
+  fetchAllPhotos,
 } from "./api";
 import { ProductFilesState } from "./types";
 
@@ -15,6 +16,7 @@ export const productFilesSlice = createAppSlice({
   name: "productFiles",
   initialState,
   reducers: (create) => ({
+
     getProductFiles: create.asyncThunk(
       async (productId: number) => {
         return await fetchProductFiles(productId);
@@ -22,6 +24,18 @@ export const productFilesSlice = createAppSlice({
       {
         fulfilled: (state, action) => {
           state.files = action.payload;
+        },
+      }
+    ),
+
+    getAllProductFiles: create.asyncThunk(
+      async () => {
+        return await fetchAllPhotos();
+      },
+      {
+        fulfilled: (state, action) => {
+          state.files = action.payload;
+          console.log( "Все фото загружены:", action.payload.length);
         },
       }
     ),
@@ -57,7 +71,7 @@ export const productFilesSlice = createAppSlice({
   },
 });
 
-export const { getProductFiles, uploadProductFile, deleteProductFile } =
+export const { getProductFiles, getAllProductFiles, uploadProductFile, deleteProductFile } =
   productFilesSlice.actions;
 
 export const { selectProductFiles } = productFilesSlice.selectors;

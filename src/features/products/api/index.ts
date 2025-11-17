@@ -1,5 +1,5 @@
 import { apiFetch } from "../../../utils/apiFetch";
-import { NewProductCategoryDto, NewProductDto, NewUnitOfMeasurementDto, PaginatedResponse, Product, ProductCategory, UnitOfMeasurement, UpdateProductDto } from "../types"
+import { NewProductCategoryDto, NewProductDto, NewUnitOfMeasurementDto, PaginatedResponse, Product, ProductCategory, ProductFile, UnitOfMeasurement, UpdateProductDto } from "../types"
 
 export async function fetchProducts(page: number, size: number, sort = "name", searchTerm = ""): Promise<PaginatedResponse<Product>> {
   const queryParams = new URLSearchParams();
@@ -176,6 +176,14 @@ export async function fetchDeleteProductFile(fileId: number): Promise<void> {
     `/api/products/photos/${fileId}`,
     { method: "DELETE", auth: true },
     "Fehler beim Löschen der Datei."
+  );
+}
+
+export async function fetchAllPhotos(): Promise<ProductFile[]> {
+  return apiFetch<ProductFile[]>(
+    `/api/products/photos`,
+    { auth: true },
+    "Fehler beim Laden der Fotos."
   );
 }
 
