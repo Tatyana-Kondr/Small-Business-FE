@@ -5,11 +5,14 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
 
   return {
+    base: "./",   // <<< ВАЖНО: делает пути относительными!
+    
     plugins: [react()],
+    
     server: {
       proxy: {
         "/api": {
-          target: env.VITE_API_URL, // автоматически берёт из .env.development
+          target: env.VITE_API_URL,
           changeOrigin: true,
           secure: false,
         },
