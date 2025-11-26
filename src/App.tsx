@@ -5,36 +5,38 @@ import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import NoSuchPage from './components/NoSuchPage';
 import LoginForm from './components/Login';
 import { useAppDispatch, useAppSelector } from './redux/hooks';
+import { JSX, lazy, Suspense, useEffect, useState } from 'react';
 import { refresh, selectIsAuthenticated, selectSessionChecked, setSessionChecked } from './features/auth/authSlice';
-import Customers from './features/customers/components/Customers';
-import CustomersWithNumber from './features/customers/components/CustomersWithNumber';
-import CustomerCard from './features/customers/components/CustomerCard';
-import ProductCategoryList from './features/products/components/category/ProductCategoryList';
-import ProductCard from './features/products/components/ProductCard';
-import CustomerWithNumberCard from './features/customers/components/CustomerWithNumberCard';
-import Purchases from './features/purchases/components/Purchases';
-import PurchaseCard from './features/purchases/components/PurchaseCard';
-import Sales from './features/sales/components/Sales';
-import Payments from './features/payments/components/Payments';
-import PaymentMethodsList from './features/payments/components/paymentMetods/PaymentMethodsList';
-import PaymentProcessesList from './features/payments/components/paymentProcesses/PaymentProcessesList';
 import { ModalManager } from './modal/ModalManager';
-import PrivateRoute from './components/PrivateRoute';
-import CreateProductCategory from './features/products/components/category/CreateProductCategory';
-import SaleCard from './features/sales/components/SaleCard';
-import Spinner from './components/Spinner';
-import { JSX, useEffect, useState } from 'react';
 import { setNavigate } from './utils/apiFetch';
 import { useAutoLogout } from './hooks/useAutoLogout';
 import AutoLogoutModal from './components/AutoLogoutModal';
-import AdminSettings from './components/AdminSettings';
-import ProductionsList from './features/productions/components/ProductionsList';
-import EditProduction from './features/productions/components/EditProduction';
-import ShippingsList from './features/sales/components/shipping/ShippingsList';
-import UnitsList from './features/products/components/unitOfMeasurement/UnitsList';
-import DocumentTypesList from './features/purchases/documentTypes/DocumentTypesList';
-import Products from './features/products/components/Products';
-import TermOfPaymentList from './features/sales/termOfPayment/TermOfPaymentList';
+import PrivateRoute from './components/PrivateRoute';
+import Spinner from './components/Spinner';
+
+const Customers = lazy(() => import("./features/customers/components/Customers"));
+const CustomersWithNumber = lazy(() =>import("./features/customers/components/CustomersWithNumber"));
+const CustomerCard = lazy(() => import("./features/customers/components/CustomerCard"));
+const CustomerWithNumberCard = lazy(() => import("./features/customers/components/CustomerWithNumberCard"));
+
+const ProductCategoryList = lazy(() => import("./features/products/components/category/ProductCategoryList"));
+const CreateProductCategory = lazy(() => import("./features/products/components/category/CreateProductCategory"));
+const ProductCard = lazy(() => import("./features/products/components/ProductCard"));
+const Products = lazy(() => import("./features/products/components/Products"));
+const Purchases = lazy(() => import("./features/purchases/components/Purchases"));
+const PurchaseCard = lazy(() => import("./features/purchases/components/PurchaseCard"));
+const Sales = lazy(() => import("./features/sales/components/Sales"));
+const SaleCard = lazy(() => import("./features/sales/components/SaleCard"));
+const Payments = lazy(() => import("./features/payments/components/Payments"));
+const PaymentMethodsList = lazy(() => import("./features/payments/components/paymentMetods/PaymentMethodsList"));
+const PaymentProcessesList = lazy(() => import("./features/payments/components/paymentProcesses/PaymentProcessesList"));
+const ProductionsList = lazy(() => import("./features/productions/components/ProductionsList"));
+const EditProduction = lazy(() => import("./features/productions/components/EditProduction"));
+const ShippingsList = lazy(() => import("./features/sales/components/shipping/ShippingsList"));
+const UnitsList = lazy(() => import("./features/products/components/unitOfMeasurement/UnitsList"));
+const DocumentTypesList = lazy(() => import("./features/purchases/documentTypes/DocumentTypesList"));
+const TermOfPaymentList = lazy(() => import("./features/sales/termOfPayment/TermOfPaymentList"));
+const AdminSettings = lazy(() => import("./components/AdminSettings"));
 
 function App() {
   const dispatch = useAppDispatch();
@@ -83,7 +85,7 @@ function App() {
           <Route path="login" element={isAuthenticated ? <Navigate to="/" replace /> : <LoginForm />} />
 
           {/* Защищённые страницы */}
-          <Route path="/" element={<Products />} />     
+          <Route path="/" element={<Suspense fallback={<Spinner />}><Products /></Suspense>} />     
           <Route path="product-categories" element={Private(<ProductCategoryList />, "ADMIN")} />
           <Route path="create-product-category" element={Private(<CreateProductCategory />, "ADMIN")} />
           <Route path="lieferanten" element={Private(<Customers />)} />
