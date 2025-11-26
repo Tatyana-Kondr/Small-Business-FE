@@ -102,6 +102,7 @@ export default function PurchaseCard() {
           vendorId: p.vendorId,
           purchasingDate: p.purchasingDate,
           type: p.type,
+          documentId: p.document?.id ?? 0,
           document: p.document,
           documentNumber: p.documentNumber,
           purchaseItems: p.purchaseItems,
