@@ -1,5 +1,5 @@
 import './App.css'
-import Layout from "./components/Layout"
+const Layout = lazy(() => import("./components/Layout"));
 
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import NoSuchPage from './components/NoSuchPage';
@@ -18,7 +18,6 @@ const Customers = lazy(() => import("./features/customers/components/Customers")
 const CustomersWithNumber = lazy(() =>import("./features/customers/components/CustomersWithNumber"));
 const CustomerCard = lazy(() => import("./features/customers/components/CustomerCard"));
 const CustomerWithNumberCard = lazy(() => import("./features/customers/components/CustomerWithNumberCard"));
-
 const ProductCategoryList = lazy(() => import("./features/products/components/category/ProductCategoryList"));
 const CreateProductCategory = lazy(() => import("./features/products/components/category/CreateProductCategory"));
 const ProductCard = lazy(() => import("./features/products/components/ProductCard"));
