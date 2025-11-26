@@ -29,7 +29,7 @@ const handleRejected = (state: ProductionsState, action: any, message: string) =
   state.loading = false;
 };
 
-export const ProductionsSlice = createAppSlice({
+export const productionsSlice = createAppSlice({
   name: "productions",
   initialState,
   reducers: (create) => ({
@@ -218,6 +218,6 @@ export const { getProductions,
   searchProductions,
   getProductionsByFilter,
   updateProduction,
-  deleteProduction, } = ProductionsSlice.actions;
+  deleteProduction, } = productionsSlice.actions;
 export const { selectProductions, selectTotalPages, selectCurrentPage, selectProduction, selectLoading, selectError, selectProductionById } =
-  ProductionsSlice.selectors;
+  productionsSlice.selectors;

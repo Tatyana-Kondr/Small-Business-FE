@@ -10,7 +10,7 @@ const initialState: TypeOfDocumentState = {
   error: null,
 };
 
-export const TypeOfDocumentSlice = createAppSlice({
+export const typeOfDocumentSlice = createAppSlice({
   name: "documentTypes",
   initialState,
   reducers: (create) => ({
@@ -145,5 +145,5 @@ export const TypeOfDocumentSlice = createAppSlice({
   },
 });
 
-export const { getDocumentTypes, addDocumentType, getDocumentTypeById, updateDocumentType, deleteDocumentType} = TypeOfDocumentSlice.actions;
-export const {selectTypeOfDocuments, selectTypeOfDocument, selectLoading, selectError, selectTypeOfDocumentById} = TypeOfDocumentSlice.selectors;
+export const { getDocumentTypes, addDocumentType, getDocumentTypeById, updateDocumentType, deleteDocumentType} = typeOfDocumentSlice.actions;
+export const {selectTypeOfDocuments, selectTypeOfDocument, selectLoading, selectError, selectTypeOfDocumentById} = typeOfDocumentSlice.selectors;
