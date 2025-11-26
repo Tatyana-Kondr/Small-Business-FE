@@ -8,7 +8,8 @@ import {
     Paper,
     InputAdornment,
     InputLabel,
-    Tooltip
+    Tooltip,
+    SelectChangeEvent
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 
@@ -25,13 +26,13 @@ import { getProducts, getProductsByCategory, selectProducts } from '../../produc
 import { getProductCategories, selectProductCategories } from '../../products/productCategoriesSlice';
 import { NewSaleDto, NewSaleItemDto, NewShippingDimensionsDto } from '../types';
 import { addSale } from '../salesSlice';
-import { TermsOfPayment } from '../../../constants/enums';
 import { Dialog } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import CreateCustomer from '../../customers/components/CreateCustomer';
 import { handleApiError } from '../../../utils/handleApiError';
 import { showSuccessToast } from '../../../utils/toast';
 import { getShippings, selectShippings } from '../shippingsSlice';
+import { getTermsOfPayment, selectTermsOfPayment } from '../termOfPaymentSlice';
 
 const StyledTableHead = styled(TableHead)(({
     backgroundColor: "#1a3d6d",
@@ -70,7 +71,7 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
         accountObject: '',
         typeOfOperation: 'VERKAUF',
         shippingId: 0,
-        termsOfPayment: 'ÜBERWEISUNG_14_TAGE',
+        termsOfPaymentId: 0,
         salesDate: '',
         paymentDate: '',
         orderNumber: '',
@@ -87,6 +88,7 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
     const categories = useAppSelector(selectProductCategories);
     const products = useAppSelector(selectProducts);
     const shippings = useAppSelector(selectShippings);
+    const termsOfPayment = useAppSelector(selectTermsOfPayment);
     const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [weightInput, setWeightInput] = useState<string>('');
@@ -99,6 +101,7 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
     useEffect(() => {
         dispatch(getProductCategories());
         dispatch(getShippings());
+        dispatch(getTermsOfPayment());
         dispatch(getCustomersWithCustomerNumber({ page: 0, size: 100 }))
             .unwrap()
             .then(customers => setCustomers(customers.content))
@@ -405,17 +408,24 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
 
                             <Grid item xs={4}>
                                 <FormControl fullWidth>
-                                    <InputLabel id="terms-of-payment-label" htmlFor="terms-of-payment-select">Zahlbedinung</InputLabel>
+                                    <InputLabel id="terms-of-payment-label" >Zahlungsbedingung</InputLabel>
                                     <Select
-                                        id="terms-of-payment-select"
+                                        id="terms-of-payment"
                                         labelId="terms-of-payment-label"
-                                        label="Zahlbedinung"
-                                        value={newSale.termsOfPayment}
-                                        onChange={(e) => setNewSale(prev => ({ ...prev, termsOfPayment: e.target.value as TermsOfPayment }))}
+                                        label="Zahlungsbedingung"
+                                        value={newSale.termsOfPaymentId || ""}
+                                        onChange={(e: SelectChangeEvent<number>) => {
+                                            const selectedId = Number(e.target.value);
+                                            setNewSale((prev) => ({
+                                                ...prev,
+                                                termsOfPaymentId: selectedId, // ✅ теперь сохраняем id, а не сам объект
+                                            }));
+                                        }}
                                     >
-                                        {TermsOfPayment.map((type) => (
-                                            <MenuItem key={type} value={type}>
-                                                {type}
+                                        <MenuItem value="">Bitte wählen</MenuItem>
+                                        {termsOfPayment.map((term) => (
+                                            <MenuItem key={term.id} value={term.id}>
+                                                {term.name}
                                             </MenuItem>
                                         ))}
                                     </Select>

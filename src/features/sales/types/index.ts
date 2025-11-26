@@ -32,7 +32,7 @@ export interface Sale {
   typeOfOperation: string;
   shippingId: number;
   shippingDimensions: NewShippingDimensionsDto;
-  termsOfPayment: string;
+  termsOfPayment: TermOfPayment;
   salesDate: string;
   paymentDate: string; 
   paymentStatus: string;
@@ -52,6 +52,11 @@ export interface Sale {
 export interface Shipping{
     id: number;
     name: string;  
+}
+
+export interface TermOfPayment{
+    id: number;
+    name: string;
 }
 
 export interface NewSaleItemDto {
@@ -76,7 +81,8 @@ export interface NewSaleDto {
   typeOfOperation: string;
   shippingId: number;
   shippingDimensions?: NewShippingDimensionsDto;
-  termsOfPayment?: string;
+  termsOfPaymentId?: number;
+  termOfPayment?: TermOfPayment;
   salesDate?: string;
   paymentStatus: string;
   paymentDate?: string;
@@ -93,6 +99,9 @@ export interface NewShippingDto{
     name: string;  
 }
 
+export interface NewTermOfPaymentDto {
+  name: string;
+}
 
 export interface SalesState {
     salesList: Sale[];
@@ -112,6 +121,13 @@ export interface SaleItemsState {
 export interface ShippingsState{
   shippingsList: Shipping[];
   selectedShipping: Shipping | undefined;
+  loading: boolean;
+  error: string | null;
+}
+
+export interface TermOfPaymentState{
+  paymentTermsList: TermOfPayment[];
+  selectedPaymentTerm: TermOfPayment | undefined;
   loading: boolean;
   error: string | null;
 }

@@ -11,6 +11,8 @@ import ShippingsList from "../features/sales/components/shipping/ShippingsList";
 import UnitsList from "../features/products/components/unitOfMeasurement/UnitsList";
 import { getUnits } from "../features/products/unitsOfMeasurementSlice";
 import DocumentTypesList from "../features/purchases/documentTypes/DocumentTypesList";
+import { getTermsOfPayment } from "../features/sales/termOfPaymentSlice";
+import TermOfPaymentList from "../features/sales/termOfPayment/TermOfPaymentList";
 
 interface AdminSettingsProps {
   autoLogoutMinutes: number;
@@ -41,6 +43,10 @@ useEffect(() => {
     dispatch(getUnits());
   }, [dispatch]);
 
+  useEffect(() => {
+    dispatch(getTermsOfPayment());
+  }, [dispatch]);
+
 
   // При монтировании синхронизируем состояние с App
   useEffect(() => {
@@ -65,6 +71,7 @@ useEffect(() => {
         <Tab label="Versand" />
         <Tab label="Maßeinheit" />
         <Tab label="Dokumenttyp" />
+        <Tab label="Zahlungsbedingungen" />
         <Tab label="Unternehmen" />
         <Tab label="Einstellungen" />
       </Tabs>
@@ -96,11 +103,17 @@ useEffect(() => {
 
         {tab === 4 && (
           <Box>
-            {company && company.id ? <CompanyCard /> : <RegisterCompany />}
+            <TermOfPaymentList />
           </Box>
         )}
 
         {tab === 5 && (
+          <Box>
+            {company && company.id ? <CompanyCard /> : <RegisterCompany />}
+          </Box>
+        )}
+
+        {tab === 6 && (
           <Box>
             <Typography variant="h6" gutterBottom>
               Auto-Logout-Einstellungen (in Minuten)

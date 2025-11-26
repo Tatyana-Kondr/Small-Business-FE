@@ -34,6 +34,7 @@ import ShippingsList from './features/sales/components/shipping/ShippingsList';
 import UnitsList from './features/products/components/unitOfMeasurement/UnitsList';
 import DocumentTypesList from './features/purchases/documentTypes/DocumentTypesList';
 import Products from './features/products/components/Products';
+import TermOfPaymentList from './features/sales/termOfPayment/TermOfPaymentList';
 
 function App() {
   const dispatch = useAppDispatch();
@@ -99,6 +100,7 @@ function App() {
           <Route path="payment-processes" element={Private(<PaymentProcessesList />, "ADMIN")} />
           <Route path="shippings" element={Private(<ShippingsList />, "ADMIN")} />
           <Route path="units" element={Private(<UnitsList />, "ADMIN")} />
+          <Route path="payment-terms" element={Private(<TermOfPaymentList />, "ADMIN")} />
           <Route path="document-types" element={Private(<DocumentTypesList />, "ADMIN")} />
           <Route path="productions" element={Private(<ProductionsList />, "ADMIN")} />
           <Route path="productions/:productionId" element={Private(<EditProduction />)} />

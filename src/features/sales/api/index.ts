@@ -1,5 +1,5 @@
 import { apiFetch } from "../../../utils/apiFetch";
-import { NewSaleDto, NewShippingDto, PaginatedResponse, Sale, Shipping } from "../types";
+import { NewSaleDto, NewShippingDto, NewTermOfPaymentDto, PaginatedResponse, Sale, Shipping, TermOfPayment } from "../types";
 
 export async function fetchSales(
  page: number,
@@ -181,3 +181,58 @@ export async function fetchUpdateSalePaymentStatus(id: number): Promise<Sale> {
      "Fehler beim Löschen des Versands."
    );
  }
+
+ // === Term of payment ===
+
+ export async function fetchAllTermsOfPayment(): Promise<TermOfPayment[]> {
+    return apiFetch<TermOfPayment[]>(
+      `/api/payment-terms`,
+      {auth: true},
+      "Beim Laden der Zahlungsbedingungen ist ein Fehler aufgetreten."
+    );
+  }
+  
+  export async function fetchTermOfPaymentById(id: number): Promise<TermOfPayment> {
+    return apiFetch<TermOfPayment>(
+      `/api/payment-terms/${id}`,
+      {auth: true},
+      "Beim Laden der Zahlungsbedingung ist ein Fehler aufgetreten."
+    );
+  }
+  
+  export async function fetchCreateTermOfPayment(data: NewTermOfPaymentDto): Promise<TermOfPayment> {
+    return apiFetch<TermOfPayment>(
+      `/api/payment-terms`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+        auth: true, 
+      },
+      "Beim Erstellen der Zahlungsbedingung ist ein Fehler aufgetreten."
+    );
+  }
+  
+  export async function fetchUpdateTermOfPayment(
+    id: number,
+    data: NewTermOfPaymentDto
+  ): Promise<TermOfPayment> {
+    return apiFetch<TermOfPayment>(
+      `/api/payment-terms/${id}`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+        auth: true,
+      },
+      "Beim Aktualisieren der Zahlungsbedingung ist ein Fehler aufgetreten."
+    );
+  }
+  
+  export async function fetchDeleteTermOfPayment(id: number): Promise<void> {
+    await apiFetch<void>(
+      `/api/payment-terms/${id}`,
+      { method: "DELETE", auth: true },
+      "Beim Löschen der Zahlungsbedingung ist ein Fehler aufgetreten."
+    );
+  }

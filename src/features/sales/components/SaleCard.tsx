@@ -21,6 +21,7 @@ import {
   InputLabel,
   Tooltip,
   Alert,
+  SelectChangeEvent,
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { Delete as DeleteIcon, Clear as ClearIcon } from '@mui/icons-material';
@@ -39,8 +40,8 @@ import { handleApiError } from '../../../utils/handleApiError';
 import { showSuccessToast } from '../../../utils/toast';
 import { NewSaleDto, NewSaleItemDto, NewShippingDimensionsDto, Shipping } from '../types';
 import { getSaleById, updateSale } from '../salesSlice';
-import { TermsOfPayment } from '../../../constants/enums';
 import { getShippings, selectShippings } from '../shippingsSlice';
+import { getTermsOfPayment, selectTermsOfPayment } from '../termOfPaymentSlice';
 
 const StyledTableHead = styled(TableHead)(({
   backgroundColor: "#1a3d6d",
@@ -82,7 +83,7 @@ export default function SaleCard() {
     typeOfOperation: 'VERKAUF',
     shippingId: 0,
     shippingDimensions: '',
-    termsOfPayment: 'ÜBERWEISUNG_14_TAGE',
+    termsOfPaymentId: 0,
     salesDate: '',
     paymentStatus: '',
     paymentDate: '',
@@ -99,6 +100,7 @@ export default function SaleCard() {
   const categories = useAppSelector(selectProductCategories);
   const products = useAppSelector(selectProducts);
   const shippings = useAppSelector(selectShippings);
+  const termsOfPayment = useAppSelector(selectTermsOfPayment);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [selectedShipping, setSelectedShipping] = useState<Shipping | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -111,6 +113,10 @@ export default function SaleCard() {
 
   // 1. Загружаем данные продажи и справочники
   useEffect(() => {
+    dispatch(getTermsOfPayment());
+  }, [dispatch]);
+
+  useEffect(() => {
     dispatch(getCustomers({ page: 0, size: 100 }))
       .unwrap()
       .then(c => setCustomers(c.content))
@@ -119,14 +125,17 @@ export default function SaleCard() {
     dispatch(getSaleById(Number(saleId)))
       .unwrap()
       .then(s => {
+        console.log("SALE FROM BACKEND:", s);
+    console.log("termOfPayment:", s.termsOfPayment);
+
         setSale({
-          customerId: s.customerId, // 👈 исправлено (у тебя было s.id)
+          customerId: s.customerId,
           invoiceNumber: s.invoiceNumber,
           accountObject: s.accountObject,
           typeOfOperation: s.typeOfOperation,
           shippingId: s.shippingId,
           shippingDimensions: s.shippingDimensions,
-          termsOfPayment: s.termsOfPayment,
+          termsOfPaymentId: s.termsOfPayment?.id ?? 0,
           salesDate: s.salesDate,
           paymentStatus: s.paymentStatus,
           paymentDate: s.paymentDate,
@@ -165,7 +174,6 @@ export default function SaleCard() {
       setSelectedShipping(shipping);
     }
   }, [shippings, sale.shippingId]);
-
 
   useEffect(() => {
     if (sale.shippingDimensions && sale.shippingDimensions.weight != null) {
@@ -518,21 +526,31 @@ export default function SaleCard() {
 
               <Grid item xs={5}>
                 <FormControl fullWidth>
-                  <InputLabel id="terms-of-payment-label" htmlFor="terms-of-payment-select">Zahlbedinung</InputLabel>
+                  <InputLabel id="terms-of-payment-label">Zahlungsbedingung</InputLabel>
+
                   <Select
-                    id="terms-of-payment-select"
+                    id="terms-of-payment"
                     labelId="terms-of-payment-label"
-                    label="Zahlbedinung"
-                    value={sale.termsOfPayment}
-                    onChange={(e) => setSale(prev => ({ ...prev, termsOfPayment: e.target.value as TermsOfPayment }))}
+                    label="Zahlungsbedingung"
+                    value={sale.termsOfPaymentId || ""}
+                    onChange={(e: SelectChangeEvent<number>) => {
+                      const selectedId = Number(e.target.value);
+                      setSale(prev => ({
+                        ...prev,
+                        termsOfPaymentId: selectedId, 
+                      }));
+                    }}
                   >
-                    {TermsOfPayment.map((type) => (
-                      <MenuItem key={type} value={type}>
-                        {type}
+                    <MenuItem value="">Bitte wählen</MenuItem>
+
+                    {termsOfPayment.map(term => (
+                      <MenuItem key={term.id} value={term.id}>
+                        {term.name}
                       </MenuItem>
                     ))}
                   </Select>
                 </FormControl>
+
               </Grid>
             </Grid>
 

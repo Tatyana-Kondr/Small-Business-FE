@@ -14,10 +14,11 @@ import { paymentProcessesSlice } from "../features/payments/paymentProcessesSlic
 import { modalSlice } from "../modal/modalSlice";
 import { shippingsSlice } from "../features/sales/shippingsSlice";
 import { companiesSlice } from "../features/company/companiesSlice";
-import { ProductionsSlice } from "../features/productions/productionsSlice";
+import { productionsSlice } from "../features/productions/productionsSlice";
 import { unitsOfMeasurementSlice } from "../features/products/unitsOfMeasurementSlice";
-import { TypeOfDocumentSlice } from "../features/purchases/typeOfDocumentSlice";
+import { typeOfDocumentSlice } from "../features/purchases/typeOfDocumentSlice";
 import { warehouseSlice } from "../features/warehouse/warehouseSlice";
+import { termOfPaymentSlice } from "../features/sales/termOfPaymentSlice";
 
 
 const rootReducer = combineSlices(productsSlice, 
@@ -32,10 +33,11 @@ const rootReducer = combineSlices(productsSlice,
                                   paymentProcessesSlice,
                                   shippingsSlice,
                                   companiesSlice,
-                                  ProductionsSlice,
+                                  productionsSlice,
                                   unitsOfMeasurementSlice,
-                                  TypeOfDocumentSlice,
+                                  typeOfDocumentSlice,
                                   warehouseSlice,
+                                  termOfPaymentSlice,
                                   modalSlice,
 )
 
