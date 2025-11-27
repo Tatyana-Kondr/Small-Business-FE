@@ -1,5 +1,4 @@
 import './App.css'
-const Layout = lazy(() => import("./components/Layout"));
 
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import NoSuchPage from './components/NoSuchPage';
@@ -14,6 +13,7 @@ import AutoLogoutModal from './components/AutoLogoutModal';
 import PrivateRoute from './components/PrivateRoute';
 import Spinner from './components/Spinner';
 
+const Layout = lazy(() => import("./components/Layout"));
 const Customers = lazy(() => import("./features/customers/components/Customers"));
 const CustomersWithNumber = lazy(() =>import("./features/customers/components/CustomersWithNumber"));
 const CustomerCard = lazy(() => import("./features/customers/components/CustomerCard"));
