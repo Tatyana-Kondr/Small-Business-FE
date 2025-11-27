@@ -4,6 +4,8 @@ export interface Production {
     dateOfProduction: string
     type: string
     productId: number
+    productArticle: string
+    productName: string
     quantity: number
     unitPrice: number
     amount: number
@@ -18,12 +20,16 @@ export interface NewProductionDto {
     unitPrice: number
     amount: number
     productionItems: NewProductionItemDto[]
+    productArticle?: string
+    productName?: string
 }
 
 export interface ProductionItem {
     id: number
     productionId: number
     productId: number
+    productArticle: string
+    productName: string
     type: string
     quantity: number
     unitPrice: number
@@ -37,6 +43,8 @@ export interface NewProductionItemDto {
     quantity: number
     unitPrice: number
     totalPrice: number
+    productArticle?: string
+    productName?: string
 }
 
 export interface ProductionsState {

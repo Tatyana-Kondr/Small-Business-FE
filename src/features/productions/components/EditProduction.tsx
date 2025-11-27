@@ -22,7 +22,7 @@ import { selectProductCategories } from '../../products/productCategoriesSlice';
 
 import { handleApiError } from '../../../utils/handleApiError';
 import { showSuccessToast } from '../../../utils/toast';
-import { NewProductionDto, NewProductionItemDto } from '../types';
+import { NewProductionDto, NewProductionItemDto, ProductionItem } from '../types';
 import { getProductionById, updateProduction } from '../productionsSlice';
 import { useNavigate, useParams } from 'react-router-dom';
 
@@ -54,6 +54,10 @@ export default function EditProduction() {
   const { productionId } = useParams<{ productionId: string }>();
   const id = Number(productionId);
 
+  const products = useAppSelector((state) => state.products.productsList);
+  const categories = useAppSelector(selectProductCategories);
+
+
   const [production, setProduction] = useState<NewProductionDto>({
     productId: 0,
     dateOfProduction: "",
@@ -62,19 +66,19 @@ export default function EditProduction() {
     unitPrice: 0,
     amount: 0,
     productionItems: [],
+    productArticle: "",
+    productName: "",
   });
 
   const [dateValue, setDateValue] = useState<Dayjs | null>(null);
-  const products = useAppSelector((state) => state.products.productsList);
   const [searchTerm, setSearchTerm] = useState("");
-  const categories = useAppSelector(selectProductCategories);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
 
   useEffect(() => {
     dispatch(getProducts({ page: 0, size: 100 })).unwrap().catch(console.error);
   }, [dispatch]);
 
-   useEffect(() => {
+  useEffect(() => {
     dispatch(getProductionById(id))
       .unwrap()
       .then((p) => {
@@ -85,10 +89,15 @@ export default function EditProduction() {
           quantity: p.quantity,
           unitPrice: p.unitPrice,
           amount: p.amount,
-          productionItems: p.productionItems.map((item: any) => ({
-            id: item.id ?? 0,
-            productionId: id, // <- ключевое поле
-            productId: item.product.id,
+          productArticle: p.productArticle,
+          productName: p.productName,
+
+          productionItems: p.productionItems.map((item: ProductionItem) => ({
+            id: item.id,
+            productionId: id,
+            productId: item.productId,
+            productArticle: item.productArticle,
+            productName: item.productName,
             type: item.type,
             quantity: item.quantity,
             unitPrice: item.unitPrice,
@@ -99,13 +108,6 @@ export default function EditProduction() {
       })
       .catch((error) => handleApiError(error, "Fehler beim Laden der Herstellung."));
   }, [dispatch, id]);
-
-  const getProductDetails = (productId: number) => {
-    const product = products.find((p) => p.id === productId);
-    return product
-      ? { article: product.article, name: product.name }
-      : { article: "—", name: "—" };
-  };
 
   const filteredProducts = useMemo(() => {
     const term = searchTerm.toLowerCase().trim();
@@ -139,13 +141,13 @@ export default function EditProduction() {
 
   const handleAddProductAsMaterial = (product: Product) => {
     const item: NewProductionItemDto = {
-  productionId: id, // <- используем id из useParams()
-  productId: product.id,
-  type: "PRODUKTIONSMATERIAL",
-  quantity: 1,
-  unitPrice: product.purchasingPrice,
-  totalPrice: product.purchasingPrice,
-};
+      productionId: id, // <- используем id из useParams()
+      productId: product.id,
+      type: "PRODUKTIONSMATERIAL",
+      quantity: 1,
+      unitPrice: product.purchasingPrice,
+      totalPrice: product.purchasingPrice,
+    };
     setProduction((prev: any) => ({
       ...prev,
       productionItems: [...prev.productionItems, item],
@@ -170,14 +172,14 @@ export default function EditProduction() {
     });
   };
 
-   const handleRemoveItem = (index: number) => {
-  setProduction((prev: NewProductionDto) => ({
-    ...prev,
-    productionItems: prev.productionItems.filter(
-      (_: NewProductionItemDto, i: number) => i !== index
-    ),
-  }));
-};
+  const handleRemoveItem = (index: number) => {
+    setProduction((prev: NewProductionDto) => ({
+      ...prev,
+      productionItems: prev.productionItems.filter(
+        (_: NewProductionItemDto, i: number) => i !== index
+      ),
+    }));
+  };
 
   const handleSubmit = () => {
     if (!production.productId) {
@@ -199,9 +201,12 @@ export default function EditProduction() {
       productionItems: production.productionItems
         .filter((item) => item.quantity > 0) // исключаем нулевые позиции
         .map((item) => ({
-          ...item,
           productionId: id,
-          type: "PRODUKTIONSMATERIAL", 
+          productId: item.productId,
+          type: "PRODUKTIONSMATERIAL",
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          totalPrice: item.totalPrice,
         })),
     };
 
@@ -263,10 +268,10 @@ export default function EditProduction() {
                 <TableBody>
                   <StyledTableRow>
                     <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", borderLeft: "1px solid #ddd" }}>
-                      {getProductDetails(production.productId).article}
+                      {production.productArticle ?? "—"}
                     </TableCell>
                     <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd" }}>
-                       {getProductDetails(production.productId).name}
+                      {production.productName ?? "—"}
                     </TableCell>
                     <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", width: 100 }}>
                       <TextField
@@ -327,11 +332,11 @@ export default function EditProduction() {
                   {production.productionItems.map((item, index) => (
                     <StyledTableRow key={index}>
                       <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", borderLeft: "1px solid #ddd" }}>
-                       {getProductDetails(item.productId).article}
+                        {item.productArticle}
                       </TableCell>
 
                       <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd" }}>
-                        {getProductDetails(item.productId).name}
+                        {item.productName}
                       </TableCell>
 
                       <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", width: 100 }}>

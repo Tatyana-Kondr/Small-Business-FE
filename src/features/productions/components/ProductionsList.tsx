@@ -28,7 +28,6 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import { selectUser } from "../../auth/authSlice";
 import { getProductions, getProductionsByFilter, searchProductions, selectProductions, selectTotalPages } from "../productionsSlice";
 import DeleteProduction from "./DeleteProduction";
-import { selectProducts } from "../../products/productsSlice";
 
 
 const StyledTableHead = styled(TableHead)({
@@ -56,7 +55,6 @@ export default function ProductionsList() {
   const totalPages = useAppSelector(selectTotalPages);
   const currentUser = useAppSelector(selectUser);
   const isAdmin = currentUser?.role === "ADMIN";
-  const products = useAppSelector(selectProducts);
   const [page, setPage] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [openRows, setOpenRows] = useState<{ [key: string]: boolean }>({});
@@ -66,14 +64,7 @@ export default function ProductionsList() {
     endDate: "",
   });
 
-  const getProductDetails = (productId: number) => {
-    const product = products.find((p) => p.id === productId);
-    return product
-      ? { article: product.article, name: product.name }
-      : { article: "—", name: "—" };
-  };
-
-  const debouncedSearch = useCallback(
+   const debouncedSearch = useCallback(
     debounce((searchTerm: string) => {
       const hasFilters = filters.startDate || filters.endDate;
 
@@ -178,7 +169,6 @@ export default function ProductionsList() {
       [id]: !prev[id],
     }));
   };
-
 
   return (
     <Container>
@@ -296,10 +286,10 @@ export default function ProductionsList() {
                           : ""}
                       </TableCell>
                       <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>
-                        {getProductDetails(production.productId).article} 
+                        {production.productArticle} 
                       </TableCell>
                       <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>
-                        {getProductDetails(production.productId).name}
+                        {production.productName}
                       </TableCell>
                       <TableCell align="right" sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>
                         {production.amount} €
@@ -373,10 +363,10 @@ export default function ProductionsList() {
                                   {production.productionItems?.map((item: any, index: number) => (
                                     <TableRow key={index}>
                                       <TableCell sx={{ borderLeft: "1px solid #ddd", borderRight: "1px solid #ddd", padding: "6px 12px" }}>
-                                        {item.product?.article ?? "—"}
+                                        {item.productArticle ?? "—"}
                                       </TableCell>
                                       <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>
-                                        {item.product?.name ?? "—"}
+                                        {item.productName ?? "—"}
                                       </TableCell>
                                       <TableCell>{item.quantity}</TableCell>
                                       <TableCell>{item.unitPrice} €</TableCell>
