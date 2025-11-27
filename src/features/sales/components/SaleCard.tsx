@@ -126,7 +126,6 @@ export default function SaleCard() {
       .unwrap()
       .then(s => {
         console.log("SALE FROM BACKEND:", s);
-    console.log("termOfPayment:", s.termsOfPayment);
 
         setSale({
           customerId: s.customerId,
@@ -184,39 +183,35 @@ export default function SaleCard() {
   }, [sale.shippingDimensions?.weight]);
 
   useEffect(() => {
-    setSale(prev => {
-      const updatedItems = prev.salesItems.map(item => {
-        const quantity = item.quantity;
-        const unitPrice = item.unitPrice;
-        const subTotalPrice = quantity * unitPrice;
+  setSale(prev => {
+    const updatedItems = prev.salesItems.map(item => {
+      // Если item.tax уже есть (пришёл от бекенда) — НЕ ПЕРЕЗАПИСЫВАТЬ
+      const tax = item.tax ?? prev.defaultTax;
+      const discount = item.discount ?? prev.defaultDiscount;
 
-        // применяем defaultDiscount, если у item.discount пусто/равно 0
-        const discount = prev.defaultDiscount;
-        const discountAmount = (subTotalPrice * discount) / 100;
-        const totalPrice = subTotalPrice - discountAmount;
+      const quantity = item.quantity ?? 0;
+      const unitPrice = item.unitPrice ?? 0;
 
-        // применяем defaultTax, если у item.tax пусто/undefined
-        const tax = prev.defaultTax;
-        const taxAmount = (totalPrice * tax) / 100;
-        const totalAmount = totalPrice + taxAmount;
-
-        return {
-          ...item,
-          discount,
-          tax,
-          discountAmount,
-          totalPrice,
-          taxAmount,
-          totalAmount,
-        };
-      });
+      const subTotalPrice = quantity * unitPrice;
+      const discountAmount = (subTotalPrice * discount) / 100;
+      const totalPrice = subTotalPrice - discountAmount;
+      const taxAmount = (totalPrice * tax) / 100;
+      const totalAmount = totalPrice + taxAmount;
 
       return {
-        ...prev,
-        salesItems: updatedItems,
+        ...item,
+        discount,
+        tax,
+        discountAmount,
+        totalPrice,
+        taxAmount,
+        totalAmount,
       };
     });
-  }, [sale.defaultTax, sale.defaultDiscount]);
+
+    return { ...prev, salesItems: updatedItems };
+  });
+}, [sale.defaultTax, sale.defaultDiscount]);
 
   useEffect(() => {
     if (sale.invoiceNumber) {
