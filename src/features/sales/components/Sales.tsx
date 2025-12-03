@@ -183,7 +183,7 @@ export default function Sales() {
     return;
   }
 
-  const year = sale.invoiceNumber.split("-")[1];
+  const year = sale.invoiceNumber.substring(2, 6);
   const url = `${import.meta.env.VITE_API_URL}/api/sales/invoices/${year}/${sale.invoiceNumber}.pdf`;
 
   try {
@@ -205,7 +205,7 @@ export default function Sales() {
   }
 };
 
-// ✅ Открытие Lieferschein (Delivery Bill PDF)
+//  Открытие Lieferschein (Delivery Bill PDF)
 const openDeliveryBill = async (e: React.MouseEvent, sale: any) => {
   e.stopPropagation();
 
@@ -215,7 +215,7 @@ const openDeliveryBill = async (e: React.MouseEvent, sale: any) => {
     return;
   }
 
-  const year = sale.deliveryBill.split("-")[1];
+  const year = sale.invoiceNumber.substring(2, 6);
   const url = `${import.meta.env.VITE_API_URL}/api/sales/delivery-bill/${year}/${sale.deliveryBill}.pdf`;
 
   try {
