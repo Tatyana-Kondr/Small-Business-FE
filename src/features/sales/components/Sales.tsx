@@ -14,6 +14,7 @@ import DeleteSale from "./DeleteSale";
 import { selectUser } from "../../auth/authSlice";
 import axios from "axios";
 import { ACCESS_TOKEN_KEY } from "../../../utils/token";
+import { showErrorToast } from "../../../utils/toast";
 
 
 const StyledTableHead = styled(TableHead)({
@@ -191,7 +192,24 @@ export default function Sales() {
     const res = await axios.get<Blob>(url, {
       headers: { Authorization: `Bearer ${token}` },
       responseType: "blob",
+      validateStatus: () => true,
     });
+
+    if (res.status === 404) {
+      showErrorToast(
+        "Rechnung nicht gefunden",
+        "Die Rechnung ist nicht im Ordner vorhanden."
+      );
+      return;
+    }
+
+    if (res.status !== 200) {
+      showErrorToast(
+        "Fehler beim Laden",
+        `Serverfehler (${res.status}).`
+      );
+      return;
+    }
 
     // создаем объект Blob
     const pdfBlob = new Blob([res.data], { type: "application/pdf" });
@@ -201,7 +219,10 @@ export default function Sales() {
     window.open(pdfUrl, "_blank");
   } catch (err) {
     console.error("Fehler beim Laden der Rechnung:", err);
-    alert("Rechnung konnte nicht geladen werden (Fehler 403/404).");
+    showErrorToast(
+      "Fehler",
+      "Die Rechnung konnte nicht geladen werden."
+    );
   }
 };
 
@@ -222,14 +243,34 @@ const openDeliveryBill = async (e: React.MouseEvent, sale: any) => {
     const res = await axios.get<Blob>(url, {
       headers: { Authorization: `Bearer ${token}` },
       responseType: "blob",
+      validateStatus: () => true,
     });
+
+      if (res.status === 404) {
+      showErrorToast(
+        "Lieferschein nicht gefunden",
+        "Der Lieferschein ist nicht im Ordner vorhanden."
+      );
+      return;
+    }
+
+    if (res.status !== 200) {
+      showErrorToast(
+        "Fehler beim Laden",
+        `Serverfehler (${res.status}).`
+      );
+      return;
+    }
 
     const pdfBlob = new Blob([res.data], { type: "application/pdf" });
     const pdfUrl = URL.createObjectURL(pdfBlob);
     window.open(pdfUrl, "_blank");
   } catch (err) {
     console.error("Fehler beim Laden des Lieferscheins:", err);
-    alert("Lieferschein konnte nicht geladen werden (Fehler 403/404).");
+   showErrorToast(
+      "Fehler",
+      "Der Lieferschein konnte nicht geladen werden."
+    );
   }
 };
 
