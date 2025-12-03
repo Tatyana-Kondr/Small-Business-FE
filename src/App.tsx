@@ -81,10 +81,11 @@ function App() {
       <Routes>
         <Route path="/" element={<Layout />}>
           {/* Публичные страницы */}
-          <Route path="login" element={isAuthenticated ? <Navigate to="/" replace /> : <LoginForm />} />
+          <Route path="login" element={isAuthenticated ? <Navigate to="/products" replace /> : <LoginForm />} />
+          <Route index element={isAuthenticated ? <Navigate to="/products" replace /> : <Navigate to="/login" replace />} />
 
           {/* Защищённые страницы */}
-          <Route path="/" element={<Suspense fallback={<Spinner />}><Products /></Suspense>} />     
+          <Route path="products" element={<Suspense fallback={<Spinner />}> {Private(<Products />)} </Suspense>} />     
           <Route path="product-categories" element={Private(<ProductCategoryList />, "ADMIN")} />
           <Route path="create-product-category" element={Private(<CreateProductCategory />, "ADMIN")} />
           <Route path="lieferanten" element={Private(<Customers />)} />
