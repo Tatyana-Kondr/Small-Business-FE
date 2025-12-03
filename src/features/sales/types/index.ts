@@ -6,7 +6,6 @@ export interface NewShippingDimensionsDto {
   weight?: number | null;
 }
 
-
 export interface SaleItem {
   id: number;
   position: number;
@@ -76,10 +75,11 @@ export interface NewSaleItemDto {
 
 export interface NewSaleDto {
   customerId: number;
+  customerName?: string;
   invoiceNumber: string;
   accountObject?: string;
   typeOfOperation: string;
-  shippingId: number;
+  shippingId: number | null;
   shippingDimensions?: NewShippingDimensionsDto;
   termsOfPaymentId?: number;
   termOfPayment?: TermOfPayment;

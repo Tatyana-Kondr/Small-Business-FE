@@ -70,7 +70,7 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
         invoiceNumber: '',
         accountObject: '',
         typeOfOperation: 'VERKAUF',
-        shippingId: 0,
+        shippingId: null,
         termsOfPaymentId: 0,
         salesDate: '',
         paymentDate: '',
@@ -500,7 +500,7 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
                                             onChange={(_, value) => {
                                                 setNewSale((prev) => ({
                                                     ...prev,
-                                                    shippingId: value?.id ?? 0,
+                                                    shippingId: value?.id ?? null,
                                                 }));
                                             }}
                                             value={shippings.find((v) => v.id === newSale.shippingId) || null}
@@ -802,7 +802,7 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
                                 <Autocomplete
                                     fullWidth
                                     sx={{ mb: 2, mt: 1 }}
-                                    options={categories}
+                                    options={[...categories].sort((a, b) => a.name.localeCompare(b.name))}
                                     getOptionLabel={(option) => option.name}
                                     onChange={(_, newCategory) => {
                                         setSelectedCategory(newCategory?.id ?? null);
