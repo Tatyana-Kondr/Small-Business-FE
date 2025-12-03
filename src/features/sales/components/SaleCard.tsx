@@ -34,7 +34,7 @@ import { useAppDispatch, useAppSelector } from '../../../redux/hooks';
 import { Customer } from '../../customers/types';
 import { getProductCategories, selectProductCategories } from '../../products/productCategoriesSlice';
 import { getProducts, getProductsByCategory, selectProducts } from '../../products/productsSlice';
-import { getCustomers } from '../../customers/customersSlice';
+import { getCustomersWithCustomerNumber } from '../../customers/customersSlice';
 import { Product } from '../../products/types';
 import { handleApiError } from '../../../utils/handleApiError';
 import { showSuccessToast } from '../../../utils/toast';
@@ -42,6 +42,7 @@ import { NewSaleDto, NewSaleItemDto, NewShippingDimensionsDto, Shipping } from '
 import { getSaleById, updateSale } from '../salesSlice';
 import { getShippings, selectShippings } from '../shippingsSlice';
 import { getTermsOfPayment, selectTermsOfPayment } from '../termOfPaymentSlice';
+import CompactNumberCell from '../../../components/CompactNumberCell';
 
 const StyledTableHead = styled(TableHead)(({
   backgroundColor: "#1a3d6d",
@@ -78,11 +79,17 @@ export default function SaleCard() {
 
   const [sale, setSale] = useState<NewSaleDto>({
     customerId: 0,
+    customerName: '',
     invoiceNumber: '',
     accountObject: '',
     typeOfOperation: 'VERKAUF',
-    shippingId: 0,
-    shippingDimensions: '',
+    shippingId: null,
+    shippingDimensions: {
+      width: null,
+      height: null,
+      length: null,
+      weight: null
+    },
     termsOfPaymentId: 0,
     salesDate: '',
     paymentStatus: '',
@@ -95,6 +102,7 @@ export default function SaleCard() {
     defaultDiscount: 0,
     salesItems: [],
   });
+
   const [dateValue, setDateValue] = useState<Dayjs | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const categories = useAppSelector(selectProductCategories);
@@ -117,11 +125,13 @@ export default function SaleCard() {
   }, [dispatch]);
 
   useEffect(() => {
-    dispatch(getCustomers({ page: 0, size: 100 }))
+    dispatch(getCustomersWithCustomerNumber({ page: 0, size: 100 }))
       .unwrap()
       .then(c => setCustomers(c.content))
       .catch(error => handleApiError(error, "Fehler beim Laden der Kunden."));
+  }, [dispatch]);
 
+  useEffect(() => {
     dispatch(getSaleById(Number(saleId)))
       .unwrap()
       .then(s => {
@@ -129,11 +139,17 @@ export default function SaleCard() {
 
         setSale({
           customerId: s.customerId,
+          customerName: s.customerName,
           invoiceNumber: s.invoiceNumber,
           accountObject: s.accountObject,
           typeOfOperation: s.typeOfOperation,
           shippingId: s.shippingId,
-          shippingDimensions: s.shippingDimensions,
+          shippingDimensions: s.shippingDimensions ?? {
+            width: null,
+            height: null,
+            length: null,
+            weight: null
+          },
           termsOfPaymentId: s.termsOfPayment?.id ?? 0,
           salesDate: s.salesDate,
           paymentStatus: s.paymentStatus,
@@ -156,11 +172,11 @@ export default function SaleCard() {
     dispatch(getProducts({ page: 0, size: 100 }));
   }, [dispatch, saleId]);
 
-  // 2. Автоматическая подстановка Kunde после загрузки customers + sale
   useEffect(() => {
-    if (customers.length && sale.customerId) {
-      const customer = customers.find(c => c.id === sale.customerId) || null;
+    if (sale.customerId && customers.length > 0) {
+      const customer = customers.find(c => c.id === sale.customerId);
       if (customer) {
+        // обновит value в Autocomplete
         setSale(prev => ({ ...prev, customerId: customer.id }));
       }
     }
@@ -182,36 +198,52 @@ export default function SaleCard() {
     }
   }, [sale.shippingDimensions?.weight]);
 
-  useEffect(() => {
-  setSale(prev => {
-    const updatedItems = prev.salesItems.map(item => {
-      // Если item.tax уже есть (пришёл от бекенда) — НЕ ПЕРЕЗАПИСЫВАТЬ
-      const tax = item.tax ?? prev.defaultTax;
-      const discount = item.discount ?? prev.defaultDiscount;
+  const recalcAllItems = (
+    items: NewSaleItemDto[],
+    field: "tax" | "discount",
+    value: number
+  ): NewSaleItemDto[] => {
+    return items.map(item => {
+
+      // обновляем только tax или только discount
+      const tax = field === "tax" ? value : item.tax ?? 0;
+      const discount = field === "discount" ? value : item.discount ?? 0;
 
       const quantity = item.quantity ?? 0;
       const unitPrice = item.unitPrice ?? 0;
 
-      const subTotalPrice = quantity * unitPrice;
-      const discountAmount = (subTotalPrice * discount) / 100;
-      const totalPrice = subTotalPrice - discountAmount;
+      const subTotal = quantity * unitPrice;
+      const discountAmount = (subTotal * discount) / 100;
+      const totalPrice = subTotal - discountAmount;
+
       const taxAmount = (totalPrice * tax) / 100;
       const totalAmount = totalPrice + taxAmount;
 
       return {
         ...item,
-        discount,
         tax,
-        discountAmount,
-        totalPrice,
-        taxAmount,
-        totalAmount,
+        discount,
+        discountAmount: Number(discountAmount.toFixed(2)),
+        totalPrice: Number(totalPrice.toFixed(2)),
+        taxAmount: Number(taxAmount.toFixed(2)),
+        totalAmount: Number(totalAmount.toFixed(2)),
       };
     });
+  };
 
-    return { ...prev, salesItems: updatedItems };
-  });
-}, [sale.defaultTax, sale.defaultDiscount]);
+  useEffect(() => {
+    setSale(prev => ({
+      ...prev,
+      salesItems: recalcAllItems(prev.salesItems, "tax", prev.defaultTax)
+    }));
+  }, [sale.defaultTax]);
+
+  useEffect(() => {
+    setSale(prev => ({
+      ...prev,
+      salesItems: recalcAllItems(prev.salesItems, "discount", prev.defaultDiscount)
+    }));
+  }, [sale.defaultDiscount]);
 
   useEffect(() => {
     if (sale.invoiceNumber) {
@@ -398,11 +430,26 @@ export default function SaleCard() {
       position: index + 1,
     }));
 
-
     const updatedSaleToSend: NewSaleDto = {
-      ...sale,
+      customerId: sale.customerId,
+      invoiceNumber: sale.invoiceNumber,
+      accountObject: sale.accountObject,
+      typeOfOperation: sale.typeOfOperation,
+      shippingId: sale.shippingId,
+      shippingDimensions: sale.shippingDimensions,
+      termsOfPaymentId: sale.termsOfPaymentId,
+      salesDate: sale.salesDate,
+      paymentStatus: sale.paymentStatus,
+      paymentDate: sale.paymentDate,
+      orderNumber: sale.orderNumber,
+      orderType: sale.orderType,
+      deliveryDate: sale.deliveryDate,
+      deliveryBill: sale.deliveryBill,
+      defaultTax: sale.defaultTax,
+      defaultDiscount: sale.defaultDiscount,
       salesItems: updatedSaleItems
     };
+    console.log("UPDATED SALE TO SEND:", updatedSaleToSend);
 
     dispatch(updateSale({ id, updatedSale: updatedSaleToSend }))
       .unwrap()
@@ -412,6 +459,12 @@ export default function SaleCard() {
       })
       .catch(error => handleApiError(error, "Der Auftrag konnte nicht aktualisiert werden."));
   };
+
+  const selectedCustomer =
+    customers.find(c => c.id === sale.customerId)
+    ?? (sale.customerName
+      ? { id: sale.customerId, name: sale.customerName }
+      : null);
 
   return (
     <Container maxWidth="xl" sx={{ mt: 3 }}>
@@ -459,7 +512,7 @@ export default function SaleCard() {
                   sx={{ mb: 3 }}
                   options={[...customers].sort((a, b) => a.name.localeCompare(b.name))}
                   getOptionLabel={(option) => option.name}
-                  value={customers.find(v => v.id === sale.customerId) || null}
+                  value={selectedCustomer}
                   onChange={(_, value) =>
                     setSale(prev => ({ ...prev, customerId: value?.id ?? 0 }))
                   }
@@ -532,7 +585,7 @@ export default function SaleCard() {
                       const selectedId = Number(e.target.value);
                       setSale(prev => ({
                         ...prev,
-                        termsOfPaymentId: selectedId, 
+                        termsOfPaymentId: selectedId,
                       }));
                     }}
                   >
@@ -565,7 +618,7 @@ export default function SaleCard() {
                       value={selectedShipping}
                       onChange={(_, value) => {
                         setSelectedShipping(value);
-                        setSale(prev => ({ ...prev, shippingId: value?.id ?? 0 }));
+                        setSale(prev => ({ ...prev, shippingId: value?.id ?? null }));
                       }}
                       renderInput={(params) => (
                         <TextField {...params} label="Versand" />
@@ -792,47 +845,31 @@ export default function SaleCard() {
                           value={item.quantity}
                           size="small"
                           onChange={(e) => handleItemChange(index, 'quantity', parseFloat(e.target.value))}
+                          onFocus={(e) => { setTimeout(() => e.target.select(), 0); }}
                           InputProps={{ disableUnderline: true, sx: { textAlign: "center" } }}
                           sx={{ fontSize: '0.875rem', '& .MuiInputBase-root': { border: 'none', }, '& .MuiInputBase-input': { fontSize: '0.875rem', padding: 0, textAlign: 'center' }, min: 0, step: 0.01 }}
                           disabled={isPaid}
                         />
                       </TableCell>
                       <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", width: "70px" }}>
-                        <TextField
-                          variant="standard"
-                          type="number"
+                        <CompactNumberCell
                           value={item.unitPrice}
-                          size="small"
-                          onChange={(e) => handleItemChange(index, 'unitPrice', parseFloat(e.target.value))}
-                          InputProps={{ disableUnderline: true, }}
-                          sx={{ fontSize: '0.875rem', '& .MuiInputBase-root': { border: 'none', }, '& .MuiInputBase-input': { fontSize: '0.875rem', padding: 0, textAlign: 'right' }, min: 0, step: 0.01 }}
                           disabled={isPaid}
+                          onChange={(val) => handleItemChange(index, "unitPrice", val)}
                         />
                       </TableCell>
                       <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", width: 70 }}>
-                        <TextField
-                          variant="standard"
-                          type="number"
+                        <CompactNumberCell
                           value={item.discount}
-                          size="small"
-                          fullWidth
-                          onChange={(e) => handleItemChange(index, 'discount', parseFloat(e.target.value))}
-                          InputProps={{ disableUnderline: true, }}
-                          sx={{ fontSize: '0.875rem', '& .MuiInputBase-root': { border: 'none', }, '& .MuiInputBase-input': { fontSize: '0.875rem', padding: 0, textAlign: 'right' }, min: 0, step: 1 }}
                           disabled={isPaid}
+                          onChange={(val) => handleItemChange(index, "discount", val)}
                         />
                       </TableCell>
                       <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", width: 70 }}>
-                        <TextField
-                          variant="standard"
-                          type="number"
+                        <CompactNumberCell
                           value={item.tax}
-                          size="small"
-                          fullWidth
-                          onChange={(e) => handleItemChange(index, 'tax', parseFloat(e.target.value))}
-                          InputProps={{ disableUnderline: true, }}
-                          sx={{ fontSize: '0.875rem', '& .MuiInputBase-root': { border: 'none', }, '& .MuiInputBase-input': { fontSize: '0.875rem', padding: 0, textAlign: 'right' }, min: 0, step: 1 }}
                           disabled={isPaid}
+                          onChange={(val) => handleItemChange(index, "tax", val)}
                         />
                       </TableCell>
                       <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", width: 90, textAlign: "right" }}>
@@ -910,11 +947,14 @@ export default function SaleCard() {
                         displayEmpty
                       >
                         <MenuItem value="">Alle Kategorien</MenuItem>
-                        {categories.map((cat) => (
-                          <MenuItem key={cat.id} value={cat.id}>
-                            {cat.name}
-                          </MenuItem>
-                        ))}
+
+                        {[...categories]
+                          .sort((a, b) => a.name.localeCompare(b.name))
+                          .map((cat) => (
+                            <MenuItem key={cat.id} value={cat.id}>
+                              {cat.name}
+                            </MenuItem>
+                          ))}
                       </Select>
                     </FormControl>
                   </Grid>
