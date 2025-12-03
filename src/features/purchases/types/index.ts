@@ -16,6 +16,7 @@ export interface Purchase {
 
 export interface NewPurchaseDto {
     vendorId: number
+    vendorName?: string
     purchasingDate: string
     type: string
     documentId?: number

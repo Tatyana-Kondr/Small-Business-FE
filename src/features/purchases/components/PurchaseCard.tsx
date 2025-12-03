@@ -73,6 +73,7 @@ export default function PurchaseCard() {
 
   const [purchase, setPurchase] = useState<NewPurchaseDto>({
     vendorId: 0,
+    vendorName: '',
     purchasingDate: '',
     type: 'EINKAUF',
     documentId: 0,
@@ -94,12 +95,19 @@ export default function PurchaseCard() {
   }, [dispatch]);
 
   useEffect(() => {
+    // Загрузка поставщиков
+    dispatch(getCustomers({ page: 0, size: 100 }))
+      .unwrap()
+      .then(c => setVendors(c.content))
+      .catch(error => handleApiError(error, "Fehler beim Laden der Lieferanten."));
+
     // Загрузка данных покупки
     dispatch(getPurchaseById(Number(purchaseId)))
       .unwrap()
       .then(p => {
         setPurchase({
           vendorId: p.vendorId,
+          vendorName: p.vendorName,
           purchasingDate: p.purchasingDate,
           type: p.type,
           documentId: p.document?.id ?? 0,
@@ -111,12 +119,6 @@ export default function PurchaseCard() {
         setDateValue(p.purchasingDate ? dayjs(p.purchasingDate) : null);
       })
       .catch(error => handleApiError(error, "Fehler beim Laden der Bestellung."));
-
-    // Загрузка поставщиков
-    dispatch(getCustomers({ page: 0, size: 100 }))
-      .unwrap()
-      .then(c => setVendors(c.content))
-      .catch(error => handleApiError(error, "Fehler beim Laden der Lieferanten."));
 
     // Загрузка категорий и продуктов
     dispatch(getProductCategories());
@@ -287,6 +289,13 @@ export default function PurchaseCard() {
     navigate(-1);
   };
 
+  const selectedVendor =
+  vendors.find(v => v.id === purchase.vendorId)
+  ?? (purchase.vendorName
+        ? { id: purchase.vendorId, name: purchase.vendorName } 
+        : null);
+
+
   return (
     <Container maxWidth="xl" sx={{ mt: 3 }}>
       <Grid container spacing={3}>
@@ -325,7 +334,7 @@ export default function PurchaseCard() {
                   vendorId: value?.id ?? 0,
                 }));
               }}
-              value={vendors.find(v => v.id === purchase.vendorId) || null}
+              value={selectedVendor}
               renderInput={(params) => (
                 <TextField {...params} label="Lieferant" />
               )}
