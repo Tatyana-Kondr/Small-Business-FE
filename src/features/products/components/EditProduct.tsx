@@ -164,6 +164,15 @@ export default function EditProduct({ productId, closeModal }: EditProductProps)
             <TextField
                 fullWidth
                 margin="normal"
+                label="Artikel"
+                name="article"
+                value={productData.article}
+                onChange={handleChange}
+            />
+
+            <TextField
+                fullWidth
+                margin="normal"
                 label="Artikel des Lieferanten"
                 name="vendorArticle"
                 value={productData.vendorArticle}
