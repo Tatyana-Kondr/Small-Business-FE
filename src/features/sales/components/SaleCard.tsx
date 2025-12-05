@@ -322,6 +322,7 @@ export default function SaleCard() {
       position: sale.salesItems.length + 1,
       saleId: 0,
       productId: product.id,
+      productArticle: product.article,
       productName: product.name,
       quantity,
       unitPrice,
@@ -814,6 +815,7 @@ export default function SaleCard() {
                 <StyledTableHead>
                   <TableRow>
                     <TableCell sx={{ width: 50, fontSize: "12px" }}>Pos</TableCell>
+                    <TableCell sx={{ minWidth: 70 }}>Artikel</TableCell>
                     <TableCell sx={{ minWidth: 200 }}>Name</TableCell>
                     <TableCell sx={{ width: 70 }}>Menge</TableCell>
                     <TableCell sx={{ width: 90 }}>Preis</TableCell>
@@ -828,6 +830,16 @@ export default function SaleCard() {
                   {sale.salesItems.map((item, index) => (
                     <StyledTableRow key={index}>
                       <TableCell sx={{ padding: "6px 16px", borderRight: "1px solid #ddd", textAlign: "center", width: 50, }}>{index + 1}</TableCell>
+                      <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", minWidth: 200, textAlign: "left" }}>
+                        <TextField
+                          variant="standard"
+                          value={item.productArticle}
+                          size="small"
+                          onChange={(e) => handleItemChange(index, 'productName', e.target.value)}
+                          InputProps={{ disableUnderline: true, }}
+                          sx={{ fontSize: '0.875rem', '& .MuiInputBase-root': { border: 'none', }, '& .MuiInputBase-input': { fontSize: '0.875rem', padding: 0 } }}
+                        />
+                      </TableCell>
                       <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", minWidth: 200, textAlign: "left" }}>
                         <TextField
                           variant="standard"
