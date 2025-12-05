@@ -15,6 +15,8 @@ import { selectUser } from "../../auth/authSlice";
 import axios from "axios";
 import { ACCESS_TOKEN_KEY } from "../../../utils/token";
 import { showErrorToast } from "../../../utils/toast";
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
+import ArrowDropUpIcon from '@mui/icons-material/ArrowDropUp';
 
 
 const StyledTableHead = styled(TableHead)({
@@ -47,6 +49,7 @@ export default function Sales() {
   const [openRows, setOpenRows] = useState<{ [key: string]: boolean }>({});
   const [openPaymentDialogId, setOpenPaymentDialogId] = useState<number | null>(null);
   const [selectedOperationType, setSelectedOperationType] = useState<string | null>(null);
+  const [sort, setSort] = useState<string[]>(["salesDate,DESC", "invoiceNumber,DESC"]);
 
   const [filters, setFilters] = useState({
     invoiceNumber: "",
@@ -70,6 +73,7 @@ export default function Sales() {
             size: 15,
             ...convertFiltersToParams(filters),
             searchQuery: searchTerm,
+            sort
           })
         );
       } else {
@@ -78,11 +82,12 @@ export default function Sales() {
             page,
             size: 15,
             query: searchTerm,
+            sort
           })
         );
       }
     }, 500),
-    [page, dispatch, filters]
+    [page, dispatch, filters, sort]
   );
 
   useEffect(() => {
@@ -99,6 +104,7 @@ export default function Sales() {
           size: 15,
           ...convertFiltersToParams(filters),
           searchQuery: searchTerm,
+          sort
         })
       );
     } else if (searchTerm) {
@@ -107,12 +113,13 @@ export default function Sales() {
           page,
           size: 15,
           query: searchTerm,
+          sort
         })
       );
     } else {
-      dispatch(getSales({ page, size: 15 }));
+      dispatch(getSales({ page, size: 15, sort }));
     }
-  }, [dispatch, page, searchTerm, filters]);
+  }, [dispatch, page, searchTerm, filters, sort]);
 
   const handlePageChange = (_: any, value: number) => {
     setPage(value - 1);
@@ -161,10 +168,11 @@ export default function Sales() {
           size: 15,
           ...convertFiltersToParams(filters),
           searchQuery: "",
+          sort
         })
       );
     } else {
-      dispatch(getSales({ page: 0, size: 15 }));
+      dispatch(getSales({ page: 0, size: 15, sort }));
     }
   };
 
@@ -176,103 +184,121 @@ export default function Sales() {
   };
 
   const openInvoice = async (e: React.MouseEvent, sale: any) => {
-  e.stopPropagation();
+    e.stopPropagation();
 
-  const token = localStorage.getItem(ACCESS_TOKEN_KEY);
-  if (!token) {
-    alert("Fehlender Authentifizierungstoken. Bitte melden Sie sich erneut an.");
-    return;
-  }
-
-  const year = sale.invoiceNumber.substring(2, 6);
-  const url = `${import.meta.env.VITE_API_URL}/api/sales/invoices/${year}/${sale.invoiceNumber}.pdf`;
-
-  try {
-    // axios с указанием типа Blob
-    const res = await axios.get<Blob>(url, {
-      headers: { Authorization: `Bearer ${token}` },
-      responseType: "blob",
-      validateStatus: () => true,
-    });
-
-    if (res.status === 404) {
-      showErrorToast(
-        "Rechnung nicht gefunden",
-        "Die Rechnung ist nicht im Ordner vorhanden."
-      );
+    const token = localStorage.getItem(ACCESS_TOKEN_KEY);
+    if (!token) {
+      alert("Fehlender Authentifizierungstoken. Bitte melden Sie sich erneut an.");
       return;
     }
 
-    if (res.status !== 200) {
-      showErrorToast(
-        "Fehler beim Laden",
-        `Serverfehler (${res.status}).`
-      );
-      return;
-    }
+    const year = sale.invoiceNumber.substring(2, 6);
+    const url = `${import.meta.env.VITE_API_URL}/api/sales/invoices/${year}/${sale.invoiceNumber}.pdf`;
 
-    // создаем объект Blob
-    const pdfBlob = new Blob([res.data], { type: "application/pdf" });
-    const pdfUrl = URL.createObjectURL(pdfBlob);
-
-    // открываем в новой вкладке
-    window.open(pdfUrl, "_blank");
-  } catch (err) {
-    console.error("Fehler beim Laden der Rechnung:", err);
-    showErrorToast(
-      "Fehler",
-      "Die Rechnung konnte nicht geladen werden."
-    );
-  }
-};
-
-//  Открытие Lieferschein (Delivery Bill PDF)
-const openDeliveryBill = async (e: React.MouseEvent, sale: any) => {
-  e.stopPropagation();
-
-  const token = localStorage.getItem(ACCESS_TOKEN_KEY);
-  if (!token) {
-    alert("Fehlender Authentifizierungstoken. Bitte melden Sie sich erneut an.");
-    return;
-  }
-
-  const year = sale.invoiceNumber.substring(2, 6);
-  const url = `${import.meta.env.VITE_API_URL}/api/sales/delivery-bill/${year}/${sale.deliveryBill}.pdf`;
-
-  try {
-    const res = await axios.get<Blob>(url, {
-      headers: { Authorization: `Bearer ${token}` },
-      responseType: "blob",
-      validateStatus: () => true,
-    });
+    try {
+      // axios с указанием типа Blob
+      const res = await axios.get<Blob>(url, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: "blob",
+        validateStatus: () => true,
+      });
 
       if (res.status === 404) {
+        showErrorToast(
+          "Rechnung nicht gefunden",
+          "Die Rechnung ist nicht im Ordner vorhanden."
+        );
+        return;
+      }
+
+      if (res.status !== 200) {
+        showErrorToast(
+          "Fehler beim Laden",
+          `Serverfehler (${res.status}).`
+        );
+        return;
+      }
+
+      // создаем объект Blob
+      const pdfBlob = new Blob([res.data], { type: "application/pdf" });
+      const pdfUrl = URL.createObjectURL(pdfBlob);
+
+      // открываем в новой вкладке
+      window.open(pdfUrl, "_blank");
+    } catch (err) {
+      console.error("Fehler beim Laden der Rechnung:", err);
       showErrorToast(
-        "Lieferschein nicht gefunden",
-        "Der Lieferschein ist nicht im Ordner vorhanden."
+        "Fehler",
+        "Die Rechnung konnte nicht geladen werden."
       );
+    }
+  };
+
+  //  Открытие Lieferschein (Delivery Bill PDF)
+  const openDeliveryBill = async (e: React.MouseEvent, sale: any) => {
+    e.stopPropagation();
+
+    const token = localStorage.getItem(ACCESS_TOKEN_KEY);
+    if (!token) {
+      alert("Fehlender Authentifizierungstoken. Bitte melden Sie sich erneut an.");
       return;
     }
 
-    if (res.status !== 200) {
+    const year = sale.invoiceNumber.substring(2, 6);
+    const url = `${import.meta.env.VITE_API_URL}/api/sales/delivery-bill/${year}/${sale.deliveryBill}.pdf`;
+
+    try {
+      const res = await axios.get<Blob>(url, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: "blob",
+        validateStatus: () => true,
+      });
+
+      if (res.status === 404) {
+        showErrorToast(
+          "Lieferschein nicht gefunden",
+          "Der Lieferschein ist nicht im Ordner vorhanden."
+        );
+        return;
+      }
+
+      if (res.status !== 200) {
+        showErrorToast(
+          "Fehler beim Laden",
+          `Serverfehler (${res.status}).`
+        );
+        return;
+      }
+
+      const pdfBlob = new Blob([res.data], { type: "application/pdf" });
+      const pdfUrl = URL.createObjectURL(pdfBlob);
+      window.open(pdfUrl, "_blank");
+    } catch (err) {
+      console.error("Fehler beim Laden des Lieferscheins:", err);
       showErrorToast(
-        "Fehler beim Laden",
-        `Serverfehler (${res.status}).`
+        "Fehler",
+        "Der Lieferschein konnte nicht geladen werden."
       );
-      return;
+    }
+  };
+
+  const handleSort = (field: string, direction: "ASC" | "DESC") => {
+    // Основная сортировка — выбранное поле
+    const newSort = [`${field},${direction}`];
+
+    // Если сортируем не по salesDate или invoiceNumber →
+    // сохраняем их как вторичную сортировку
+    if (field !== "salesDate") {
+      newSort.push("salesDate,DESC");
+    }
+    if (field !== "invoiceNumber") {
+      newSort.push("invoiceNumber,DESC");
     }
 
-    const pdfBlob = new Blob([res.data], { type: "application/pdf" });
-    const pdfUrl = URL.createObjectURL(pdfBlob);
-    window.open(pdfUrl, "_blank");
-  } catch (err) {
-    console.error("Fehler beim Laden des Lieferscheins:", err);
-   showErrorToast(
-      "Fehler",
-      "Der Lieferschein konnte nicht geladen werden."
-    );
-  }
-};
+    setSort(newSort);
+    setPage(0);
+  };
+
 
   return (
     <Container>
@@ -398,14 +424,146 @@ const openDeliveryBill = async (e: React.MouseEvent, sale: any) => {
           <Table >
             <StyledTableHead>
               <TableRow>
-                <TableCell >ID</TableCell>
-                <TableCell >Kunde</TableCell>
-                <TableCell >Datum</TableCell>
-                <TableCell >Betrag</TableCell>
-                <TableCell >Rechnung-Nr</TableCell>
-                <TableCell >Zahlungsstatus</TableCell>
-                <TableCell >PDF</TableCell>
-                <TableCell >Aktionen</TableCell>
+
+                {/* ID */}
+                <TableCell sx={{ userSelect: "none" }}>
+                  <Box display="flex" justifyContent="space-between" alignItems="center">
+                    ID
+                    <Box display="flex" flexDirection="column" ml={0.5}>
+                      <ArrowDropUpIcon
+                        fontSize="small"
+                        onClick={() => handleSort("id", "ASC")}
+                        sx={{
+                          cursor: "pointer",
+                          color: sort[0] === "id,ASC" ? "#0277bd" : "#bdbdbd",
+                          "&:hover": { color: "#0277bd" }
+                        }}
+                      />
+                      <ArrowDropDownIcon
+                        fontSize="small"
+                        onClick={() => handleSort("id", "DESC")}
+                        sx={{
+                          cursor: "pointer",
+                          color: sort[0] === "id,DESC" ? "#0277bd" : "#bdbdbd",
+                          "&:hover": { color: "#0277bd" }
+                        }}
+                      />
+                    </Box>
+                  </Box>
+                </TableCell>
+
+                {/* Kunde */}
+                <TableCell sx={{ userSelect: "none" }}>
+                  <Box display="flex" justifyContent="space-between" alignItems="center">
+                    Kunde
+                    <Box display="flex" flexDirection="column" ml={0.5}>
+                      <ArrowDropUpIcon
+                        fontSize="small"
+                        onClick={() => handleSort("customerName", "ASC")}
+                        sx={{
+                          cursor: "pointer",
+                          color: sort[0] === "customerName,ASC" ? "#0277bd" : "#bdbdbd",
+                          "&:hover": { color: "#0277bd" }
+                        }}
+                      />
+                      <ArrowDropDownIcon
+                        fontSize="small"
+                        onClick={() => handleSort("customerName", "DESC")}
+                        sx={{
+                          cursor: "pointer",
+                          color: sort[0] === "customerName,DESC" ? "#0277bd" : "#bdbdbd",
+                          "&:hover": { color: "#0277bd" }
+                        }}
+                      />
+                    </Box>
+                  </Box>
+                </TableCell>
+
+                {/* Datum */}
+                <TableCell sx={{ userSelect: "none" }}>
+                  <Box display="flex" justifyContent="space-between" alignItems="center">
+                    Datum
+                    <Box display="flex" flexDirection="column" ml={0.5}>
+                      <ArrowDropUpIcon
+                        fontSize="small"
+                        onClick={() => handleSort("salesDate", "ASC")}
+                        sx={{
+                          cursor: "pointer",
+                          color: sort[0] === "salesDate,ASC" ? "#0277bd" : "#bdbdbd",
+                          "&:hover": { color: "#0277bd" }
+                        }}
+                      />
+                      <ArrowDropDownIcon
+                        fontSize="small"
+                        onClick={() => handleSort("salesDate", "DESC")}
+                        sx={{
+                          cursor: "pointer",
+                          color: sort[0] === "salesDate,DESC" ? "#0277bd" : "#bdbdbd",
+                          "&:hover": { color: "#0277bd" }
+                        }}
+                      />
+                    </Box>
+                  </Box>
+                </TableCell>
+
+                {/* Betrag */}
+                <TableCell sx={{ userSelect: "none" }}>
+                  <Box display="flex" justifyContent="space-between" alignItems="center">
+                    Betrag
+                    <Box display="flex" flexDirection="column" ml={0.5}>
+                      <ArrowDropUpIcon
+                        fontSize="small"
+                        onClick={() => handleSort("totalAmount", "ASC")}
+                        sx={{
+                          cursor: "pointer",
+                          color: sort[0] === "totalAmount,ASC" ? "#0277bd" : "#bdbdbd",
+                          "&:hover": { color: "#0277bd" }
+                        }}
+                      />
+                      <ArrowDropDownIcon
+                        fontSize="small"
+                        onClick={() => handleSort("totalAmount", "DESC")}
+                        sx={{
+                          cursor: "pointer",
+                          color: sort[0] === "totalAmount,DESC" ? "#0277bd" : "#bdbdbd",
+                          "&:hover": { color: "#0277bd" }
+                        }}
+                      />
+                    </Box>
+                  </Box>
+                </TableCell>
+
+                {/* Rechnung-Nr */}
+                <TableCell sx={{ userSelect: "none" }}>
+                  <Box display="flex" justifyContent="space-between" alignItems="center">
+                    Rechnung-Nr
+                    <Box display="flex" flexDirection="column" ml={0.5}>
+                      <ArrowDropUpIcon
+                        fontSize="small"
+                        onClick={() => handleSort("invoiceNumber", "ASC")}
+                        sx={{
+                          cursor: "pointer",
+                          color: sort[0] === "invoiceNumber,ASC" ? "#0277bd" : "#bdbdbd",
+                          "&:hover": { color: "#0277bd" }
+                        }}
+                      />
+                      <ArrowDropDownIcon
+                        fontSize="small"
+                        onClick={() => handleSort("invoiceNumber", "DESC")}
+                        sx={{
+                          cursor: "pointer",
+                          color: sort[0] === "invoiceNumber,DESC" ? "#0277bd" : "#bdbdbd",
+                          "&:hover": { color: "#0277bd" }
+                        }}
+                      />
+                    </Box>
+                  </Box>
+                </TableCell>
+
+                <TableCell>Zahlungsstatus</TableCell>
+                <TableCell>PDF</TableCell>
+                <TableCell>Aktionen</TableCell>
+
               </TableRow>
             </StyledTableHead>
 
@@ -430,7 +588,7 @@ const openDeliveryBill = async (e: React.MouseEvent, sale: any) => {
                       <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{sale.paymentStatus}</TableCell>
                       <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>
                         <Tooltip title="Rechnung" arrow>
-                           <IconButton onClick={(e) => openInvoice(e, sale)}>
+                          <IconButton onClick={(e) => openInvoice(e, sale)}>
                             <Typography variant="button"
                               sx={{ fontWeight: "bold", transition: 'transform 0.2s ease-in-out', "&:hover": { color: "#bdbdbd", transform: 'scale(1.2)', backgroundColor: "transparent" } }}>
                               RE
@@ -438,7 +596,7 @@ const openDeliveryBill = async (e: React.MouseEvent, sale: any) => {
                           </IconButton>
                         </Tooltip>
                         <Tooltip title="Lieferschein" arrow>
-                           <IconButton onClick={(e) => openDeliveryBill(e, sale)}>
+                          <IconButton onClick={(e) => openDeliveryBill(e, sale)}>
                             <Typography variant="button"
                               sx={{ fontWeight: "bold", transition: 'transform 0.2s ease-in-out', "&:hover": { color: "#bdbdbd", transform: 'scale(1.2)', backgroundColor: "transparent" } }}>
                               LF
@@ -455,31 +613,31 @@ const openDeliveryBill = async (e: React.MouseEvent, sale: any) => {
                             </IconButton>
                           </Tooltip>
                           {isAdmin && (
-                          <DeleteSale
-                            saleId={sale.id}
-                            customerName={sale.customerName}
-                            salesDate={sale.salesDate}
-                            onSuccessDelete={() => { }}
-                            trigger={
-                              <Tooltip title="Löschen" arrow>
-                                <IconButton
-                                  sx={{
-                                    p: 0.5,
-                                    transition: "transform 0.2s ease-in-out",
-                                    "&:hover": {
-                                      color: "#bdbdbd",
-                                      transform: "scale(1.2)",
-                                      backgroundColor: "transparent",
-                                    },
-                                  }}
-                                >
-                                  <DeleteIcon />
-                                </IconButton>
-                              </Tooltip>
-                            }
-                          />
+                            <DeleteSale
+                              saleId={sale.id}
+                              customerName={sale.customerName}
+                              salesDate={sale.salesDate}
+                              onSuccessDelete={() => { }}
+                              trigger={
+                                <Tooltip title="Löschen" arrow>
+                                  <IconButton
+                                    sx={{
+                                      p: 0.5,
+                                      transition: "transform 0.2s ease-in-out",
+                                      "&:hover": {
+                                        color: "#bdbdbd",
+                                        transform: "scale(1.2)",
+                                        backgroundColor: "transparent",
+                                      },
+                                    }}
+                                  >
+                                    <DeleteIcon />
+                                  </IconButton>
+                                </Tooltip>
+                              }
+                            />
                           )}
-                          
+
                           {sale.paymentStatus !== "BEZAHLT" && (
                             <Tooltip title="Bezahlen" arrow>
                               <IconButton onClick={(e) => {

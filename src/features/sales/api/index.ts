@@ -4,13 +4,13 @@ import { NewSaleDto, NewShippingDto, NewTermOfPaymentDto, PaginatedResponse, Sal
 export async function fetchSales(
  page: number,
   size: number,
-  sort: string = "salesDate,DESC",
+  sort: string[] = ["salesDate,DESC", "invoiceNumber,DESC"],
   searchTerm: string = ""
 ): Promise<PaginatedResponse<Sale>> {
   const queryParams = new URLSearchParams();
   queryParams.append("page", page.toString());
   queryParams.append("size", size.toString());
-  queryParams.append("sort", sort);
+  sort.forEach((s) => queryParams.append("sort", s));
   if (searchTerm) {
     queryParams.append("search", searchTerm);
   }
@@ -67,12 +67,12 @@ export async function fetchSearchSales(
  query: string,
    page: number,
    size: number,
-   sort = "salesDate,DESC",
+   sort: string[] = ["salesDate,DESC", "invoiceNumber,DESC"],
  ): Promise<PaginatedResponse<Sale>> {
    const queryParams = new URLSearchParams();
    queryParams.append("page", page.toString());
    queryParams.append("size", size.toString());
-   queryParams.append("sort", sort);
+   sort.forEach((s) => queryParams.append("sort", s));
  
    return apiFetch<PaginatedResponse<Sale>>(
      `/api/sales/search/${encodeURIComponent(query)}?${queryParams.toString()}`,
@@ -84,7 +84,7 @@ export async function fetchSearchSales(
 export async function fetchSalesByFilter(
   page: number,
   size: number,
-  sort = "salesDate,DESC",
+  sort: string[] = ["salesDate,DESC", "invoiceNumber,DESC"],
  filters?: {
   id?: number;
   customerId?: number;
@@ -99,7 +99,7 @@ export async function fetchSalesByFilter(
   const queryParams = new URLSearchParams();
   queryParams.append("page", page.toString());
   queryParams.append("size", size.toString());
-  queryParams.append("sort", sort);
+  sort.forEach((s) => queryParams.append("sort", s));
 
   if (filters) {
       if (filters.id !== undefined) queryParams.append("id", filters.id.toString());

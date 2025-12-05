@@ -11,6 +11,7 @@ export interface SaleItem {
   position: number;
   saleId: number;
   productId: number;
+  productArticle: string;
   productName: string;
   quantity: number;
   unitPrice: number;
@@ -62,6 +63,7 @@ export interface NewSaleItemDto {
   position: number;
   saleId: number
   productId: number;
+  productArticle: string;
   productName: string;
   quantity: number;
   unitPrice: number;
@@ -108,7 +110,7 @@ export interface SalesState {
     selectedSale: Sale | undefined;
     totalPages: number;
     currentPage: number;
-    sort: string;
+    sort: string[];
     loading: boolean;
     error: string | null;
 }

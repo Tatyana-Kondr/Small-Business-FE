@@ -44,6 +44,8 @@ import DeletePurchase from "./DeletePurchase";
 import { selectUser } from "../../auth/authSlice";
 import { getDocumentTypes, selectTypeOfDocuments } from "../typeOfDocumentSlice";
 import { TypeOfDocument } from "../types";
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
+import ArrowDropUpIcon from '@mui/icons-material/ArrowDropUp';
 
 
 const StyledTableHead = styled(TableHead)({
@@ -78,6 +80,7 @@ export default function Purchases() {
   const [openRows, setOpenRows] = useState<{ [key: string]: boolean }>({});
   const [openPaymentDialogId, setOpenPaymentDialogId] = useState<number | null>(null);
   const [selectedOperationType, setSelectedOperationType] = useState<string | null>(null);
+  const [sort, setSort] = useState<string[]>(["purchasingDate,DESC", "id,DESC"]);
 
   const [filters, setFilters] = useState({
     documentId: "",
@@ -105,6 +108,7 @@ export default function Purchases() {
             size: 15,
             ...convertFiltersToParams(filters),
             searchQuery: searchTerm,
+            sort
           })
         );
       } else {
@@ -113,11 +117,12 @@ export default function Purchases() {
             page,
             size: 15,
             query: searchTerm,
+            sort
           })
         );
       }
     }, 500),
-    [page, dispatch, filters]
+    [page, dispatch, filters, sort]
   );
 
   useEffect(() => {
@@ -136,6 +141,7 @@ export default function Purchases() {
           size: 15,
           ...convertFiltersToParams(filters),
           searchQuery: searchTerm,
+          sort
         })
       );
     } else if (searchTerm) {
@@ -144,12 +150,13 @@ export default function Purchases() {
           page,
           size: 15,
           query: searchTerm,
+          sort
         })
       );
     } else {
-      dispatch(getPurchases({ page, size: 15 }));
+      dispatch(getPurchases({ page, size: 15, sort }));
     }
-  }, [dispatch, page, searchTerm, filters]);
+  }, [dispatch, page, searchTerm, filters, sort]);
 
   const handlePageChange = (_: any, value: number) => {
     setPage(value - 1);
@@ -198,10 +205,11 @@ export default function Purchases() {
           size: 15,
           ...convertFiltersToParams(filters),
           searchQuery: "",
+          sort
         })
       );
     } else {
-      dispatch(getPurchases({ page: 0, size: 15 }));
+      dispatch(getPurchases({ page: 0, size: 15, sort }));
     }
   };
 
@@ -210,6 +218,20 @@ export default function Purchases() {
       ...prev,
       [id]: !prev[id],
     }));
+  };
+
+  const handleSort = (field: string, direction: "ASC" | "DESC") => {
+    const newSort = [`${field},${direction}`];
+
+    if (field !== "purchasingDate") {
+      newSort.push("purchasingDate,DESC");
+    }
+    if (field !== "id") {
+      newSort.push("id,DESC");
+    }
+
+    setSort(newSort);
+    setPage(0);
   };
 
   return (
@@ -320,8 +342,6 @@ export default function Purchases() {
               </Select>
             </FormControl>
 
-
-
             {/* Zahlungsstatus */}
             <FormControl size="small" sx={{ minWidth: 160 }}>
               <InputLabel id="payment-status-label">Zahlungsstatus</InputLabel>
@@ -359,10 +379,110 @@ export default function Purchases() {
           <Table >
             <StyledTableHead>
               <TableRow>
-                <TableCell >ID</TableCell>
-                <TableCell >Lieferant</TableCell>
-                <TableCell >Datum</TableCell>
-                <TableCell >Betrag</TableCell>
+                <TableCell sx={{ userSelect: "none" }}>
+                  <Box display="flex" justifyContent="space-between" alignItems="center">
+                    ID
+                    <Box display="flex" flexDirection="column" ml={0.5}>
+                      <ArrowDropUpIcon
+                        fontSize="small"
+                        onClick={() => handleSort("id", "ASC")}
+                        sx={{
+                          cursor: "pointer",
+                          color: sort[0] === "id,ASC" ? "#0277bd" : "#bdbdbd",
+                          "&:hover": { color: "#0277bd" }
+                        }}
+                      />
+                      <ArrowDropDownIcon
+                        fontSize="small"
+                        onClick={() => handleSort("id", "DESC")}
+                        sx={{
+                          cursor: "pointer",
+                          color: sort[0] === "id,DESC" ? "#0277bd" : "#bdbdbd",
+                          "&:hover": { color: "#0277bd" }
+                        }}
+                      />
+                    </Box>
+                  </Box>
+                </TableCell>
+
+                <TableCell sx={{ userSelect: "none" }}>
+                  <Box display="flex" justifyContent="space-between" alignItems="center">
+                    Lieferant
+                    <Box display="flex" flexDirection="column" ml={0.5}>
+                      <ArrowDropUpIcon
+                        fontSize="small"
+                        onClick={() => handleSort("vendorName", "ASC")}
+                        sx={{
+                          cursor: "pointer",
+                          color: sort[0] === "vendorName,ASC" ? "#0277bd" : "#bdbdbd",
+                          "&:hover": { color: "#0277bd" }
+                        }}
+                      />
+                      <ArrowDropDownIcon
+                        fontSize="small"
+                        onClick={() => handleSort("vendorName", "DESC")}
+                        sx={{
+                          cursor: "pointer",
+                          color: sort[0] === "vendorName,DESC" ? "#0277bd" : "#bdbdbd",
+                          "&:hover": { color: "#0277bd" }
+                        }}
+                      />
+                    </Box>
+                  </Box>
+                </TableCell>
+
+                <TableCell sx={{ userSelect: "none" }}>
+                  <Box display="flex" justifyContent="space-between" alignItems="center">
+                    Datum
+                    <Box display="flex" flexDirection="column" ml={0.5}>
+                      <ArrowDropUpIcon
+                        fontSize="small"
+                        onClick={() => handleSort("purchasingDate", "ASC")}
+                        sx={{
+                          cursor: "pointer",
+                          color: sort[0] === "purchasingDate,ASC" ? "#0277bd" : "#bdbdbd",
+                          "&:hover": { color: "#0277bd" }
+                        }}
+                      />
+                      <ArrowDropDownIcon
+                        fontSize="small"
+                        onClick={() => handleSort("purchasingDate", "DESC")}
+                        sx={{
+                          cursor: "pointer",
+                          color: sort[0] === "purchasingDate,DESC" ? "#0277bd" : "#bdbdbd",
+                          "&:hover": { color: "#0277bd" }
+                        }}
+                      />
+                    </Box>
+                  </Box>
+                </TableCell>
+
+                <TableCell sx={{ userSelect: "none" }}>
+                  <Box display="flex" justifyContent="space-between" alignItems="center">
+                    Betrag
+                    <Box display="flex" flexDirection="column" ml={0.5}>
+                      <ArrowDropUpIcon
+                        fontSize="small"
+                        onClick={() => handleSort("total", "ASC")}
+                        sx={{
+                          cursor: "pointer",
+                          color: sort[0] === "total,ASC" ? "#0277bd" : "#bdbdbd",
+                          "&:hover": { color: "#0277bd" }
+                        }}
+                      />
+                      <ArrowDropDownIcon
+                        fontSize="small"
+                        onClick={() => handleSort("total", "DESC")}
+                        sx={{
+                          cursor: "pointer",
+                          color: sort[0] === "total,DESC" ? "#0277bd" : "#bdbdbd",
+                          "&:hover": { color: "#0277bd" }
+                        }}
+                      />
+                    </Box>
+                  </Box>
+                </TableCell>
+
                 <TableCell >Dokument</TableCell>
                 <TableCell >Dokument-Nr</TableCell>
                 <TableCell >Zahlungsstatus</TableCell>

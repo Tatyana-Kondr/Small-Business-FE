@@ -6,7 +6,7 @@ const initialState: SalesState = {
   salesList: [],
   totalPages: 1,
   currentPage: 0,
-  sort: "salesDate,DESC",
+  sort: ["salesDate,DESC", "invoiceNumber,DESC"],
   selectedSale: undefined,
   loading: false,
   error: null,
@@ -15,7 +15,7 @@ const initialState: SalesState = {
 interface GetSalesParams {
   page: number;
   size?: number;
-  sort?: string;
+  sort?: string[];
   searchTerm?: string;
 }
 
@@ -33,8 +33,9 @@ export const salesSlice = createAppSlice({
   name: "sales",
   initialState,
   reducers: (create) => ({
+
     getSales: create.asyncThunk(
-      async ({ page, size = 15, sort = "salesDate,DESC", searchTerm = "" }: GetSalesParams) => {
+      async ({ page, size = 15, sort = ["salesDate,DESC", "invoiceNumber,DESC"], searchTerm = "" }: GetSalesParams) => {
         return await fetchSales(page, size, sort, searchTerm);
       },
       {
@@ -43,7 +44,7 @@ export const salesSlice = createAppSlice({
           state.salesList = content;
           state.totalPages = totalPages;
           state.currentPage = pageable.pageNumber;
-          state.sort = action.meta.arg.sort ?? "salesDate,DESC";
+          state.sort = action.meta.arg.sort ?? ["salesDate,DESC", "invoiceNumber,DESC"];
           state.loading = false;
           state.error = null;
         },
@@ -94,7 +95,7 @@ export const salesSlice = createAppSlice({
     ),
 
     searchSales: create.asyncThunk(
-      async ({ query, page, size = 15, sort = "purchasingDate,DESC" }: GetSalesParams & { query: string }) => {
+      async ({ query, page, size = 15, sort = ["salesDate,DESC", "invoiceNumber,DESC"] }: GetSalesParams & { query: string }) => {
         return await fetchSearchSales(query, page, size, sort);
       },
       {
@@ -102,7 +103,7 @@ export const salesSlice = createAppSlice({
           state.salesList = action.payload.content;
           state.totalPages = action.payload.totalPages;
           state.currentPage = action.payload.pageable.pageNumber;
-          state.sort = action.meta.arg.sort ?? "salesDate,DESC";
+          state.sort = action.meta.arg.sort ?? ["salesDate,DESC", "invoiceNumber,DESC"];
           state.loading = false;
           state.error = null;
         },
@@ -116,7 +117,7 @@ export const salesSlice = createAppSlice({
       async (params: {
         page: number;
         size?: number;
-        sort?: string;
+        sort?: string[];
         id?: number;
         customerId?: number;
         invoiceNumber?: string;
@@ -129,7 +130,7 @@ export const salesSlice = createAppSlice({
         const {
           page,
           size = 15,
-          sort = "salesDate,DESC",
+          sort = ["salesDate,DESC", "invoiceNumber,DESC"],
           id,
           customerId,
           invoiceNumber,
@@ -156,7 +157,7 @@ export const salesSlice = createAppSlice({
           state.salesList = action.payload.content;
           state.totalPages = action.payload.totalPages;
           state.currentPage = action.payload.pageable.pageNumber;
-          state.sort = action.meta.arg.sort ?? "salesDate,DESC";
+          state.sort = action.meta.arg.sort ?? ["salesDate,DESC", "invoiceNumber,DESC"];
           state.loading = false;
           state.error = null;
         },

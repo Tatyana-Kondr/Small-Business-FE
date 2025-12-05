@@ -4,13 +4,13 @@ import { NewPurchaseDto, NewTypeOfDocumentDto, PaginatedResponse, Purchase, Type
 export async function fetchPurchases(
   page: number,
   size: number,
-  sort: string = "purchasingDate,DESC",
+  sort: string[] = ["purchasingDate,DESC", "id,DESC"],
   searchTerm: string = ""
 ): Promise<PaginatedResponse<Purchase>> {
   const queryParams = new URLSearchParams();
   queryParams.append("page", page.toString());
   queryParams.append("size", size.toString());
-  queryParams.append("sort", sort);
+  sort.forEach(s => queryParams.append("sort", s));
   if (searchTerm) queryParams.append("search", searchTerm);
 
   return apiFetch<PaginatedResponse<Purchase>>(
@@ -66,12 +66,12 @@ export async function fetchSearchPurchases(
   query: string,
   page: number,
   size: number,
-  sort = "purchasingDate,DESC",
+  sort: string[] = ["purchasingDate,DESC", "id,DESC"]
 ): Promise<PaginatedResponse<Purchase>> {
   const queryParams = new URLSearchParams();
   queryParams.append("page", page.toString());
   queryParams.append("size", size.toString());
-  queryParams.append("sort", sort);
+  sort.forEach(s => queryParams.append("sort", s));
 
   return apiFetch<PaginatedResponse<Purchase>>(
     `/api/purchases/search/${encodeURIComponent(query)}?${queryParams.toString()}`,
@@ -83,7 +83,7 @@ export async function fetchSearchPurchases(
 export async function fetchPurchasesByFilter(
   page: number,
   size: number,
-  sort = "purchasingDate,DESC",
+  sort: string[] = ["purchasingDate,DESC", "id,DESC"],
   filters?: {
     id?: number;
     vendorId?: number;
@@ -99,7 +99,7 @@ export async function fetchPurchasesByFilter(
   const queryParams = new URLSearchParams();
   queryParams.append("page", page.toString());
   queryParams.append("size", size.toString());
-  queryParams.append("sort", sort);
+  sort.forEach(s => queryParams.append("sort", s));
 
   if (filters) {
     if (filters.id !== undefined) queryParams.append("id", filters.id.toString());
