@@ -86,7 +86,8 @@ export interface UpdateProductDto {
 }
 
 export interface ProductsState {
-  productsList: Product[];
+  productsPaged: Product[];
+  productsAll: Product[],
   selectedProduct: Product | undefined;
   totalPages: number;
   currentPage: number;

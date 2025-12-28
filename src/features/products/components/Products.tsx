@@ -12,7 +12,7 @@ import {
   Modal
 } from "@mui/material";
 import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
-import { getProducts, getProductsByCategory, selectProducts, selectTotalPages } from "../productsSlice";
+import { getProducts, getProductsByCategory, selectProductsPaged, selectTotalPages } from "../productsSlice";
 import { styled } from "@mui/material/styles";
 import { useNavigate } from "react-router-dom";
 import ClearIcon from "@mui/icons-material/Clear";
@@ -60,7 +60,7 @@ const formatNumber = (value: number) => (
 export default function Products() {
   const dispatch = useAppDispatch();
   const isAuthenticated = useAppSelector(selectIsAuthenticated);
-  const products = useAppSelector(selectProducts);
+  const products = useAppSelector(selectProductsPaged);
   const totalPages = useAppSelector(selectTotalPages);
   const warehouseStocks = useAppSelector(selectWarehouseStocks);
   const categories = useAppSelector(selectProductCategories);

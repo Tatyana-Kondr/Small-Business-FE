@@ -1,17 +1,30 @@
 import { apiFetch } from "../../../utils/apiFetch";
 import { NewProductCategoryDto, NewProductDto, NewUnitOfMeasurementDto, PaginatedResponse, Product, ProductCategory, ProductFile, UnitOfMeasurement, UpdateProductDto } from "../types"
 
-export async function fetchProducts(page: number, size: number, sort = "name", searchTerm = ""): Promise<PaginatedResponse<Product>> {
+export async function fetchProducts(page: number, size: number, sort = "name,asc", searchTerm = ""): Promise<PaginatedResponse<Product>> {
   const queryParams = new URLSearchParams();
   queryParams.append("page", page.toString());
   queryParams.append("size", size.toString());
   queryParams.append("sort", sort);
-  if (searchTerm) {
+   if (searchTerm.trim() !== "") {
     queryParams.append("search", searchTerm);
   }
 
   return apiFetch<PaginatedResponse<Product>>(
     `/api/products?${queryParams.toString()}`,
+    { auth: true }, 
+    "Fehler beim Laden der Produktiste.",
+  );
+}
+
+export async function fetchAllProducts( searchTerm = ""): Promise<Product[]> {
+  const queryParams = new URLSearchParams();
+   if (searchTerm.trim() !== "") {
+    queryParams.append("search", searchTerm);
+  }
+  const qs = queryParams.toString();
+  return apiFetch<Product[]>(
+    `/api/products/all${qs ? `?${qs}` : ""}`,
     { auth: true }, 
     "Fehler beim Laden der Produktiste.",
   );
@@ -53,7 +66,7 @@ export async function fetchProductsByCategory(
   categoryId: number,
   page: number,
   size: number,
-  sort = "name",
+  sort = "name,asc",
   searchTerm = ""
 ): Promise<PaginatedResponse<Product>> {
   const queryParams = new URLSearchParams();
@@ -68,7 +81,25 @@ export async function fetchProductsByCategory(
   return apiFetch<PaginatedResponse<Product>>(
     `/api/products/category/${categoryId}?${queryParams.toString()}`,
     { auth: true },
-    "Fehler beim Laden der Produktkategorien."
+    "Fehler beim Laden der Produktiste."
+  );
+}
+
+export async function fetchAllProductsByCategory(
+  categoryId: number,
+  searchTerm = ""
+): Promise<Product[]> {
+  const queryParams = new URLSearchParams();
+
+  if (searchTerm.trim() !== "") {
+    queryParams.append("search", searchTerm);
+  }
+
+  const qs = queryParams.toString();
+  return apiFetch(
+    `/api/products/category/${categoryId}/all${qs ? `?${qs}` : ""}`,
+    { auth: true },
+    "Fehler beim Laden der Produktiste."
   );
 }
 

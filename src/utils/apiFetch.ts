@@ -18,6 +18,7 @@ export interface ApiFetchOptions extends RequestInit {
   auth?: boolean; // использовать ли accessToken
 }
 
+
 export async function apiFetch<T>(
   url: string,
   options: ApiFetchOptions = {},
@@ -61,10 +62,20 @@ export async function apiFetch<T>(
 
   try {
     return await doFetch();
-  } catch (err: any) {
-    // проверка на 401/403
-    if (err instanceof HttpError && (err.status === 401 || err.status === 403)) {
-      // не рефрешим сам /login и /refresh
+   } catch (err: any) {
+    if (!(err instanceof HttpError)) throw err;
+
+    // === 403 → мгновенный LOGOUT ===
+    if (err.status === 403) {
+      localStorage.removeItem(ACCESS_TOKEN_KEY);
+      store.dispatch(logout());
+      if (_navigate) _navigate("/login", { replace: true });
+      throw err;
+    }
+
+    // === 401 → пробуем refresh ===
+    if (err.status === 401) {
+      // запрет на refresh для /login и /refresh
       if (url.endsWith("/login") || url.endsWith("/refresh")) {
         throw err;
       }

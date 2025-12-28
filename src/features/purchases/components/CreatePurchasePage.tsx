@@ -21,7 +21,7 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { Dayjs } from 'dayjs';
 import 'dayjs/locale/de';
 import { deDE } from '@mui/x-date-pickers/locales';
-import { getProducts, getProductsByCategory, selectProducts } from '../../products/productsSlice';
+import { getAllProducts, getAllProductsByCategory, selectProductsPaged } from '../../products/productsSlice';
 import { getProductCategories, selectProductCategories } from '../../products/productCategoriesSlice';
 import { addPurchase } from '../purchasesSlice';
 import AddIcon from "@mui/icons-material/Add";
@@ -75,7 +75,7 @@ export default function CreatePurchasePage({ onClose, onSubmitSuccess }: CreateP
     const [vendors, setVendors] = useState<Customer[]>([]);
     const [dateValue, setDateValue] = useState<Dayjs | null>(null);
     const categories = useAppSelector(selectProductCategories);
-    const products = useAppSelector(selectProducts);
+    const products = useAppSelector(selectProductsPaged);
     const documentTypes = useAppSelector(selectTypeOfDocuments);
     const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
@@ -95,9 +95,9 @@ export default function CreatePurchasePage({ onClose, onSubmitSuccess }: CreateP
 
     useEffect(() => {
         if (selectedCategory !== null) {
-            dispatch(getProductsByCategory({ categoryId: selectedCategory, page: 0, size: 100 }));
+            dispatch(getAllProductsByCategory({ categoryId: selectedCategory }));
         } else {
-            dispatch(getProducts({ page: 0, size: 100 }));
+            dispatch(getAllProducts({  }));
         }
     }, [selectedCategory, dispatch]);
 

@@ -1,6 +1,8 @@
 import { createAppSlice } from "../../redux/createAppSlice";
 import {
   fetchAddProduct,
+  fetchAllProducts,
+  fetchAllProductsByCategory,
   fetchDeleteProduct,
   fetchEditProduct,
   fetchProduct,
@@ -10,7 +12,8 @@ import {
 import { NewProductDto, ProductsState, UpdateProductDto } from "./types";
 
 const initialState: ProductsState = {
-  productsList: [],
+  productsPaged: [],
+  productsAll: [],
   totalPages: 1,
   currentPage: 0,
   currentSort: "name",
@@ -23,7 +26,7 @@ export const productsSlice = createAppSlice({
   name: "products",
   initialState,
   reducers: (create) => ({
-   getProducts: create.asyncThunk(
+    getProducts: create.asyncThunk(
       async (
         { page, size = 15, sort = "name", searchTerm = "" }: { page: number; size?: number; sort?: string; searchTerm?: string }
       ) => {
@@ -38,10 +41,33 @@ export const productsSlice = createAppSlice({
         fulfilled: (state, action) => {
           const response = action.payload;
           state.loading = false;
-          state.productsList = response.content;
+          state.productsPaged = response.content;
           state.totalPages = response.totalPages;
           state.currentPage = response.pageable.pageNumber;
           state.currentSort = action.meta.arg.sort ?? "name";
+        },
+        rejected: (state, action) => {
+          state.loading = false;
+          state.error = action.error.message || "Fehler beim Laden der Produkte.";
+        },
+      }
+    ),
+
+    getAllProducts: create.asyncThunk(
+      async (
+        { searchTerm = "" }: { searchTerm?: string }
+      ) => {
+        const response = await fetchAllProducts(searchTerm);
+        return response;
+      },
+      {
+        pending: (state) => {
+          state.loading = true;
+          state.error = null;
+        },
+        fulfilled: (state, action) => {
+          state.productsAll = action.payload;
+          state.loading = false;
         },
         rejected: (state, action) => {
           state.loading = false;
@@ -74,14 +100,40 @@ export const productsSlice = createAppSlice({
         fulfilled: (state, action) => {
           const response = action.payload;
           state.loading = false;
-          state.productsList = response.content;
+          state.productsPaged = response.content;
           state.totalPages = response.totalPages;
           state.currentPage = response.pageable.pageNumber;
           state.currentSort = action.meta.arg.sort ?? "name";
         },
         rejected: (state, action) => {
           state.loading = false;
-          state.error = action.error.message || "Fehler beim Laden der Produktkategorien.";
+          state.error = action.error.message || "Fehler beim Laden der Produkte.";
+        },
+      }
+    ),
+
+    getAllProductsByCategory: create.asyncThunk(
+      async ({
+        categoryId,
+        searchTerm = "",
+      }: {
+        categoryId: number;
+        searchTerm?: string;
+      }) => {
+        return await fetchAllProductsByCategory(categoryId, searchTerm);
+      },
+      {
+        pending: (state) => {
+          state.loading = true;
+          state.error = null;
+        },
+        fulfilled: (state, action) => {
+          state.productsAll = action.payload;
+          state.loading = false;
+        },
+        rejected: (state, action) => {
+          state.loading = false;
+          state.error = action.error.message || "Fehler beim Laden der Produkte.";
         },
       }
     ),
@@ -94,7 +146,7 @@ export const productsSlice = createAppSlice({
         await dispatch(
           getProducts({
             page: state.products.currentPage,
-            size: 15, 
+            size: 15,
             sort: state.products.currentSort,
           })
         );
@@ -206,7 +258,8 @@ export const productsSlice = createAppSlice({
   }),
 
   selectors: {
-    selectProducts: (state: ProductsState) => state.productsList,
+    selectProductsPaged: (state) => state.productsPaged,
+    selectProductsAll: (state) => state.productsAll,
     selectTotalPages: (state: ProductsState) => state.totalPages,
     selectCurrentPage: (state: ProductsState) => state.currentPage,
     selectProduct: (state: ProductsState) => state.selectedProduct,
@@ -217,7 +270,9 @@ export const productsSlice = createAppSlice({
 
 export const {
   getProducts,
+  getAllProducts,
   getProductsByCategory,
+  getAllProductsByCategory,
   addProduct,
   editProduct,
   getProduct,
@@ -225,7 +280,8 @@ export const {
 } = productsSlice.actions;
 
 export const {
-  selectProducts,
+  selectProductsPaged,
+  selectProductsAll,
   selectTotalPages,
   selectCurrentPage,
   selectProduct,
