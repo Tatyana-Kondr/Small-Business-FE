@@ -17,7 +17,7 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/de';
 import { deDE } from '@mui/x-date-pickers/locales';
-import { getProducts } from '../../products/productsSlice';
+import { getAllProducts } from '../../products/productsSlice';
 import { selectProductCategories } from '../../products/productCategoriesSlice';
 
 import { handleApiError } from '../../../utils/handleApiError';
@@ -54,7 +54,7 @@ export default function EditProduction() {
   const { productionId } = useParams<{ productionId: string }>();
   const id = Number(productionId);
 
-  const products = useAppSelector((state) => state.products.productsList);
+  const products = useAppSelector((state) => state.products.productsAll);
   const categories = useAppSelector(selectProductCategories);
 
 
@@ -75,7 +75,7 @@ export default function EditProduction() {
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
 
   useEffect(() => {
-    dispatch(getProducts({ page: 0, size: 100 })).unwrap().catch(console.error);
+    dispatch(getAllProducts({  })).unwrap().catch(console.error);
   }, [dispatch]);
 
   useEffect(() => {

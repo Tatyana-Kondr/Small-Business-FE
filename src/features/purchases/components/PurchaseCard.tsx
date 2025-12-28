@@ -32,7 +32,7 @@ import { useAppDispatch, useAppSelector } from '../../../redux/hooks';
 import { NewPurchaseDto, NewPurchaseItemDto, TypeOfDocument } from '../types';
 import { Customer } from '../../customers/types';
 import { getProductCategories, selectProductCategories } from '../../products/productCategoriesSlice';
-import { getProducts, getProductsByCategory, selectProducts } from '../../products/productsSlice';
+import { getAllProducts, getProductsByCategory, selectProductsAll } from '../../products/productsSlice';
 import { getPurchaseById, updatePurchase } from '../purchasesSlice';
 import { getCustomers } from '../../customers/customersSlice';
 import { Product } from '../../products/types';
@@ -84,7 +84,7 @@ export default function PurchaseCard() {
   const [dateValue, setDateValue] = useState<Dayjs | null>(null);
   const [vendors, setVendors] = useState<Customer[]>([]);
   const categories = useAppSelector(selectProductCategories);
-  const products = useAppSelector(selectProducts);
+  const products = useAppSelector(selectProductsAll);
   const documentTypes = useAppSelector(selectTypeOfDocuments);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -122,7 +122,7 @@ export default function PurchaseCard() {
 
     // Загрузка категорий и продуктов
     dispatch(getProductCategories());
-    dispatch(getProducts({ page: 0, size: 100 }));
+    dispatch(getAllProducts({  }));
   }, [dispatch, purchaseId]);
 
   useEffect(() => {

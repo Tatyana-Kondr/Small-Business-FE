@@ -17,7 +17,7 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { Dayjs } from 'dayjs';
 import 'dayjs/locale/de';
 import { deDE } from '@mui/x-date-pickers/locales';
-import { getProducts } from '../../products/productsSlice';
+import { getAllProducts } from '../../products/productsSlice';
 import { selectProductCategories } from '../../products/productCategoriesSlice';
 
 import { handleApiError } from '../../../utils/handleApiError';
@@ -67,13 +67,13 @@ export default function CreateProduction({
     });
 
     const [dateValue, setDateValue] = useState<Dayjs | null>(null);
-    const products = useAppSelector((state) => state.products.productsList);
+    const products = useAppSelector((state) => state.products.productsAll);
     const [searchTerm, setSearchTerm] = useState("");
     const categories = useAppSelector(selectProductCategories);
     const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
 
     useEffect(() => {
-        dispatch(getProducts({ page: 0, size: 100 }));
+        dispatch(getAllProducts({ }));
     }, [dispatch]);
 
     const filteredProducts = useMemo(() => {

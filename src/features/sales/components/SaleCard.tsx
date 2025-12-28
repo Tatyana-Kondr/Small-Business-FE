@@ -33,7 +33,7 @@ import { deDE } from '@mui/x-date-pickers/locales';
 import { useAppDispatch, useAppSelector } from '../../../redux/hooks';
 import { Customer } from '../../customers/types';
 import { getProductCategories, selectProductCategories } from '../../products/productCategoriesSlice';
-import { getProducts, getProductsByCategory, selectProducts } from '../../products/productsSlice';
+import { getAllProducts, getProductsByCategory, selectProductsAll } from '../../products/productsSlice';
 import { getCustomersWithCustomerNumber } from '../../customers/customersSlice';
 import { Product } from '../../products/types';
 import { handleApiError } from '../../../utils/handleApiError';
@@ -106,7 +106,7 @@ export default function SaleCard() {
   const [dateValue, setDateValue] = useState<Dayjs | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const categories = useAppSelector(selectProductCategories);
-  const products = useAppSelector(selectProducts);
+  const products = useAppSelector(selectProductsAll);
   const shippings = useAppSelector(selectShippings);
   const termsOfPayment = useAppSelector(selectTermsOfPayment);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
@@ -169,7 +169,7 @@ export default function SaleCard() {
 
     dispatch(getShippings());
     dispatch(getProductCategories());
-    dispatch(getProducts({ page: 0, size: 100 }));
+    dispatch(getAllProducts({  }));
   }, [dispatch, saleId]);
 
   useEffect(() => {
