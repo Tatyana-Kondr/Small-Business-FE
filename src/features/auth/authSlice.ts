@@ -49,10 +49,11 @@ export const authSlice = createAppSlice({
       async (credentials, { dispatch }) => {
         const authResponse = await fetchLogin(credentials);
 
-        // сохраняем accessToken в localStorage для последующих запросов
+        // сохраняем accessToken и refreshToken в localStorage для последующих запросов
         localStorage.setItem("accessToken", authResponse.accessToken);
+        localStorage.setItem("refreshToken", authResponse.refreshToken);
 
-         // Загружаем профиль пользователя
+        // Загружаем профиль пользователя
         const userProfile = await fetchUserProfile();
 
         // Загружаем данные компании сразу после login
@@ -87,6 +88,7 @@ export const authSlice = createAppSlice({
         try {
           const authResponse = await fetchRefreshToken();
           localStorage.setItem("accessToken", authResponse.accessToken);
+          localStorage.setItem("refreshToken", authResponse.refreshToken);
           const userProfile = await fetchUserProfile();
 
           // Загружаем компанию после refresh
@@ -95,8 +97,11 @@ export const authSlice = createAppSlice({
           return userProfile;
         } catch (err: any) {
           if (err instanceof HttpError && (err.status === 401 || err.status === 403)) {
-            dispatch(authSlice.actions.logout());
+            localStorage.removeItem("accessToken");
+            localStorage.removeItem("refreshToken");
+            dispatch(logout());
           }
+
           throw err;
         }
       },
@@ -125,6 +130,7 @@ export const authSlice = createAppSlice({
       async () => {
         await fetchLogout();
         localStorage.removeItem("accessToken");
+        localStorage.removeItem("refreshToken");
       },
       {
         fulfilled: (state) => {

@@ -27,19 +27,27 @@ export async function fetchLogin(authRequestDto: AuthRequestDto): Promise<AuthRe
   });
 }
 
-// Обновление accessToken по refreshToken
+// Обновление refreshToken
 export async function fetchRefreshToken(): Promise<AuthResponseDto> {
+  const refreshToken = localStorage.getItem("refreshToken");
+  if (!refreshToken) {
+    throw new Error("No refreshToken in storage");
+  }
   return apiFetch<AuthResponseDto>("/api/auth/refresh", {
     method: "POST",
-    auth: true, // нужно, чтобы куки с refreshToken ушли на сервер
+    body: JSON.stringify({ refreshToken }),
+    auth: false,
   });
 }
 
 // Выход пользователя
 export async function fetchLogout(): Promise<void> {
+  const refreshToken = localStorage.getItem("refreshToken");
+  if (!refreshToken) return;
   return apiFetch<void>("/api/auth/logout", {
     method: "POST",
-    auth: true,
+    body: JSON.stringify({ refreshToken }),
+    auth: false,
   });
 }
 

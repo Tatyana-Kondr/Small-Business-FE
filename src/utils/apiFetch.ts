@@ -41,7 +41,7 @@ export async function apiFetch<T>(
     const response = await fetch(url, {
       ...options,
       headers,
-      credentials: "include", // чтобы refreshToken кука ушла
+    //  credentials: "include", // чтобы refreshToken кука ушла
     });
 
     let responseData: any = {};
@@ -62,14 +62,17 @@ export async function apiFetch<T>(
 
   try {
     return await doFetch();
-   } catch (err: any) {
+  } catch (err: any) {
     if (!(err instanceof HttpError)) throw err;
 
-    // === 403 → мгновенный LOGOUT ===
     if (err.status === 403) {
-      localStorage.removeItem(ACCESS_TOKEN_KEY);
-      store.dispatch(logout());
-      if (_navigate) _navigate("/login", { replace: true });
+      // если это refresh/me — да, считаем сессию умерла
+      if (url.endsWith("/refresh")) {
+        localStorage.removeItem(ACCESS_TOKEN_KEY);
+        localStorage.removeItem("refreshToken");
+        store.dispatch(logout());
+        if (_navigate) _navigate("/login", { replace: true });
+      }
       throw err;
     }
 
@@ -100,7 +103,7 @@ export async function apiFetch<T>(
         const retryResponse = await fetch(url, {
           ...options,
           headers: retryHeaders,
-          credentials: "include",
+          //credentials: "include",
         });
 
         if (!retryResponse.ok) {
@@ -112,6 +115,7 @@ export async function apiFetch<T>(
       } catch (refreshErr) {
         // если refresh тоже упал → logout
         localStorage.removeItem(ACCESS_TOKEN_KEY);
+        localStorage.removeItem("refreshToken");
         store.dispatch(logout());
         if (_navigate) _navigate("/login", { replace: true });
         throw refreshErr;
