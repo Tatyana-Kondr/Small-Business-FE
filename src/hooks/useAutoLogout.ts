@@ -9,14 +9,28 @@ interface AutoLogoutOptions {
 }
 
 // берем время из .env (в минутах) и конвертируем в мс
-const envTimeoutMinutes = Number(import.meta.env.VITE_AUTOLOGOUT_TIMEOUT) || 30;
-const envTimeoutMs = envTimeoutMinutes * 60 * 1000;
+const envTimeoutMinutes = Number(import.meta.env.VITE_AUTOLOGOUT_TIMEOUT);
+
+const isAutoLogoutEnabled = envTimeoutMinutes > 0;
+const envTimeoutMs = isAutoLogoutEnabled
+  ? envTimeoutMinutes * 60 * 1000
+  : Infinity;
+
 
 export function useAutoLogout({
   timeout = envTimeoutMs,
   warningTime = 60 * 1000,  // за 60 секунд до выхода
   checkInterval = 60 * 1000,
 }: AutoLogoutOptions = {}) {
+  if (!isAutoLogoutEnabled) {
+  return {
+    showModal: false,
+    endTime: Infinity,
+    warningTime: 0,
+    handleLogout: () => {},
+  };
+}
+
   const dispatch = useAppDispatch();
 
   const lastActivityRef = useRef(Date.now());
@@ -76,11 +90,7 @@ export function useAutoLogout({
     };
     document.addEventListener("visibilitychange", handleVisibility);
 
-    // закрытие вкладки/браузера
-    const handleUnload = () => {
-      handleLogout();
-    };
-    window.addEventListener("beforeunload", handleUnload);
+    
 
     // синхронизация между вкладками
     const handleStorage = (e: StorageEvent) => {
@@ -97,7 +107,6 @@ export function useAutoLogout({
       clearInterval(checkSleep);
       events.forEach((event) => window.removeEventListener(event, resetTimer));
       document.removeEventListener("visibilitychange", handleVisibility);
-      window.removeEventListener("beforeunload", handleUnload);
       window.removeEventListener("storage", handleStorage);
     };
   }, [resetTimer, handleLogout, timeout, checkInterval]);

@@ -15,7 +15,7 @@ import Spinner from './components/Spinner';
 
 const Layout = lazy(() => import("./components/Layout"));
 const Customers = lazy(() => import("./features/customers/components/Customers"));
-const CustomersWithNumber = lazy(() =>import("./features/customers/components/CustomersWithNumber"));
+const CustomersWithNumber = lazy(() => import("./features/customers/components/CustomersWithNumber"));
 const CustomerCard = lazy(() => import("./features/customers/components/CustomerCard"));
 const CustomerWithNumberCard = lazy(() => import("./features/customers/components/CustomerWithNumberCard"));
 const ProductCategoryList = lazy(() => import("./features/products/components/category/ProductCategoryList"));
@@ -43,16 +43,21 @@ function App() {
   const isSessionChecked = useAppSelector(selectSessionChecked);
   const navigate = useNavigate();
 
-   // Динамический таймер автологаута
+  // Динамический таймер автологаута
+  const envMinutes = Number(import.meta.env.VITE_AUTOLOGOUT_TIMEOUT);
+
   const [autoLogoutMinutes, setAutoLogoutMinutes] = useState<number>(
-    Number(localStorage.getItem("autoLogoutMinutes")) ||
-      Number(import.meta.env.VITE_AUTOLOGOUT_TIMEOUT) ||
-      30
+    envMinutes > 0
+      ? Number(localStorage.getItem("autoLogoutMinutes")) || envMinutes
+      : 0
   );
 
-  const { showModal, endTime, warningTime, handleLogout } = useAutoLogout({
-    timeout: autoLogoutMinutes * 60 * 1000, // в миллисекундах
-  });
+  const autoLogoutEnabled = autoLogoutMinutes > 0;
+
+  const { showModal, endTime, warningTime, handleLogout } = autoLogoutEnabled
+    ? useAutoLogout({ timeout: autoLogoutMinutes * 60 * 1000 })
+    : { showModal: false, endTime: 0, warningTime: 0, handleLogout: () => { } };
+
 
   // Передаем navigate в apiFetch
   useEffect(() => {
@@ -85,7 +90,7 @@ function App() {
           <Route index element={isAuthenticated ? <Navigate to="/products" replace /> : <Navigate to="/login" replace />} />
 
           {/* Защищённые страницы */}
-          <Route path="products" element={<Suspense fallback={<Spinner />}> {Private(<Products />)} </Suspense>} />     
+          <Route path="products" element={<Suspense fallback={<Spinner />}> {Private(<Products />)} </Suspense>} />
           <Route path="product-categories" element={Private(<ProductCategoryList />, "ADMIN")} />
           <Route path="create-product-category" element={Private(<CreateProductCategory />, "ADMIN")} />
           <Route path="lieferanten" element={Private(<Customers />)} />
@@ -127,14 +132,14 @@ function App() {
         </Route>
       </Routes>
       <ModalManager />
-      
-        <AutoLogoutModal
+
+      <AutoLogoutModal
         show={showModal}
         endTime={endTime}
         warningTime={warningTime}
         onLogout={handleLogout}
       />
-    
+
     </div>
   );
 }
