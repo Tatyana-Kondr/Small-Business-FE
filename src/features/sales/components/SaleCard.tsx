@@ -22,6 +22,7 @@ import {
   Tooltip,
   Alert,
   SelectChangeEvent,
+  CircularProgress,
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { Delete as DeleteIcon, Clear as ClearIcon } from '@mui/icons-material';
@@ -33,9 +34,9 @@ import { deDE } from '@mui/x-date-pickers/locales';
 import { useAppDispatch, useAppSelector } from '../../../redux/hooks';
 import { Customer } from '../../customers/types';
 import { getProductCategories, selectProductCategories } from '../../products/productCategoriesSlice';
-import { getAllProducts, getProductsByCategory, selectProductsAll } from '../../products/productsSlice';
+import { getPickProducts, getProductsByCategory, selectPickLoading, selectPickProducts } from '../../products/productsSlice';
 import { getCustomersWithCustomerNumber } from '../../customers/customersSlice';
-import { Product } from '../../products/types';
+import { ProductPickDto } from '../../products/types';
 import { handleApiError } from '../../../utils/handleApiError';
 import { showSuccessToast } from '../../../utils/toast';
 import { NewSaleDto, NewSaleItemDto, NewShippingDimensionsDto, Shipping } from '../types';
@@ -106,7 +107,8 @@ export default function SaleCard() {
   const [dateValue, setDateValue] = useState<Dayjs | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const categories = useAppSelector(selectProductCategories);
-  const products = useAppSelector(selectProductsAll);
+  const pickProducts = useAppSelector(selectPickProducts);
+  const pickLoading = useAppSelector(selectPickLoading);
   const shippings = useAppSelector(selectShippings);
   const termsOfPayment = useAppSelector(selectTermsOfPayment);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
@@ -116,6 +118,7 @@ export default function SaleCard() {
   const [deliveryDateValue, setDeliveryDateValue] = useState<Dayjs | null>(
     sale.deliveryDate ? dayjs(sale.deliveryDate) : null
   );
+  const [debouncedTerm, setDebouncedTerm] = useState(searchTerm);
 
   const isPaid = sale.paymentStatus === "BEZAHLT";
 
@@ -169,8 +172,23 @@ export default function SaleCard() {
 
     dispatch(getShippings());
     dispatch(getProductCategories());
-    dispatch(getAllProducts({  }));
   }, [dispatch, saleId]);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedTerm(searchTerm), 350);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    // можно тут же сбрасывать список при коротком запросе
+    dispatch(
+      getPickProducts({
+        searchTerm: debouncedTerm,
+        categoryId: selectedCategory ?? null,
+        limit: 50,
+      })
+    );
+  }, [dispatch, debouncedTerm, selectedCategory]);
 
   useEffect(() => {
     if (sale.customerId && customers.length > 0) {
@@ -265,21 +283,6 @@ export default function SaleCard() {
     }
   }, [dispatch, selectedCategory]);
 
-  const filteredProducts = useMemo(() => {
-    const term = searchTerm.toLowerCase().trim();
-
-    return products.filter(product => {
-      const matchesCategory = selectedCategory === null || product.productCategory.id === selectedCategory;
-      const matchesText =
-        term === '' ||
-        product.name.toLowerCase().includes(term) ||
-        product.article?.toLowerCase().includes(term) ||
-        product.vendorArticle?.toLowerCase().includes(term);
-
-      return matchesCategory && matchesText;
-    });
-  }, [products, selectedCategory, searchTerm]);
-
   useEffect(() => {
     setSearchTerm('');
   }, [selectedCategory]);
@@ -307,13 +310,15 @@ export default function SaleCard() {
   }, [sale.salesItems]);
 
 
-  const handleAddProductToCart = (product: Product) => {
+  const handleAddProductToCart = (product: ProductPickDto) => {
     const quantity = 1;
-    const unitPrice = product.sellingPrice;
+    const unitPrice = Number(product.sellingPrice ?? 0); // если number
     const totalPrice = quantity * unitPrice;
+
     const discount = sale.defaultDiscount;
     const discountAmount = (totalPrice * discount) / 100;
     const totalPriceWithDiscount = totalPrice - discountAmount;
+
     const tax = sale.defaultTax;
     const taxAmount = (totalPriceWithDiscount * tax) / 100;
     const totalAmount = totalPriceWithDiscount + taxAmount;
@@ -334,12 +339,12 @@ export default function SaleCard() {
       totalAmount,
     };
 
-
     setSale(prev => ({
       ...prev,
       salesItems: [...prev.salesItems, item],
     }));
   };
+
 
   const handleRemoveItem = (index: number) => {
     setSale(prev => ({
@@ -815,7 +820,7 @@ export default function SaleCard() {
                 <StyledTableHead>
                   <TableRow>
                     <TableCell sx={{ width: 50, fontSize: "12px" }}>Pos</TableCell>
-                    <TableCell sx={{ minWidth: 70 }}>Artikel</TableCell>
+                    <TableCell sx={{ width: 100 }}>Artikel</TableCell>
                     <TableCell sx={{ minWidth: 200 }}>Name</TableCell>
                     <TableCell sx={{ width: 70 }}>Menge</TableCell>
                     <TableCell sx={{ width: 90 }}>Preis</TableCell>
@@ -990,6 +995,22 @@ export default function SaleCard() {
                 </Grid>
 
                 <Box sx={{ maxHeight: 263, overflowY: 'auto', mt: 1, border: "1px solid #ddd" }}>
+                  {pickLoading && (
+                    <Box sx={{ p: 1, textAlign: "center", color: "#00acc1" }}>
+                      <CircularProgress size={20} />
+                      <Typography variant="caption" sx={{ ml: 1 }}>
+                        Produkte werden geladen…
+                      </Typography>
+                    </Box>
+                  )}
+
+                  {!pickLoading && pickProducts.length === 0 && (searchTerm.length >= 2 || selectedCategory !== null) && (
+                    <Box sx={{ p: 1, textAlign: "center", color: "text.secondary" }}>
+                      <Typography variant="caption">
+                        Keine Produkte gefunden
+                      </Typography>
+                    </Box>
+                  )}
                   <Table size="small">
                     <StyledTableHead>
                       <TableRow>
@@ -1000,18 +1021,18 @@ export default function SaleCard() {
                       </TableRow>
                     </StyledTableHead>
                     <TableBody>
-                      {filteredProducts.map(product => (
-                        <StyledTableRow
-                          key={product.id}
-                          onClick={() => handleAddProductToCart(product)}
-                        >
-                          <TableCell>{product.name}</TableCell>
-                          <TableCell>{product.article}</TableCell>
-                          <TableCell>{product.vendorArticle}</TableCell>
-                          <TableCell>{product.purchasingPrice.toFixed(2)}</TableCell>
+                      {pickProducts.map(p => (
+                        <StyledTableRow key={p.id} onClick={() => handleAddProductToCart(p)}>
+                          <TableCell>{p.name}</TableCell>
+                          <TableCell>{p.article}</TableCell>
+                          <TableCell>{p.vendorArticle ?? ''}</TableCell>
+                          <TableCell align="right">
+                            {Number(p.sellingPrice ?? 0).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </TableCell>
                         </StyledTableRow>
                       ))}
-                      {filteredProducts.length === 0 && (
+
+                      {!pickLoading && pickProducts.length === 0 && (
                         <TableRow>
                           <TableCell colSpan={4} align="center">
                             Keine Produkte gefunden

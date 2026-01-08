@@ -1,5 +1,5 @@
 import { apiFetch } from "../../../utils/apiFetch";
-import { NewProductCategoryDto, NewProductDto, NewUnitOfMeasurementDto, PaginatedResponse, Product, ProductCategory, ProductFile, UnitOfMeasurement, UpdateProductDto } from "../types"
+import { NewProductCategoryDto, NewProductDto, NewUnitOfMeasurementDto, PaginatedResponse, Product, ProductCategory, ProductFile, ProductPickDto, UnitOfMeasurement, UpdateProductDto } from "../types"
 
 export async function fetchProducts(page: number, size: number, sort = "name,asc", searchTerm = ""): Promise<PaginatedResponse<Product>> {
   const queryParams = new URLSearchParams();
@@ -28,6 +28,22 @@ export async function fetchAllProducts( searchTerm = ""): Promise<Product[]> {
     { auth: true }, 
     "Fehler beim Laden der Produktiste.",
   );
+}
+
+export async function fetchPickProducts(params: {
+  searchTerm?: string;
+  categoryId?: number | null;
+  limit?: number;
+}): Promise<ProductPickDto[]> {
+
+  const q = new URLSearchParams();
+  if (params.searchTerm) q.set("search", params.searchTerm);
+  if (params.categoryId != null) q.set("categoryId", String(params.categoryId));
+  if (params.limit) q.set("limit", String(params.limit));
+
+  const url = `/api/products/pick?${q.toString()}`;
+
+  return apiFetch<ProductPickDto[]>(url, { auth: true });
 }
 
 export async function fetchAddProduct(newProduct: NewProductDto): Promise<Product> {

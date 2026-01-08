@@ -1,22 +1,32 @@
 
-export interface Product{
-    id: number
-    name: string
-    article: string
-    vendorArticle: string
-    purchasingPrice: number
-    markupPercentage: number
-    sellingPrice: number
-    unitOfMeasurement: UnitOfMeasurement
-    weight: number
-    newDimensions: Dimensions
-    productCategory: ProductCategory
-    description: string
-    customsNumber: string
-    createdDate: string
-    dateOfLastPurchase: string
-    lastModifiedDate: string
-    storageLocation: string
+export interface Product {
+  id: number
+  name: string
+  article: string
+  vendorArticle: string
+  purchasingPrice: number
+  markupPercentage: number
+  sellingPrice: number
+  unitOfMeasurement: UnitOfMeasurement
+  weight: number
+  newDimensions: Dimensions
+  productCategory: ProductCategory
+  description: string
+  customsNumber: string
+  createdDate: string
+  dateOfLastPurchase: string
+  lastModifiedDate: string
+  storageLocation: string
+}
+
+export interface ProductPickDto {
+  id: number
+  name: string
+  article: string
+  vendorArticle: string
+  purchasingPrice: number
+  sellingPrice: number
+  categoryId: number
 }
 
 export interface ProductCategory {
@@ -34,23 +44,23 @@ export interface Dimensions {
 
 export interface ProductFile {
   id: number;
-  productId?: number; 
+  productId?: number;
   product?: Product;
   originFileName: string;
   fileUrl: string;
 }
 
-export interface UnitOfMeasurement{
-    id: number;
-    name: string;  
+export interface UnitOfMeasurement {
+  id: number;
+  name: string;
 }
 
-export interface NewProductCategoryDto{
+export interface NewProductCategoryDto {
   name: string;
   artName: string;
 }
 
-export interface NewProductDto{
+export interface NewProductDto {
   name: string;
   vendorArticle: string
   purchasingPrice: number
@@ -62,8 +72,8 @@ export interface NewProductDto{
   storageLocation?: string
 }
 
-export interface NewUnitOfMeasurementDto{
-    name: string;  
+export interface NewUnitOfMeasurementDto {
+  name: string;
 }
 
 export interface UpdateProductDto {
@@ -89,10 +99,14 @@ export interface ProductsState {
   productsPaged: Product[];
   productsAll: Product[],
   selectedProduct: Product | undefined;
+  pickProducts: ProductPickDto[];
+  pickLoading: boolean;
+  pickError: string | null;
+  pickLastQuery: { searchTerm: string; categoryId: number | null } | null;
   totalPages: number;
   currentPage: number;
   currentSort: string,
-  loading: boolean;          
+  loading: boolean;
   error: string | null;
 }
 
@@ -105,7 +119,7 @@ export interface ProductFilesState {
   files: ProductFile[];
 }
 
-export interface UnitsOfMeasurementState{
+export interface UnitsOfMeasurementState {
   unitsList: UnitOfMeasurement[];
   selectedUnit: UnitOfMeasurement | undefined;
   loading: boolean;
@@ -114,20 +128,20 @@ export interface UnitsOfMeasurementState{
 
 // Интерфейс для ответа с пагинацией
 export interface PaginatedResponse<T> {
-    content: T[];
-    pageable: {
-      pageNumber: number;
-      pageSize: number;
-      offset: number;
-      paged: boolean;
-      sort: {
-        empty: boolean;
-        unsorted: boolean;
-        sorted: boolean;
-      };
+  content: T[];
+  pageable: {
+    pageNumber: number;
+    pageSize: number;
+    offset: number;
+    paged: boolean;
+    sort: {
+      empty: boolean;
+      unsorted: boolean;
+      sorted: boolean;
     };
-    totalElements: number;
-    totalPages: number;
-    first: boolean;
-    last: boolean;
+  };
+  totalElements: number;
+  totalPages: number;
+  first: boolean;
+  last: boolean;
 }  

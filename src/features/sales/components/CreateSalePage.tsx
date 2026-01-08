@@ -9,12 +9,13 @@ import {
     InputAdornment,
     InputLabel,
     Tooltip,
-    SelectChangeEvent
+    SelectChangeEvent,
+    CircularProgress
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 
 import { Customer } from '../../customers/types';
-import { Product } from '../../products/types';
+import { ProductPickDto } from '../../products/types';
 import { getCustomersWithCustomerNumber } from '../../customers/customersSlice';
 import { useAppDispatch, useAppSelector } from '../../../redux/hooks';
 import { ClearIcon, DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
@@ -22,7 +23,7 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/de';
 import { deDE } from '@mui/x-date-pickers/locales';
-import { getAllProducts, getAllProductsByCategory, selectProductsAll } from '../../products/productsSlice';
+import { getPickProducts, selectPickLoading, selectPickProducts } from '../../products/productsSlice';
 import { getProductCategories, selectProductCategories } from '../../products/productCategoriesSlice';
 import { NewSaleDto, NewSaleItemDto, NewShippingDimensionsDto } from '../types';
 import { addSale } from '../salesSlice';
@@ -86,9 +87,10 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
     const [customers, setCustomers] = useState<Customer[]>([]);
     const [dateValue, setDateValue] = useState<Dayjs | null>(null);
     const categories = useAppSelector(selectProductCategories);
-    const products = useAppSelector(selectProductsAll);
     const shippings = useAppSelector(selectShippings);
     const termsOfPayment = useAppSelector(selectTermsOfPayment);
+    const pickProducts = useAppSelector(selectPickProducts);
+    const pickLoading = useAppSelector(selectPickLoading);
     const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [weightInput, setWeightInput] = useState<string>('');
@@ -109,29 +111,26 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
     }, [dispatch]);
 
     useEffect(() => {
-        if (selectedCategory !== null) {
-            dispatch(getAllProductsByCategory({ categoryId: selectedCategory }));
-        } else {
-            dispatch(getAllProducts({ }));
+        const term = searchTerm.trim();
+
+        // если ничего не выбрано и мало символов — очищаем список и не дергаем сервер
+        if (selectedCategory === null && term.length < 2) {
+            // можно очистить список отдельным action, но проще: просто не показывать таблицу
+            return;
         }
-    }, [selectedCategory, dispatch]);
 
-    const filteredProducts = useMemo(() => {
-        const term = searchTerm.toLowerCase().trim();
+        const t = setTimeout(() => {
+            dispatch(
+                getPickProducts({
+                    searchTerm: term,
+                    categoryId: selectedCategory,
+                    limit: 50,
+                })
+            );
+        }, 350);
 
-        return products.filter(product => {
-            const matchesCategory = selectedCategory === null || product.productCategory.id === selectedCategory;
-
-            const matchesText =
-                term === '' ||
-                product.name.toLowerCase().includes(term) ||
-                product.article?.toLowerCase().includes(term) ||
-                product.vendorArticle?.toLowerCase().includes(term);
-
-            return matchesCategory && matchesText;
-        });
-    }, [products, selectedCategory, searchTerm]);
-
+        return () => clearTimeout(t);
+    }, [dispatch, searchTerm, selectedCategory]);
 
     useEffect(() => {
         setSearchTerm("");
@@ -192,7 +191,7 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
         });
     }, [newSale.defaultTax, newSale.defaultDiscount]);
 
-    const handleAddProductToCart = (product: Product) => {
+    const handleAddProductToCart = (product: ProductPickDto) => {
         const quantity = 1;
         const unitPrice = product.sellingPrice;
         const totalPrice = quantity * unitPrice;
@@ -571,7 +570,7 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
                         </Grid>
 
 
-                        {/* 📝 Bestellung Block */}
+                        {/*  Bestellung Block */}
                         <Grid item xs={12}>
                             <Paper elevation={2} sx={{ p: 2, mb: 5 }}>
                                 <Typography gutterBottom sx={{ color: "#00acc1", mb: 2, textAlign: 'left' }}>
@@ -631,7 +630,7 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
                                 <StyledTableHead>
                                     <TableRow>
                                         <TableCell sx={{ width: 50, fontSize: "12px" }}>Pos</TableCell>
-                                        <TableCell sx={{ minWidth: 200 }}>Name</TableCell>
+                                        <TableCell sx={{ minWidth: 200, whiteSpace: "normal", wordBreak: "break-word", lineHeight: 1.25, py: 1, verticalAlign: "top" }}>Name</TableCell>
                                         <TableCell sx={{ width: 70 }}>Menge</TableCell>
                                         <TableCell sx={{ width: 90 }}>Preis</TableCell>
                                         <TableCell sx={{ width: 70, fontSize: "12px" }}>Rabatt%</TableCell>
@@ -650,6 +649,9 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
                                                     id={`product-name-${index}`}
                                                     aria-label="Produktname"
                                                     variant="standard"
+                                                    multiline
+                                                    minRows={1}
+                                                    maxRows={4}
                                                     value={item.productName}
                                                     size="small"
                                                     onChange={(e) => handleItemChange(index, 'productName', e.target.value)}
@@ -845,6 +847,22 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
 
                             <Grid item xs={6}>
                                 <Box sx={{ height: 200, overflowY: 'auto', mb: 2, border: "1px solid #ddd" }}>
+                                    {pickLoading && (
+                                        <Box sx={{ p: 1, textAlign: "center", color: "#00acc1" }}>
+                                            <CircularProgress size={20} />
+                                            <Typography variant="caption" sx={{ ml: 1 }}>
+                                                Produkte werden geladen…
+                                            </Typography>
+                                        </Box>
+                                    )}
+
+                                    {!pickLoading && pickProducts.length === 0 && (searchTerm.length >= 2 || selectedCategory !== null) && (
+                                        <Box sx={{ p: 1, textAlign: "center", color: "text.secondary" }}>
+                                            <Typography variant="caption">
+                                                Keine Produkte gefunden
+                                            </Typography>
+                                        </Box>
+                                    )}
                                     <Table size="small" stickyHeader>
                                         <StyledTableHead>
                                             <TableRow>
@@ -856,7 +874,7 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
                                             </TableRow>
                                         </StyledTableHead>
                                         <TableBody>
-                                            {filteredProducts.map(product => (
+                                            {pickProducts.map(product => (
                                                 <StyledTableRow key={product.id} hover onDoubleClick={() => handleAddProductToCart(product)}>
                                                     <TableCell sx={{ display: "none", padding: "6px 6px", borderRight: "1px solid #ddd", borderLeft: "1px solid #ddd" }}>{product.id}</TableCell>
                                                     <TableCell sx={{ maxWidth: "400px", padding: "6px 6px", borderRight: "1px solid #ddd" }}>{product.name}</TableCell>

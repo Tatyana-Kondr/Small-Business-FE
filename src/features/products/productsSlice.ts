@@ -5,15 +5,20 @@ import {
   fetchAllProductsByCategory,
   fetchDeleteProduct,
   fetchEditProduct,
+  fetchPickProducts,
   fetchProduct,
   fetchProducts,
   fetchProductsByCategory,
 } from "./api";
-import { NewProductDto, ProductsState, UpdateProductDto } from "./types";
+import { NewProductDto, ProductPickDto, ProductsState, UpdateProductDto } from "./types";
 
 const initialState: ProductsState = {
   productsPaged: [],
   productsAll: [],
+  pickProducts: [],
+  pickLoading: false,
+  pickError: null,
+  pickLastQuery: null,
   totalPages: 1,
   currentPage: 0,
   currentSort: "name",
@@ -72,6 +77,34 @@ export const productsSlice = createAppSlice({
         rejected: (state, action) => {
           state.loading = false;
           state.error = action.error.message || "Fehler beim Laden der Produkte.";
+        },
+      }
+    ),
+
+    getPickProducts: create.asyncThunk<
+      ProductPickDto[],
+      { searchTerm?: string; categoryId?: number | null; limit?: number }
+    >(
+      async ({ searchTerm = "", categoryId = null, limit = 50 }) => {
+        return await fetchPickProducts({ searchTerm, categoryId, limit });
+      },
+      {
+        pending: (state, action) => {
+          state.pickLoading = true;
+          state.pickError = null;
+          state.pickLastQuery = {
+            searchTerm: action.meta.arg.searchTerm?.trim() || "",
+            categoryId: action.meta.arg.categoryId ?? null,
+          };
+        },
+        fulfilled: (state, action) => {
+          state.pickProducts = action.payload;
+          state.pickLoading = false;
+        },
+        rejected: (state, action) => {
+          state.pickLoading = false;
+          state.pickProducts = [];
+          state.pickError = action.error.message || "Fehler beim Laden der Produkt-Auswahl.";
         },
       }
     ),
@@ -265,6 +298,10 @@ export const productsSlice = createAppSlice({
     selectProduct: (state: ProductsState) => state.selectedProduct,
     selectLoading: (state: ProductsState) => state.loading,
     selectError: (state: ProductsState) => state.error,
+    selectPickProducts: (state) => state.pickProducts,
+    selectPickLoading: (state: ProductsState) => state.pickLoading,
+    selectPickError: (state: ProductsState) => state.pickError,
+    selectPickLastQuery: (state: ProductsState) => state.pickLastQuery,
   },
 });
 
@@ -277,6 +314,7 @@ export const {
   editProduct,
   getProduct,
   deleteProduct,
+  getPickProducts,
 } = productsSlice.actions;
 
 export const {
@@ -287,4 +325,8 @@ export const {
   selectProduct,
   selectLoading,
   selectError,
+  selectPickProducts,
+  selectPickLoading,
+  selectPickError,
+  selectPickLastQuery,
 } = productsSlice.selectors;
