@@ -5,7 +5,6 @@ import { UnitOfMeasurement, UpdateProductDto } from "../types";
 import { getProductCategories, selectProductCategories } from "../productCategoriesSlice";
 import { Box, Button, TextField, MenuItem, Select, SelectChangeEvent, FormControl, InputLabel, Typography } from "@mui/material";
 import { showSuccessToast } from "../../../utils/toast";
-import { handleApiError } from "../../../utils/handleApiError";
 import { getUnits, selectUnits } from "../unitsOfMeasurementSlice";
 
 interface EditProductProps {
@@ -31,6 +30,7 @@ export default function EditProduct({ productId, closeModal }: EditProductProps)
                 purchasingPrice: selectedProduct.purchasingPrice,
                 markupPercentage: selectedProduct.markupPercentage,
                 sellingPrice: selectedProduct.sellingPrice,
+                unitOfMeasurementId: selectedProduct.unitOfMeasurement?.id ?? undefined,
                 unitOfMeasurement: selectedProduct.unitOfMeasurement || { id: 0, name: "" },
                 weight: selectedProduct.weight || 0,
                 newDimensions: {
@@ -87,9 +87,13 @@ export default function EditProduct({ productId, closeModal }: EditProductProps)
 
     const handleUnitChange = (e: SelectChangeEvent<number>) => {
         const unitId = Number(e.target.value);
-        const unit = units.find((cat) => cat.id === unitId);
+        const unit = units.find(u => u.id === unitId);
         if (unit) {
-            setProductData((prev) => ({ ...prev!, unitOfMeasurement: unit }));
+            setProductData(prev => ({
+                ...prev!,
+                unitOfMeasurementId: unit.id,
+                unitOfMeasurement: unit,
+            }));
         }
     };
 
@@ -133,19 +137,20 @@ export default function EditProduct({ productId, closeModal }: EditProductProps)
 
 
     const handleSubmit = async () => {
-        try {
-            if (!productData) return;
+        if (!productData) return;
 
-            await dispatch(editProduct({ id: productId, updateProductDto: productData })).unwrap();
+        const dtoToSend: UpdateProductDto = {
+            ...productData,
+        };
 
-            showSuccessToast("Erfolg", "Das Produkt wurde erfolgreich aktualisiert!");
-            closeModal();
-        } catch (error) {
-            console.error("Fehler bei der Produktaktualisierung:", error);
-            handleApiError(error, "Das Produkt konnte nicht aktualisiert werden.");
-        }
+        // важно: не отправляем объект, только id
+        delete (dtoToSend as any).unitOfMeasurement;
+
+        await dispatch(editProduct({ id: productId, updateProductDto: dtoToSend })).unwrap();
+
+        showSuccessToast("Erfolg", "Das Produkt wurde erfolgreich aktualisiert!");
+        closeModal();
     };
-
 
 
     return (
