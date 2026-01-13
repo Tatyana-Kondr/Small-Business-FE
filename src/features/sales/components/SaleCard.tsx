@@ -180,7 +180,6 @@ export default function SaleCard() {
   }, [searchTerm]);
 
   useEffect(() => {
-    // можно тут же сбрасывать список при коротком запросе
     dispatch(
       getPickProducts({
         searchTerm: debouncedTerm,
@@ -848,6 +847,9 @@ export default function SaleCard() {
                       <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", minWidth: 200, textAlign: "left" }}>
                         <TextField
                           variant="standard"
+                          multiline
+                          minRows={1}
+                          maxRows={4}
                           value={item.productName}
                           size="small"
                           onChange={(e) => handleItemChange(index, 'productName', e.target.value)}

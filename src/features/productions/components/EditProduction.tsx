@@ -8,17 +8,18 @@ import {
   Paper,
   InputAdornment,
   Container,
+  CircularProgress,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { Product } from '../../products/types';
+import { ProductPickDto } from '../../products/types';
 import { useAppDispatch, useAppSelector } from '../../../redux/hooks';
 import { ClearIcon, DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/de';
 import { deDE } from '@mui/x-date-pickers/locales';
-import { getAllProducts } from '../../products/productsSlice';
-import { selectProductCategories } from '../../products/productCategoriesSlice';
+import { getPickProducts, selectPickLoading, selectPickProducts } from '../../products/productsSlice';
+import { getProductCategories, selectProductCategories } from '../../products/productCategoriesSlice';
 
 import { handleApiError } from '../../../utils/handleApiError';
 import { showSuccessToast } from '../../../utils/toast';
@@ -53,8 +54,8 @@ export default function EditProduction() {
   const navigate = useNavigate();
   const { productionId } = useParams<{ productionId: string }>();
   const id = Number(productionId);
-
-  const products = useAppSelector((state) => state.products.productsAll);
+  const pickProducts = useAppSelector(selectPickProducts);
+  const pickLoading = useAppSelector(selectPickLoading);
   const categories = useAppSelector(selectProductCategories);
 
 
@@ -75,7 +76,7 @@ export default function EditProduction() {
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
 
   useEffect(() => {
-    dispatch(getAllProducts({  })).unwrap().catch(console.error);
+    dispatch(getProductCategories());
   }, [dispatch]);
 
   useEffect(() => {
@@ -109,65 +110,99 @@ export default function EditProduction() {
       .catch((error) => handleApiError(error, "Fehler beim Laden der Herstellung."));
   }, [dispatch, id]);
 
-  const filteredProducts = useMemo(() => {
-    const term = searchTerm.toLowerCase().trim();
-    return products
-      .filter((p) =>
-        (term === "" ||
-          p.name.toLowerCase().includes(term) ||
-          p.article?.toLowerCase().includes(term)) &&
-        (selectedCategory === null || p.productCategory.id === selectedCategory)
-      )
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [products, searchTerm, selectedCategory]);
+  useEffect(() => {
+    const term = searchTerm.trim();
+
+    if (selectedCategory === null && term.length < 2) {
+      // ничего не ищем
+      return;
+    }
+
+    const t = setTimeout(() => {
+      dispatch(
+        getPickProducts({
+          searchTerm: term,
+          categoryId: selectedCategory,
+          limit: 50,
+        })
+      );
+    }, 350);
+
+    return () => clearTimeout(t);
+  }, [dispatch, searchTerm, selectedCategory]);
+
 
   // Итоги
-  const materialsTotal = production.productionItems.reduce(
-    (sum, item) => sum + item.quantity * item.unitPrice,
-    0
-  );
-  const productTotal = production.quantity * production.unitPrice;
+   const materialsTotal = useMemo(() => {
+    return production.productionItems.reduce(
+      (sum, item) => sum + (item.quantity ?? 0) * (item.unitPrice ?? 0),
+      0
+    );
+  }, [production.productionItems]);
+
+  const productTotal = useMemo(() => {
+    return (production.quantity ?? 0) * (production.unitPrice ?? 0);
+  }, [production.quantity, production.unitPrice]);
   const margin = productTotal - materialsTotal;
   const marginPercent = productTotal > 0 ? (margin / productTotal) * 100 : 0;
 
-  const handleAddProductAsMain = (product: Product) => {
+  const handleAddProductAsMain = (product: ProductPickDto) => {
+    const selling = product.sellingPrice ?? 0;
+
     setProduction((prev) => ({
       ...prev,
       productId: product.id,
-      unitPrice: product.sellingPrice,
-      amount: prev.quantity * product.sellingPrice,
+      productArticle: product.article ?? "",
+      productName: product.name ?? "",
+      unitPrice: selling,
+      amount: (prev.quantity ?? 0) * selling,
     }));
   };
 
-  const handleAddProductAsMaterial = (product: Product) => {
+  const handleAddProductAsMaterial = (product: ProductPickDto) => {
+    const unit = product.purchasingPrice ?? 0;
+
     const item: NewProductionItemDto = {
-      productionId: id, // <- используем id из useParams()
+      productionId: id,
       productId: product.id,
       type: "PRODUKTIONSMATERIAL",
       quantity: 1,
-      unitPrice: product.purchasingPrice,
-      totalPrice: product.purchasingPrice,
+      unitPrice: unit,
+      totalPrice: unit,
+      productArticle: product.article ?? "",
+      productName: product.name ?? "",
     };
-    setProduction((prev: any) => ({
+
+    setProduction((prev) => ({
       ...prev,
       productionItems: [...prev.productionItems, item],
     }));
   };
 
   const handleMainChange = (field: "quantity" | "unitPrice", value: number) => {
+    const safe = Number.isFinite(value) ? value : 0;
+
     setProduction((prev) => {
-      const updated = { ...prev, [field]: value };
-      updated.amount = updated.quantity * updated.unitPrice;
+      const updated = { ...prev, [field]: safe } as NewProductionDto;
+      updated.amount = (updated.quantity ?? 0) * (updated.unitPrice ?? 0);
       return updated;
     });
   };
 
-  const handleItemChange = (index: number, field: "quantity" | "unitPrice", value: number) => {
-    setProduction((prev: any) => {
+  const handleItemChange = (
+    index: number,
+    field: "quantity" | "unitPrice",
+    value: number
+  ) => {
+    const safe = Number.isFinite(value) ? value : 0;
+
+    setProduction((prev) => {
       const updatedItems = [...prev.productionItems];
-      const currentItem = { ...updatedItems[index], [field]: value };
-      currentItem.totalPrice = currentItem.quantity * currentItem.unitPrice;
+      const currentItem = { ...updatedItems[index], [field]: safe };
+
+      currentItem.totalPrice = (currentItem.quantity ?? 0) * (currentItem.unitPrice ?? 0);
       updatedItems[index] = currentItem;
+
       return { ...prev, productionItems: updatedItems };
     });
   };
@@ -197,7 +232,7 @@ export default function EditProduction() {
       type: production.type,
       quantity: production.quantity,
       unitPrice: production.unitPrice,
-      amount: production.quantity * production.unitPrice,
+      amount: (production.quantity ?? 0) * (production.unitPrice ?? 0),
       productionItems: production.productionItems
         .filter((item) => item.quantity > 0) // исключаем нулевые позиции
         .map((item) => ({
@@ -306,7 +341,7 @@ export default function EditProduction() {
                         }}
                       />
                     </TableCell>
-                    <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", width: 150, textAlign: 'right' }}>{production.amount.toFixed(2)}</TableCell>
+                    <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", width: 150, textAlign: 'right' }}>{((production.quantity ?? 0) * (production.unitPrice ?? 0)).toFixed(2)}</TableCell>
                   </StyledTableRow>
                 </TableBody>
               </Table>
@@ -376,7 +411,7 @@ export default function EditProduction() {
                         />
                       </TableCell>
                       <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", width: 150, textAlign: 'right' }}>
-                        {item.totalPrice.toFixed(2)}
+                        {((item.quantity ?? 0) * (item.unitPrice ?? 0)).toFixed(2)}
                       </TableCell>
                       <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", width: 50 }}>
                         <IconButton onClick={() => handleRemoveItem(index)} color="error">
@@ -385,6 +420,13 @@ export default function EditProduction() {
                       </TableCell>
                     </StyledTableRow>
                   ))}
+                  {production.productionItems.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={6} align="center">
+                        Keine Materialien vorhanden
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </Box>
@@ -445,7 +487,7 @@ export default function EditProduction() {
               </Grid>
               <Grid item xs={6}>
                 <Autocomplete
-                  options={categories}
+                  options={[...categories].sort((a, b) => a.name.localeCompare(b.name))}
                   getOptionLabel={(option) => option.name}
                   onChange={(_, value) => setSelectedCategory(value?.id ?? null)}
                   value={categories.find((c) => c.id === selectedCategory) || null}
@@ -457,6 +499,20 @@ export default function EditProduction() {
             </Grid>
 
             <Box sx={{ height: 200, overflowY: "auto", mt: 2 }}>
+              {pickLoading && (
+                <Box sx={{ p: 1, textAlign: "center", color: "#00acc1" }}>
+                  <CircularProgress size={20} />
+                  <Typography variant="caption" sx={{ ml: 1 }}>
+                    Produkte werden geladen…
+                  </Typography>
+                </Box>
+              )}
+
+              {!pickLoading && pickProducts.length === 0 && (searchTerm.trim().length >= 2 || selectedCategory !== null) && (
+                <Box sx={{ p: 1, textAlign: "center", color: "text.secondary" }}>
+                  <Typography variant="caption">Keine Produkte gefunden</Typography>
+                </Box>
+              )}
               <Table size="small">
                 <StyledTableHead>
                   <TableRow>
@@ -466,7 +522,7 @@ export default function EditProduction() {
                   </TableRow>
                 </StyledTableHead>
                 <TableBody>
-                  {filteredProducts.map((product) => (
+                  {pickProducts.map((product) => (
                     <StyledTableRow key={product.id}>
                       <TableCell sx={{ borderLeft: "1px solid #ddd", borderRight: "1px solid #ddd" }}>{product.name}</TableCell>
                       <TableCell sx={{ borderRight: "1px solid #ddd" }}>{product.article}</TableCell>

@@ -9,11 +9,12 @@ import {
     InputAdornment,
     Dialog,
     SelectChangeEvent,
+    CircularProgress,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { NewPurchaseDto, NewPurchaseItemDto } from '../types';
 import { Customer } from '../../customers/types';
-import { Product } from '../../products/types';
+import { ProductPickDto } from '../../products/types';
 import { getCustomers } from '../../customers/customersSlice';
 import { useAppDispatch, useAppSelector } from '../../../redux/hooks';
 import { ClearIcon, DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
@@ -21,7 +22,7 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { Dayjs } from 'dayjs';
 import 'dayjs/locale/de';
 import { deDE } from '@mui/x-date-pickers/locales';
-import { getAllProducts, getAllProductsByCategory, selectProductsPaged } from '../../products/productsSlice';
+import { getPickProducts, selectPickLoading, selectPickProducts } from '../../products/productsSlice';
 import { getProductCategories, selectProductCategories } from '../../products/productCategoriesSlice';
 import { addPurchase } from '../purchasesSlice';
 import AddIcon from "@mui/icons-material/Add";
@@ -75,7 +76,8 @@ export default function CreatePurchasePage({ onClose, onSubmitSuccess }: CreateP
     const [vendors, setVendors] = useState<Customer[]>([]);
     const [dateValue, setDateValue] = useState<Dayjs | null>(null);
     const categories = useAppSelector(selectProductCategories);
-    const products = useAppSelector(selectProductsPaged);
+    const pickProducts = useAppSelector(selectPickProducts);
+    const pickLoading = useAppSelector(selectPickLoading);
     const documentTypes = useAppSelector(selectTypeOfDocuments);
     const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
@@ -94,29 +96,26 @@ export default function CreatePurchasePage({ onClose, onSubmitSuccess }: CreateP
     }, [dispatch]);
 
     useEffect(() => {
-        if (selectedCategory !== null) {
-            dispatch(getAllProductsByCategory({ categoryId: selectedCategory }));
-        } else {
-            dispatch(getAllProducts({  }));
+        const term = searchTerm.trim();
+
+        // если ничего не выбрано и мало символов — очищаем список и не дергаем сервер
+        if (selectedCategory === null && term.length < 2) {
+            // можно очистить список отдельным action, но проще: просто не показывать таблицу
+            return;
         }
-    }, [selectedCategory, dispatch]);
 
-    const filteredProducts = useMemo(() => {
-        const term = searchTerm.toLowerCase().trim();
+        const t = setTimeout(() => {
+            dispatch(
+                getPickProducts({
+                    searchTerm: term,
+                    categoryId: selectedCategory,
+                    limit: 50,
+                })
+            );
+        }, 350);
 
-        return products.filter(product => {
-            const matchesCategory = selectedCategory === null || product.productCategory.id === selectedCategory;
-
-            const matchesText =
-                term === '' ||
-                product.name.toLowerCase().includes(term) ||
-                product.article?.toLowerCase().includes(term) ||
-                product.vendorArticle?.toLowerCase().includes(term);
-
-            return matchesCategory && matchesText;
-        });
-    }, [products, selectedCategory, searchTerm]);
-
+        return () => clearTimeout(t);
+    }, [dispatch, searchTerm, selectedCategory]);
 
     useEffect(() => {
         setSearchTerm("");
@@ -144,7 +143,7 @@ export default function CreatePurchasePage({ onClose, onSubmitSuccess }: CreateP
         };
     }, [newPurchase.purchaseItems]);
 
-    const handleAddProductToCart = (product: Product) => {
+    const handleAddProductToCart = (product: ProductPickDto) => {
         const quantity = 1;
         const unitPrice = product.purchasingPrice;
         const totalPrice = quantity * unitPrice;
@@ -556,6 +555,22 @@ export default function CreatePurchasePage({ onClose, onSubmitSuccess }: CreateP
 
                             <Grid item xs={6}>
                                 <Box sx={{ height: 200, overflowY: 'auto', mb: 2, border: "1px solid #ddd" }}>
+                                    {pickLoading && (
+                                        <Box sx={{ p: 1, textAlign: "center", color: "#00acc1" }}>
+                                            <CircularProgress size={20} />
+                                            <Typography variant="caption" sx={{ ml: 1 }}>
+                                                Produkte werden geladen…
+                                            </Typography>
+                                        </Box>
+                                    )}
+
+                                    {!pickLoading && pickProducts.length === 0 && (searchTerm.length >= 2 || selectedCategory !== null) && (
+                                        <Box sx={{ p: 1, textAlign: "center", color: "text.secondary" }}>
+                                            <Typography variant="caption">
+                                                Keine Produkte gefunden
+                                            </Typography>
+                                        </Box>
+                                    )}
                                     <Table size="small" stickyHeader>
                                         <StyledTableHead>
                                             <TableRow>
@@ -567,7 +582,7 @@ export default function CreatePurchasePage({ onClose, onSubmitSuccess }: CreateP
                                             </TableRow>
                                         </StyledTableHead>
                                         <TableBody>
-                                            {filteredProducts.map(product => (
+                                            {pickProducts.map(product => (
                                                 <StyledTableRow key={product.id} hover onDoubleClick={() => handleAddProductToCart(product)}>
                                                     <TableCell sx={{ display: "none", padding: "6px 6px", borderRight: "1px solid #ddd", borderLeft: "1px solid #ddd" }}>{product.id}</TableCell>
                                                     <TableCell sx={{ maxWidth: "400px", padding: "6px 6px", borderRight: "1px solid #ddd" }}>{product.name}</TableCell>

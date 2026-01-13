@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     Box, TextField, Button, Typography, IconButton,
     Table, TableHead,
@@ -8,16 +8,17 @@ import {
     Paper,
     InputAdornment,
     Dialog,
+    CircularProgress,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { Product } from '../../products/types';
+import { ProductPickDto } from '../../products/types';
 import { useAppDispatch, useAppSelector } from '../../../redux/hooks';
 import { ClearIcon, DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { Dayjs } from 'dayjs';
 import 'dayjs/locale/de';
 import { deDE } from '@mui/x-date-pickers/locales';
-import { getAllProducts } from '../../products/productsSlice';
+import { getPickProducts, selectPickLoading, selectPickProducts } from '../../products/productsSlice';
 import { selectProductCategories } from '../../products/productCategoriesSlice';
 
 import { handleApiError } from '../../../utils/handleApiError';
@@ -67,26 +68,35 @@ export default function CreateProduction({
     });
 
     const [dateValue, setDateValue] = useState<Dayjs | null>(null);
-    const products = useAppSelector((state) => state.products.productsAll);
+    const pickProducts = useAppSelector(selectPickProducts);
+    const pickLoading = useAppSelector(selectPickLoading);
     const [searchTerm, setSearchTerm] = useState("");
     const categories = useAppSelector(selectProductCategories);
     const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
+    const [mainProduct, setMainProduct] = useState<ProductPickDto | null>(null);
+
 
     useEffect(() => {
-        dispatch(getAllProducts({ }));
-    }, [dispatch]);
+        const term = searchTerm.trim();
 
-    const filteredProducts = useMemo(() => {
-        const term = searchTerm.toLowerCase().trim();
-        return products
-            .filter((p) =>
-                (term === "" ||
-                    p.name.toLowerCase().includes(term) ||
-                    p.article?.toLowerCase().includes(term)) &&
-                (selectedCategory === null || p.productCategory.id === selectedCategory)
-            )
-            .sort((a, b) => a.name.localeCompare(b.name));
-    }, [products, searchTerm, selectedCategory]);
+        // если ничего не выбрано и мало символов — очищаем список и не дергаем сервер
+        if (selectedCategory === null && term.length < 2) {
+            // можно очистить список отдельным action, но проще: просто не показывать таблицу
+            return;
+        }
+
+        const t = setTimeout(() => {
+            dispatch(
+                getPickProducts({
+                    searchTerm: term,
+                    categoryId: selectedCategory,
+                    limit: 50,
+                })
+            );
+        }, 350);
+
+        return () => clearTimeout(t);
+    }, [dispatch, searchTerm, selectedCategory]);
 
     // Итоги
     const materialsTotal = newProduction.productionItems.reduce(
@@ -97,23 +107,31 @@ export default function CreateProduction({
     const margin = productTotal - materialsTotal;
     const marginPercent = productTotal > 0 ? (margin / productTotal) * 100 : 0;
 
-    const handleAddProductAsMain = (product: Product) => {
+    const handleAddProductAsMain = (product: ProductPickDto) => {
+        setMainProduct(product);
+
         setNewProduction((prev) => ({
             ...prev,
             productId: product.id,
-            unitPrice: product.sellingPrice,
-            amount: prev.quantity * product.sellingPrice,
+            unitPrice: product.sellingPrice ?? 0,
+            amount: prev.quantity * (product.sellingPrice ?? 0),
         }));
     };
 
-    const handleAddProductAsMaterial = (product: Product) => {
+    const handleAddProductAsMaterial = (product: ProductPickDto) => {
+        const unitPrice = product.purchasingPrice ?? 0;
+
         const item: NewProductionItemDto = {
             productionId: 0,
             productId: product.id,
             type: "PRODUKTIONSMATERIAL",
             quantity: 1,
-            unitPrice: product.purchasingPrice,
-            totalPrice: product.purchasingPrice,
+            unitPrice,
+            totalPrice: unitPrice,
+
+            // сохраняем сразу, чтобы не зависеть от pickProducts
+            productArticle: product.article ?? "",
+            productName: product.name ?? "",
         };
 
         setNewProduction((prev) => ({
@@ -238,10 +256,10 @@ export default function CreateProduction({
                                 <TableBody>
                                     <StyledTableRow>
                                         <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", borderLeft: "1px solid #ddd" }}>
-                                            {products.find((p) => p.id === newProduction.productId)?.article || ""}
+                                            {mainProduct?.article ?? ""}
                                         </TableCell>
                                         <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd" }}>
-                                            {products.find((p) => p.id === newProduction.productId)?.name || ""}
+                                            {mainProduct?.name ?? ""}
                                         </TableCell>
                                         <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", width: 100 }}>
                                             <TextField
@@ -302,16 +320,10 @@ export default function CreateProduction({
                                     {newProduction.productionItems.map((item, index) => (
                                         <StyledTableRow key={index}>
                                             <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", borderLeft: "1px solid #ddd" }}>
-                                                {
-                                                    products.find((p) => p.id === item.productId)?.article ||
-                                                    item.productId
-                                                }
+                                                {item.productArticle ?? String(item.productId)}
                                             </TableCell>
                                             <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd" }}>
-                                                {
-                                                    products.find((p) => p.id === item.productId)?.name ||
-                                                    item.productId
-                                                }
+                                               {item.productName ?? String(item.productId)}
                                             </TableCell>
                                             <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", width: 100 }}>
                                                 <TextField
@@ -438,6 +450,22 @@ export default function CreateProduction({
                         </Grid>
 
                         <Box sx={{ height: 200, overflowY: "auto", mt: 2 }}>
+                            {pickLoading && (
+                                <Box sx={{ p: 1, textAlign: "center", color: "#00acc1" }}>
+                                    <CircularProgress size={20} />
+                                    <Typography variant="caption" sx={{ ml: 1 }}>
+                                        Produkte werden geladen…
+                                    </Typography>
+                                </Box>
+                            )}
+
+                            {!pickLoading && pickProducts.length === 0 && (searchTerm.length >= 2 || selectedCategory !== null) && (
+                                <Box sx={{ p: 1, textAlign: "center", color: "text.secondary" }}>
+                                    <Typography variant="caption">
+                                        Keine Produkte gefunden
+                                    </Typography>
+                                </Box>
+                            )}
                             <Table size="small">
                                 <StyledTableHead>
                                     <TableRow>
@@ -447,7 +475,7 @@ export default function CreateProduction({
                                     </TableRow>
                                 </StyledTableHead>
                                 <TableBody>
-                                    {filteredProducts.map((product) => (
+                                    {pickProducts.map((product) => (
                                         <StyledTableRow key={product.id}>
                                             <TableCell sx={{ borderLeft: "1px solid #ddd", borderRight: "1px solid #ddd" }}>{product.name}</TableCell>
                                             <TableCell sx={{ borderRight: "1px solid #ddd" }}>{product.article}</TableCell>
@@ -458,7 +486,7 @@ export default function CreateProduction({
                                                     sx={{
                                                         backgroundColor: "transparent",
                                                         "&:hover": {
-                                                            color: "#C91959",                                                   
+                                                            color: "#C91959",
                                                         },
                                                     }}
                                                 >
@@ -467,10 +495,10 @@ export default function CreateProduction({
                                                 <Button
                                                     size="small"
                                                     onClick={() => handleAddProductAsMaterial(product)}
-                                                     sx={{
+                                                    sx={{
                                                         backgroundColor: "transparent",
                                                         "&:hover": {
-                                                            color: "#C91959",                                                   
+                                                            color: "#C91959",
                                                         },
                                                     }}
                                                 >

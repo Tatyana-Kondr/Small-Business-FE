@@ -19,7 +19,8 @@ import {
   Typography,
   Autocomplete,
   InputLabel,
-  SelectChangeEvent
+  SelectChangeEvent,
+  CircularProgress
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { Delete as DeleteIcon, Clear as ClearIcon } from '@mui/icons-material';
@@ -32,10 +33,10 @@ import { useAppDispatch, useAppSelector } from '../../../redux/hooks';
 import { NewPurchaseDto, NewPurchaseItemDto, TypeOfDocument } from '../types';
 import { Customer } from '../../customers/types';
 import { getProductCategories, selectProductCategories } from '../../products/productCategoriesSlice';
-import { getAllProducts, getProductsByCategory, selectProductsAll } from '../../products/productsSlice';
+import { getPickProducts, selectPickLoading, selectPickProducts } from '../../products/productsSlice';
 import { getPurchaseById, updatePurchase } from '../purchasesSlice';
 import { getCustomers } from '../../customers/customersSlice';
-import { Product } from '../../products/types';
+import { ProductPickDto } from '../../products/types';
 import KeyboardDoubleArrowLeftOutlinedIcon from '@mui/icons-material/KeyboardDoubleArrowLeftOutlined';
 import { handleApiError } from '../../../utils/handleApiError';
 import { showSuccessToast } from '../../../utils/toast';
@@ -84,11 +85,12 @@ export default function PurchaseCard() {
   const [dateValue, setDateValue] = useState<Dayjs | null>(null);
   const [vendors, setVendors] = useState<Customer[]>([]);
   const categories = useAppSelector(selectProductCategories);
-  const products = useAppSelector(selectProductsAll);
+  const pickProducts = useAppSelector(selectPickProducts);
+  const pickLoading = useAppSelector(selectPickLoading);
   const documentTypes = useAppSelector(selectTypeOfDocuments);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  
+  const [debouncedTerm, setDebouncedTerm] = useState(searchTerm);
 
   useEffect(() => {
     dispatch(getDocumentTypes());
@@ -120,31 +122,23 @@ export default function PurchaseCard() {
       })
       .catch(error => handleApiError(error, "Fehler beim Laden der Bestellung."));
 
-    // Загрузка категорий и продуктов
     dispatch(getProductCategories());
-    dispatch(getAllProducts({  }));
   }, [dispatch, purchaseId]);
 
   useEffect(() => {
-    if (selectedCategory !== null) {
-      dispatch(getProductsByCategory({ categoryId: selectedCategory, page: 0, size: 100 }));
-    }
-  }, [dispatch, selectedCategory]);
+    const t = setTimeout(() => setDebouncedTerm(searchTerm), 350);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
 
-  const filteredProducts = useMemo(() => {
-    const term = searchTerm.toLowerCase().trim();
-
-    return products.filter(product => {
-      const matchesCategory = selectedCategory === null || product.productCategory.id === selectedCategory;
-      const matchesText =
-        term === '' ||
-        product.name.toLowerCase().includes(term) ||
-        product.article?.toLowerCase().includes(term) ||
-        product.vendorArticle?.toLowerCase().includes(term);
-
-      return matchesCategory && matchesText;
-    });
-  }, [products, selectedCategory, searchTerm]);
+  useEffect(() => {
+    dispatch(
+      getPickProducts({
+        searchTerm: debouncedTerm,
+        categoryId: selectedCategory ?? null,
+        limit: 50,
+      })
+    );
+  }, [dispatch, debouncedTerm, selectedCategory]);
 
   useEffect(() => {
     setSearchTerm('');
@@ -172,7 +166,7 @@ export default function PurchaseCard() {
     };
   }, [purchase.purchaseItems]);
 
-  const handleAddProductToCart = (product: Product) => {
+  const handleAddProductToCart = (product: ProductPickDto) => {
     const quantity = 1;
     const unitPrice = product.purchasingPrice;
     const totalPrice = quantity * unitPrice;
@@ -290,10 +284,10 @@ export default function PurchaseCard() {
   };
 
   const selectedVendor =
-  vendors.find(v => v.id === purchase.vendorId)
-  ?? (purchase.vendorName
-        ? { id: purchase.vendorId, name: purchase.vendorName } 
-        : null);
+    vendors.find(v => v.id === purchase.vendorId)
+    ?? (purchase.vendorName
+      ? { id: purchase.vendorId, name: purchase.vendorName }
+      : null);
 
 
   return (
@@ -531,6 +525,22 @@ export default function PurchaseCard() {
               </Grid>
 
               <Box sx={{ maxHeight: 263, overflowY: 'auto', mt: 1, border: "1px solid #ddd" }}>
+                {pickLoading && (
+                  <Box sx={{ p: 1, textAlign: "center", color: "#00acc1" }}>
+                    <CircularProgress size={20} />
+                    <Typography variant="caption" sx={{ ml: 1 }}>
+                      Produkte werden geladen…
+                    </Typography>
+                  </Box>
+                )}
+
+                {!pickLoading && pickProducts.length === 0 && (searchTerm.length >= 2 || selectedCategory !== null) && (
+                  <Box sx={{ p: 1, textAlign: "center", color: "text.secondary" }}>
+                    <Typography variant="caption">
+                      Keine Produkte gefunden
+                    </Typography>
+                  </Box>
+                )}
                 <Table size="small">
                   <StyledTableHead>
                     <TableRow>
@@ -542,7 +552,7 @@ export default function PurchaseCard() {
                     </TableRow>
                   </StyledTableHead>
                   <TableBody>
-                    {filteredProducts.map(product => (
+                    {pickProducts.map(product => (
                       <StyledTableRow
                         key={product.id}
                         onClick={() => handleAddProductToCart(product)}
@@ -553,7 +563,7 @@ export default function PurchaseCard() {
                         <TableCell>{product.purchasingPrice.toFixed(2)}</TableCell>
                       </StyledTableRow>
                     ))}
-                    {filteredProducts.length === 0 && (
+                    {!pickLoading && pickProducts.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={4} align="center">
                           Keine Produkte gefunden
