@@ -819,7 +819,7 @@ export default function SaleCard() {
                 <StyledTableHead>
                   <TableRow>
                     <TableCell sx={{ width: 50, fontSize: "12px" }}>Pos</TableCell>
-                    <TableCell sx={{ width: 100 }}>Artikel</TableCell>
+                    <TableCell>Artikel</TableCell>
                     <TableCell sx={{ minWidth: 200 }}>Name</TableCell>
                     <TableCell sx={{ width: 70 }}>Menge</TableCell>
                     <TableCell sx={{ width: 90 }}>Preis</TableCell>
