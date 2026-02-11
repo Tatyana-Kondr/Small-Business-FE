@@ -67,6 +67,13 @@ const StyledSubTableHead = styled(TableHead)({
   },
 });
 
+// Стили для полей в таблице
+const cellStyle = {
+  whiteSpace: "nowrap",  // запрещаем перенос строк
+  overflow: "hidden",  // обрезаем всё, что не помещается
+  textOverflow: "ellipsis",  // добавляем "..."
+};
+
 export default function Purchases() {
   const dispatch = useAppDispatch();
   const purchases = useAppSelector(selectPurchases);
@@ -496,7 +503,7 @@ export default function Purchases() {
                   <React.Fragment key={purchase.id}>
                     <TableRow hover onClick={() => toggleRow(purchase.id)} sx={{ cursor: 'pointer' }} >
                       <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{purchase.id}</TableCell>
-                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{purchase.vendorName}</TableCell>
+                      <TableCell sx={{ ...cellStyle, borderRight: "1px solid #ddd", padding: "6px 12px" }}>{purchase.vendorName}</TableCell>
                       <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>
                         {purchase.purchasingDate
                           ? new Date(purchase.purchasingDate).toLocaleDateString("de-DE", {

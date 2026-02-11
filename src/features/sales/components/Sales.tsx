@@ -17,6 +17,7 @@ import { ACCESS_TOKEN_KEY } from "../../../utils/token";
 import { showErrorToast } from "../../../utils/toast";
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import ArrowDropUpIcon from '@mui/icons-material/ArrowDropUp';
+import EllipsisTooltip from "../../../components/ui/EllipsisTooltip";
 
 
 const StyledTableHead = styled(TableHead)({
@@ -36,6 +37,14 @@ const StyledSubTableHead = styled(TableHead)({
     borderRight: "1px solid #ddd",
   },
 });
+
+// Стили для полей в таблице
+const cellStyle = {
+  whiteSpace: "nowrap",  // запрещаем перенос строк
+  overflow: "hidden",  // обрезаем всё, что не помещается
+  textOverflow: "ellipsis",  // добавляем "..."
+  maxWidth: 220,
+};
 
 export default function Sales() {
   const dispatch = useAppDispatch();
@@ -573,7 +582,12 @@ export default function Sales() {
                   <React.Fragment key={sale.id}>
                     <TableRow hover onClick={() => toggleRow(sale.id)} sx={{ cursor: 'pointer' }} >
                       <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{sale.id}</TableCell>
-                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{sale.customerName}</TableCell>
+                      <TableCell sx={{ ...cellStyle, borderRight: "1px solid #ddd", padding: "6px 12px" }}>
+                        <EllipsisTooltip text={sale.customerName ?? ""}>
+                          {sale.customerName}
+                        </EllipsisTooltip>
+                      </TableCell>
+
                       <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>
                         {sale.salesDate
                           ? new Date(sale.salesDate).toLocaleDateString("de-DE", {
@@ -663,7 +677,7 @@ export default function Sales() {
                                 <StyledSubTableHead>
                                   <TableRow>
                                     <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>Artikel</TableCell>
-                                    <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>Artikelname</TableCell>
+                                    <TableCell sx={{ ...cellStyle, borderRight: "1px solid #ddd", padding: "6px 12px" }}>Artikelname</TableCell>
                                     <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>Menge</TableCell>
                                     <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>Einzelpreis</TableCell>
                                     <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>Rabatt</TableCell>
@@ -676,7 +690,11 @@ export default function Sales() {
                                   {sale.saleItems?.map((item: any, index: number) => (
                                     <TableRow key={index}>
                                       <TableCell sx={{ borderLeft: "1px solid #ddd", borderRight: "1px solid #ddd", padding: "6px 12px" }}>{item.productArticle}</TableCell>
-                                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{item.productName}</TableCell>
+                                      <TableCell sx={{ ...cellStyle, borderRight: "1px solid #ddd", padding: "6px 12px" }}>
+                                        <EllipsisTooltip text={item.productName ?? ""}>
+                                          {item.productName}
+                                        </EllipsisTooltip>
+                                      </TableCell>
                                       <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{item.quantity}</TableCell>
                                       <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{item.unitPrice} €</TableCell>
                                       <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{item.discount} %</TableCell>

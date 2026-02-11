@@ -47,6 +47,13 @@ const StyledTableHead = styled(TableHead)({
     },
 });
 
+// Стили для полей в таблице
+const cellStyle = {
+  whiteSpace: "nowrap",  // запрещаем перенос строк
+  overflow: "hidden",  // обрезаем всё, что не помещается
+  textOverflow: "ellipsis",  // добавляем "..."
+};
+
 type PaymentFilters = {
     documentId: string;
     documentNumber: string;
@@ -401,7 +408,7 @@ export default function Payments() {
                                     <React.Fragment key={payment.id}>
                                         <TableRow hover onClick={() => toggleRow(payment.id)} sx={{ cursor: 'pointer' }} >
                                             <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{payment.id}</TableCell>
-                                            <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{payment.customerName}</TableCell>
+                                            <TableCell sx={{ ...cellStyle, borderRight: "1px solid #ddd", padding: "6px 12px" }}>{payment.customerName}</TableCell>
                                             <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>
                                                 {payment.paymentDate
                                                     ? new Date(payment.paymentDate).toLocaleDateString("de-DE", {
