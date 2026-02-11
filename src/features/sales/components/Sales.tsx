@@ -38,14 +38,6 @@ const StyledSubTableHead = styled(TableHead)({
   },
 });
 
-// Стили для полей в таблице
-const cellStyle = {
-  whiteSpace: "nowrap",  // запрещаем перенос строк
-  overflow: "hidden",  // обрезаем всё, что не помещается
-  textOverflow: "ellipsis",  // добавляем "..."
-  maxWidth: 220,
-};
-
 export default function Sales() {
   const dispatch = useAppDispatch();
   const sales = useAppSelector(selectSales);
@@ -430,7 +422,7 @@ export default function Sales() {
         <TableContainer component={Paper} sx={{
 
         }}>
-          <Table >
+          <Table sx={{ tableLayout: "fixed" }}>
             <StyledTableHead>
               <TableRow>
 
@@ -582,12 +574,9 @@ export default function Sales() {
                   <React.Fragment key={sale.id}>
                     <TableRow hover onClick={() => toggleRow(sale.id)} sx={{ cursor: 'pointer' }} >
                       <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{sale.id}</TableCell>
-                      <TableCell sx={{ ...cellStyle, borderRight: "1px solid #ddd", padding: "6px 12px" }}>
-                        <EllipsisTooltip text={sale.customerName ?? ""}>
-                          {sale.customerName}
-                        </EllipsisTooltip>
+                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px", width: 280 }}>
+                        <EllipsisTooltip text={sale.customerName ?? ""} placement="right-start" />
                       </TableCell>
-
                       <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>
                         {sale.salesDate
                           ? new Date(sale.salesDate).toLocaleDateString("de-DE", {
@@ -668,48 +657,48 @@ export default function Sales() {
                       </TableCell>
                     </TableRow>
                     {/* Подтаблица */}
-                    {openRows[sale.id] && (
-                      <TableRow>
-                        <TableCell colSpan={7} sx={{ paddingBottom: 0, paddingTop: 0 }}>
-                          <Collapse in={openRows[sale.id]} timeout="auto" unmountOnExit>
-                            <Box margin={2}>
-                              <Table size="small" sx={{ backgroundColor: "#f5f5f5", borderRadius: 1 }}>
-                                <StyledSubTableHead>
-                                  <TableRow>
-                                    <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>Artikel</TableCell>
-                                    <TableCell sx={{ ...cellStyle, borderRight: "1px solid #ddd", padding: "6px 12px" }}>Artikelname</TableCell>
-                                    <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>Menge</TableCell>
-                                    <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>Einzelpreis</TableCell>
-                                    <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>Rabatt</TableCell>
-                                    <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>Netto</TableCell>
-                                    <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>MWSt</TableCell>
-                                    <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>Gesamt</TableCell>
-                                  </TableRow>
-                                </StyledSubTableHead>
-                                <TableBody>
-                                  {sale.saleItems?.map((item: any, index: number) => (
-                                    <TableRow key={index}>
-                                      <TableCell sx={{ borderLeft: "1px solid #ddd", borderRight: "1px solid #ddd", padding: "6px 12px" }}>{item.productArticle}</TableCell>
-                                      <TableCell sx={{ ...cellStyle, borderRight: "1px solid #ddd", padding: "6px 12px" }}>
-                                        <EllipsisTooltip text={item.productName ?? ""}>
-                                          {item.productName}
-                                        </EllipsisTooltip>
-                                      </TableCell>
-                                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{item.quantity}</TableCell>
-                                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{item.unitPrice} €</TableCell>
-                                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{item.discount} %</TableCell>
-                                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{item.totalPrice} €</TableCell>
-                                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{item.taxAmount} €</TableCell>
-                                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{item.totalAmount} €</TableCell>
+                    {
+                      openRows[sale.id] && (
+                        <TableRow>
+                          <TableCell colSpan={7} sx={{ paddingBottom: 0, paddingTop: 0 }}>
+                            <Collapse in={openRows[sale.id]} timeout="auto" unmountOnExit>
+                              <Box margin={2}>
+                                <Table size="small" sx={{ backgroundColor: "#f5f5f5", borderRadius: 1 }}>
+                                  <StyledSubTableHead>
+                                    <TableRow>
+                                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>Artikel</TableCell>
+                                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>Artikelname</TableCell>
+                                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>Menge</TableCell>
+                                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>Einzelpreis</TableCell>
+                                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>Rabatt</TableCell>
+                                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>Netto</TableCell>
+                                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>MWSt</TableCell>
+                                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>Gesamt</TableCell>
                                     </TableRow>
-                                  ))}
-                                </TableBody>
-                              </Table>
-                            </Box>
-                          </Collapse>
-                        </TableCell>
-                      </TableRow>
-                    )}
+                                  </StyledSubTableHead>
+                                  <TableBody>
+                                    {sale.saleItems?.map((item: any, index: number) => (
+                                      <TableRow key={index}>
+                                        <TableCell sx={{ borderLeft: "1px solid #ddd", borderRight: "1px solid #ddd", padding: "6px 12px" }}>{item.productArticle}</TableCell>
+                                        <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px", width: 320 }}>
+                                          <EllipsisTooltip text={item.productName ?? ""} placement="right-start" />
+                                        </TableCell>
+                                        <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{item.quantity}</TableCell>
+                                        <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{item.unitPrice} €</TableCell>
+                                        <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{item.discount} %</TableCell>
+                                        <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{item.totalPrice} €</TableCell>
+                                        <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{item.taxAmount} €</TableCell>
+                                        <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{item.totalAmount} €</TableCell>
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              </Box>
+                            </Collapse>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    }
                   </React.Fragment>
                 ))
               ) : (
@@ -724,17 +713,19 @@ export default function Sales() {
         </TableContainer>
       </Box>
 
-      {openPaymentDialogId !== null && selectedOperationType && (
-        <CreatePayment
-          prefillType="sale"
-          prefillId={openPaymentDialogId}
-          typeOfOperation={selectedOperationType}
-          onClose={() => {
-            setOpenPaymentDialogId(null);
-            setSelectedOperationType(null);
-          }}
-        />
-      )}
+      {
+        openPaymentDialogId !== null && selectedOperationType && (
+          <CreatePayment
+            prefillType="sale"
+            prefillId={openPaymentDialogId}
+            typeOfOperation={selectedOperationType}
+            onClose={() => {
+              setOpenPaymentDialogId(null);
+              setSelectedOperationType(null);
+            }}
+          />
+        )
+      }
 
       {/* Пагинация */}
       <Box display="flex" justifyContent="center" mt={2}>
@@ -745,7 +736,7 @@ export default function Sales() {
           color="primary"
         />
       </Box>
-    </Container>
+    </Container >
   );
 }
 
