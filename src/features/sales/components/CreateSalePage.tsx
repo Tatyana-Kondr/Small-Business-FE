@@ -13,10 +13,8 @@ import {
     CircularProgress
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
-
-import { Customer } from '../../customers/types';
 import { ProductPickDto } from '../../products/types';
-import { getCustomersWithCustomerNumber } from '../../customers/customersSlice';
+import { getCustomersPickListWithCustomerNumber, selectCustomersPickListWithNumber, selectLoadingPick } from '../../customers/customersSlice';
 import { useAppDispatch, useAppSelector } from '../../../redux/hooks';
 import { ClearIcon, DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -84,13 +82,14 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
         salesItems: [],
     });
 
-    const [customers, setCustomers] = useState<Customer[]>([]);
+    const customersPickWithNumber = useAppSelector(selectCustomersPickListWithNumber);
+    const customersPickLoading = useAppSelector(selectLoadingPick);
     const [dateValue, setDateValue] = useState<Dayjs | null>(null);
     const categories = useAppSelector(selectProductCategories);
     const shippings = useAppSelector(selectShippings);
     const termsOfPayment = useAppSelector(selectTermsOfPayment);
     const pickProducts = useAppSelector(selectPickProducts);
-    const pickLoading = useAppSelector(selectPickLoading);
+    const productsPickLoading = useAppSelector(selectPickLoading);
     const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [weightInput, setWeightInput] = useState<string>('');
@@ -104,9 +103,8 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
         dispatch(getProductCategories());
         dispatch(getShippings());
         dispatch(getTermsOfPayment());
-        dispatch(getCustomersWithCustomerNumber({ page: 0, size: 100 }))
+        dispatch(getCustomersPickListWithCustomerNumber())
             .unwrap()
-            .then(customers => setCustomers(customers.content))
             .catch(error => handleApiError(error, "Fehler beim Laden der Kunden"));
     }, [dispatch]);
 
@@ -337,17 +335,36 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
                             <Grid item xs={8}>
                                 <Autocomplete
                                     fullWidth
-                                    options={[...customers].sort((a, b) => a.name.localeCompare(b.name))}
-                                    getOptionLabel={(option) => option.name}
+                                    loading={customersPickLoading}
+                                    options={[...customersPickWithNumber].sort((a, b) => a.name.localeCompare(b.name))}
+                                    getOptionLabel={(option) =>
+                                        option.customerNumber ? `${option.name} (${option.customerNumber})` : option.name
+                                    }
+                                    isOptionEqualToValue={(option, value) => option.id === value.id}
                                     onChange={(_, value) => {
                                         setNewSale((prev) => ({
                                             ...prev,
                                             customerId: value?.id ?? 0,
                                         }));
                                     }}
-                                    value={customers.find((v) => v.id === newSale.customerId) || null}
-                                    renderInput={(params) => <TextField {...params} label="Kunde" />}
+                                    value={customersPickWithNumber.find((v) => v.id === newSale.customerId) || null}
+                                    renderInput={(params) => (
+                                        <TextField
+                                            {...params}
+                                            label="Kunde"
+                                            InputProps={{
+                                                ...params.InputProps,
+                                                endAdornment: (
+                                                    <>
+                                                        {customersPickLoading ? <CircularProgress size={18} /> : null}
+                                                        {params.InputProps.endAdornment}
+                                                    </>
+                                                ),
+                                            }}
+                                        />
+                                    )}
                                 />
+
                             </Grid>
                             {/* Кнопка для создания нового клиента */}
                             <Grid item xs={1}>
@@ -847,7 +864,7 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
 
                             <Grid item xs={6}>
                                 <Box sx={{ height: 200, overflowY: 'auto', mb: 2, border: "1px solid #ddd" }}>
-                                    {pickLoading && (
+                                    {productsPickLoading && (
                                         <Box sx={{ p: 1, textAlign: "center", color: "#00acc1" }}>
                                             <CircularProgress size={20} />
                                             <Typography variant="caption" sx={{ ml: 1 }}>
@@ -856,7 +873,7 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
                                         </Box>
                                     )}
 
-                                    {!pickLoading && pickProducts.length === 0 && (searchTerm.length >= 2 || selectedCategory !== null) && (
+                                    {!productsPickLoading && pickProducts.length === 0 && (searchTerm.length >= 2 || selectedCategory !== null) && (
                                         <Box sx={{ p: 1, textAlign: "center", color: "text.secondary" }}>
                                             <Typography variant="caption">
                                                 Keine Produkte gefunden
@@ -896,8 +913,9 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
                     onSubmitSuccess={(createdCustomer) => {
                         setShowCreateCustomer(false);
                         // Добавим нового поставщика
-                        setCustomers(prev => [...prev, createdCustomer]);
-                        // Выберем его как активного
+                        // обновляем pick list
+                        dispatch(getCustomersPickListWithCustomerNumber());
+                        // выбираем его
                         setNewSale(prev => ({
                             ...prev,
                             customerId: createdCustomer.id,

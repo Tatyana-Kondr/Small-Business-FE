@@ -2,7 +2,7 @@
 export interface Customer{
 id: number
 name: string
-customerNumber: string
+customerNumber?: string | null;
 address: AddressDto
 phone: string
 email: string
@@ -26,13 +26,23 @@ export interface NewCustomerDto {
   website?: string | null;  // website может быть пустым или null
 }
 
+export interface CustomerPick{
+id: number
+name: string
+customerNumber?: string | null;
+}
+
 export interface CustomersState {
   customersList: Customer[];
+  customersPickList: CustomerPick[];
+  customersPickListWithNumber: CustomerPick[];
   selectedCustomer: Customer | undefined;
   totalPages: number;
   currentPage: number;
   currentSort: string,
-   loading: boolean;
+  loading: boolean;
+  loadingList: boolean;
+  loadingPick: boolean;
   error: string | null;
 }
 

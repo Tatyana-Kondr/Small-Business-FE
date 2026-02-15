@@ -1,14 +1,18 @@
 import { createAppSlice } from "../../redux/createAppSlice";
-import { fetchAddCustomer, fetchCustomer, fetchCustomers, fetchCustomerswithCustomerNumber, fetchDeleteCustomer, fetchEditCustomer } from "./api";
+import { fetchAddCustomer, fetchCustomer, fetchCustomers, fetchCustomersList, fetchCustomersListWithCustomerNumber, fetchCustomerswithCustomerNumber, fetchDeleteCustomer, fetchEditCustomer } from "./api";
 import { CustomersState, NewCustomerDto } from "./types";
 
 const initialState: CustomersState = {
   customersList: [],
+  customersPickList: [],
+  customersPickListWithNumber: [],
   totalPages: 1,
   currentPage: 0,
   currentSort: "name",
   selectedCustomer: undefined,
   loading: false,
+  loadingList: false,
+  loadingPick: false,
   error: null,
 };
 
@@ -18,17 +22,19 @@ export const customersSlice = createAppSlice({
   reducers: (create) => ({
     getCustomers: create.asyncThunk(
       async ({ page, size, sort }: { page: number; size: number; sort?: string }) => {
-       const response = await fetchCustomers(page, size, sort ?? "name");
+        const response = await fetchCustomers(page, size, sort ?? "name");
         return response;
       },
       {
         pending: (state) => {
           state.loading = true;
+          state.loadingList = true;
           state.error = null;
         },
         fulfilled: (state, action) => {
           const response = action.payload;
           state.loading = false;
+          state.loadingList = false;
           state.customersList = response.content;
           state.totalPages = response.totalPages;
           state.currentPage = response.pageable.pageNumber;
@@ -36,6 +42,31 @@ export const customersSlice = createAppSlice({
         },
         rejected: (state, action) => {
           state.loading = false;
+          state.loadingList = false;
+          state.error = action.error.message || "Fehler beim Laden der Lieferanten.";
+        },
+      }
+    ),
+
+    getCustomersPickList: create.asyncThunk(
+      async () => {
+        const response = await fetchCustomersList();
+        return response;
+      },
+      {
+        pending: (state) => {
+          state.loading = true;
+          state.loadingPick = true;
+          state.error = null;
+        },
+        fulfilled: (state, action) => {
+          state.loading = false;
+          state.loadingPick = false;
+          state.customersPickList = action.payload;
+        },
+        rejected: (state, action) => {
+          state.loading = false;
+          state.loadingPick = false;
           state.error = action.error.message || "Fehler beim Laden der Lieferanten.";
         },
       }
@@ -43,17 +74,19 @@ export const customersSlice = createAppSlice({
 
     getCustomersWithCustomerNumber: create.asyncThunk(
       async ({ page, size, sort }: { page: number; size: number; sort?: string }) => {
-       const response = await fetchCustomerswithCustomerNumber(page, size, sort ?? "name");
+        const response = await fetchCustomerswithCustomerNumber(page, size, sort ?? "name");
         return response;
       },
       {
         pending: (state) => {
           state.loading = true;
+          state.loadingList = true;
           state.error = null;
         },
         fulfilled: (state, action) => {
           const response = action.payload;
           state.loading = false;
+          state.loadingList = false;
           state.customersList = response.content;
           state.totalPages = response.totalPages;
           state.currentPage = response.pageable.pageNumber;
@@ -61,7 +94,32 @@ export const customersSlice = createAppSlice({
         },
         rejected: (state, action) => {
           state.loading = false;
+          state.loadingList = false;
           state.error = action.error.message || "Fehler beim Laden der Kunden.";
+        },
+      }
+    ),
+
+    getCustomersPickListWithCustomerNumber: create.asyncThunk(
+      async () => {
+        const response = await fetchCustomersListWithCustomerNumber();
+        return response;
+      },
+      {
+        pending: (state) => {
+          state.loading = true;
+          state.loadingPick = true;
+          state.error = null;
+        },
+        fulfilled: (state, action) => {
+          state.loading = false;
+          state.loadingPick = false;
+          state.customersPickListWithNumber = action.payload;
+        },
+        rejected: (state, action) => {
+          state.loading = false;
+          state.loadingPick = false;
+          state.error = action.error.message || "Fehler beim Laden der Kundenliste.";
         },
       }
     ),
@@ -98,6 +156,8 @@ export const customersSlice = createAppSlice({
             sort: state.customers.currentSort,
           })
         );
+        await dispatch(getCustomersPickList());
+        await dispatch(getCustomersPickListWithCustomerNumber());
         return addedCustomer;
       },
       {
@@ -105,7 +165,7 @@ export const customersSlice = createAppSlice({
           state.loading = true;
           state.error = null;
         },
-        fulfilled: (state, ) => {
+        fulfilled: (state,) => {
           state.loading = false;
           // В customersList теперь уже свежие данные из getCustomers
         },
@@ -127,6 +187,8 @@ export const customersSlice = createAppSlice({
             sort: state.customers.currentSort,
           })
         );
+        await dispatch(getCustomersPickList());
+        await dispatch(getCustomersPickListWithCustomerNumber());
         return editedCustomer;
       },
       {
@@ -134,7 +196,7 @@ export const customersSlice = createAppSlice({
           state.loading = true;
           state.error = null;
         },
-        fulfilled: (state, ) => {
+        fulfilled: (state,) => {
           state.loading = false;
           // customersList обновится через getCustomers
         },
@@ -145,7 +207,7 @@ export const customersSlice = createAppSlice({
       }
     ),
 
-        deleteCustomer: create.asyncThunk(
+    deleteCustomer: create.asyncThunk(
       async (id: number, { dispatch, getState }) => {
         await fetchDeleteCustomer(id);
         const state = getState() as { customers: CustomersState };
@@ -156,6 +218,8 @@ export const customersSlice = createAppSlice({
             sort: state.customers.currentSort,
           })
         );
+        await dispatch(getCustomersPickList());
+        await dispatch(getCustomersPickListWithCustomerNumber());
         return id;
       },
       {
@@ -163,7 +227,7 @@ export const customersSlice = createAppSlice({
           state.loading = true;
           state.error = null;
         },
-        fulfilled: (state, ) => {
+        fulfilled: (state,) => {
           state.loading = false;
           // customersList обновится через getCustomers
         },
@@ -178,15 +242,23 @@ export const customersSlice = createAppSlice({
   selectors: {
     selectCustomers: (state: CustomersState) => state.customersList,
     selectCustomersWithCustomerNumber: (state: CustomersState) => state.customersList,
+    selectCustomersPickList: (state: CustomersState) => state.customersPickList,
+    selectCustomersPickListWithNumber: (state: CustomersState) => state.customersPickListWithNumber,
     selectTotalPages: (state: CustomersState) => state.totalPages,
     selectCurrentPage: (state: CustomersState) => state.currentPage,
     selectCustomer: (state: CustomersState) => state.selectedCustomer,
+    selectLoading: (state: CustomersState) => state.loading,
+    selectLoadingList: (state: CustomersState) => state.loadingList,
+    selectLoadingPick: (state: CustomersState) => state.loadingPick,
+    selectError: (state: CustomersState) => state.error,
   },
 });
 
 export const {
   getCustomers,
+  getCustomersPickList,
   getCustomersWithCustomerNumber,
+  getCustomersPickListWithCustomerNumber,
   getCustomer,
   addCustomer,
   editCustomer,
@@ -196,7 +268,13 @@ export const {
 export const {
   selectCustomers,
   selectCustomersWithCustomerNumber,
+  selectCustomersPickList,
+  selectCustomersPickListWithNumber,
   selectTotalPages,
   selectCurrentPage,
   selectCustomer,
+  selectLoading,
+  selectLoadingList,
+  selectLoadingPick,
+  selectError,
 } = customersSlice.selectors;

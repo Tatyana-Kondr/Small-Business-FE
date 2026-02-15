@@ -32,10 +32,9 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, { Dayjs } from 'dayjs';
 import { deDE } from '@mui/x-date-pickers/locales';
 import { useAppDispatch, useAppSelector } from '../../../redux/hooks';
-import { Customer } from '../../customers/types';
 import { getProductCategories, selectProductCategories } from '../../products/productCategoriesSlice';
 import { getPickProducts, getProductsByCategory, selectPickLoading, selectPickProducts } from '../../products/productsSlice';
-import { getCustomersWithCustomerNumber } from '../../customers/customersSlice';
+import { getCustomersPickListWithCustomerNumber, selectCustomersPickListWithNumber, selectLoadingPick } from '../../customers/customersSlice';
 import { ProductPickDto } from '../../products/types';
 import { handleApiError } from '../../../utils/handleApiError';
 import { showSuccessToast } from '../../../utils/toast';
@@ -105,10 +104,11 @@ export default function SaleCard() {
   });
 
   const [dateValue, setDateValue] = useState<Dayjs | null>(null);
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  const customersPickWithNumber = useAppSelector(selectCustomersPickListWithNumber);
+  const customersPickLoading = useAppSelector(selectLoadingPick);
   const categories = useAppSelector(selectProductCategories);
   const pickProducts = useAppSelector(selectPickProducts);
-  const pickLoading = useAppSelector(selectPickLoading);
+  const productsPickLoading = useAppSelector(selectPickLoading);
   const shippings = useAppSelector(selectShippings);
   const termsOfPayment = useAppSelector(selectTermsOfPayment);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
@@ -128,11 +128,11 @@ export default function SaleCard() {
   }, [dispatch]);
 
   useEffect(() => {
-    dispatch(getCustomersWithCustomerNumber({ page: 0, size: 100 }))
+    dispatch(getCustomersPickListWithCustomerNumber())
       .unwrap()
-      .then(c => setCustomers(c.content))
       .catch(error => handleApiError(error, "Fehler beim Laden der Kunden."));
   }, [dispatch]);
+
 
   useEffect(() => {
     dispatch(getSaleById(Number(saleId)))
@@ -189,15 +189,6 @@ export default function SaleCard() {
     );
   }, [dispatch, debouncedTerm, selectedCategory]);
 
-  useEffect(() => {
-    if (sale.customerId && customers.length > 0) {
-      const customer = customers.find(c => c.id === sale.customerId);
-      if (customer) {
-        // обновит value в Autocomplete
-        setSale(prev => ({ ...prev, customerId: customer.id }));
-      }
-    }
-  }, [customers, sale.customerId]);
 
   // 3. Автоматическая подстановка Versand после загрузки shippings + sale
   useEffect(() => {
@@ -466,9 +457,9 @@ export default function SaleCard() {
   };
 
   const selectedCustomer =
-    customers.find(c => c.id === sale.customerId)
+    customersPickWithNumber.find(c => c.id === sale.customerId)
     ?? (sale.customerName
-      ? { id: sale.customerId, name: sale.customerName }
+      ? { id: sale.customerId, name: sale.customerName, customerNumber: null }
       : null);
 
   return (
@@ -515,17 +506,34 @@ export default function SaleCard() {
                 <Autocomplete
                   fullWidth
                   sx={{ mb: 3 }}
-                  options={[...customers].sort((a, b) => a.name.localeCompare(b.name))}
-                  getOptionLabel={(option) => option.name}
+                  loading={customersPickLoading}
+                  options={[...customersPickWithNumber].sort((a, b) => a.name.localeCompare(b.name))}
+                  getOptionLabel={(option) =>
+                    option.customerNumber ? `${option.name} (${option.customerNumber})` : option.name
+                  }
+                  isOptionEqualToValue={(option, value) => option.id === value.id}
                   value={selectedCustomer}
                   onChange={(_, value) =>
                     setSale(prev => ({ ...prev, customerId: value?.id ?? 0 }))
                   }
                   renderInput={(params) => (
-                    <TextField {...params} label="Kunde" />
+                    <TextField
+                      {...params}
+                      label="Kunde"
+                      InputProps={{
+                        ...params.InputProps,
+                        endAdornment: (
+                          <>
+                            {customersPickLoading ? <CircularProgress size={18} /> : null}
+                            {params.InputProps.endAdornment}
+                          </>
+                        ),
+                      }}
+                    />
                   )}
-                  disabled={isPaid} // блокируем если BEZAHLT
+                  disabled={isPaid}
                 />
+
               </Grid>
               {/* Datum */}
               <Grid item xs={4}>
@@ -997,7 +1005,7 @@ export default function SaleCard() {
                 </Grid>
 
                 <Box sx={{ maxHeight: 263, overflowY: 'auto', mt: 1, border: "1px solid #ddd" }}>
-                  {pickLoading && (
+                  {productsPickLoading && (
                     <Box sx={{ p: 1, textAlign: "center", color: "#00acc1" }}>
                       <CircularProgress size={20} />
                       <Typography variant="caption" sx={{ ml: 1 }}>
@@ -1006,7 +1014,7 @@ export default function SaleCard() {
                     </Box>
                   )}
 
-                  {!pickLoading && pickProducts.length === 0 && (searchTerm.length >= 2 || selectedCategory !== null) && (
+                  {!productsPickLoading && pickProducts.length === 0 && (searchTerm.length >= 2 || selectedCategory !== null) && (
                     <Box sx={{ p: 1, textAlign: "center", color: "text.secondary" }}>
                       <Typography variant="caption">
                         Keine Produkte gefunden
@@ -1034,7 +1042,7 @@ export default function SaleCard() {
                         </StyledTableRow>
                       ))}
 
-                      {!pickLoading && pickProducts.length === 0 && (
+                      {!productsPickLoading && pickProducts.length === 0 && (
                         <TableRow>
                           <TableCell colSpan={4} align="center">
                             Keine Produkte gefunden

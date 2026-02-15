@@ -1,9 +1,16 @@
 import { apiFetch } from "../../../utils/apiFetch";
-import { Customer, NewCustomerDto, PaginatedResponse } from "../types"
+import { Customer, CustomerPick, NewCustomerDto, PaginatedResponse } from "../types"
 
 export async function fetchCustomers(page: number, size: number, sort = "name"): Promise<PaginatedResponse<Customer>> {
   return apiFetch<PaginatedResponse<Customer>>
     (`/api/customers?page=${page}&size=${size}&sort=${sort}`,
+      { auth: true },
+      "Fehler beim Laden der Lieferanten."
+    );
+}
+export async function fetchCustomersList(): Promise<CustomerPick[]> {
+  return apiFetch<CustomerPick[]>
+    (`/api/customers/pick`,
       { auth: true },
       "Fehler beim Laden der Lieferanten."
     );
@@ -14,7 +21,14 @@ export async function fetchCustomerswithCustomerNumber(page: number, size: numbe
     { auth: true },
     "Fehler beim Laden der Kunden."
   );
+}
 
+export async function fetchCustomersListWithCustomerNumber(): Promise<CustomerPick[]> {
+  return apiFetch<CustomerPick[]>(
+    `/api/customers/customer-number/pick`,
+    { auth: true },
+    "Fehler beim Laden der Kunden."
+  );
 }
 
 export async function fetchAddCustomer(newCustomerDto: NewCustomerDto): Promise<Customer> {

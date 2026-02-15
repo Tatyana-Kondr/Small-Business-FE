@@ -13,9 +13,8 @@ import {
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { NewPurchaseDto, NewPurchaseItemDto } from '../types';
-import { Customer } from '../../customers/types';
 import { ProductPickDto } from '../../products/types';
-import { getCustomers } from '../../customers/customersSlice';
+import { getCustomersPickList, selectCustomersPickList, selectLoadingPick } from '../../customers/customersSlice';
 import { useAppDispatch, useAppSelector } from '../../../redux/hooks';
 import { ClearIcon, DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -73,7 +72,8 @@ export default function CreatePurchasePage({ onClose, onSubmitSuccess }: CreateP
         purchaseItems: [],
     });
 
-    const [vendors, setVendors] = useState<Customer[]>([]);
+    const vendorsPick = useAppSelector(selectCustomersPickList);
+    const vendorsPickLoading = useAppSelector(selectLoadingPick);
     const [dateValue, setDateValue] = useState<Dayjs | null>(null);
     const categories = useAppSelector(selectProductCategories);
     const pickProducts = useAppSelector(selectPickProducts);
@@ -89,11 +89,11 @@ export default function CreatePurchasePage({ onClose, onSubmitSuccess }: CreateP
 
     useEffect(() => {
         dispatch(getProductCategories());
-        dispatch(getCustomers({ page: 0, size: 100 }))
+        dispatch(getCustomersPickList())
             .unwrap()
-            .then(customers => setVendors(customers.content))
             .catch(error => handleApiError(error, "Fehler beim Laden der Lieferanten"));
     }, [dispatch]);
+
 
     useEffect(() => {
         const term = searchTerm.trim();
@@ -274,21 +274,34 @@ export default function CreatePurchasePage({ onClose, onSubmitSuccess }: CreateP
                                 <Autocomplete
                                     fullWidth
                                     id="vendor-autocomplete"
-                                    options={[...vendors].sort((a, b) => a.name.localeCompare(b.name))}
-                                    getOptionLabel={(option) => option.name}
+                                    loading={vendorsPickLoading}
+                                    options={[...vendorsPick].sort((a, b) => a.name.localeCompare(b.name))}
+                                    getOptionLabel={(option) =>
+                                        option.customerNumber ? `${option.name} (${option.customerNumber})` : option.name
+                                    }
+                                    isOptionEqualToValue={(option, value) => option.id === value.id}
                                     onChange={(_, value) => {
                                         setNewPurchase(prev => ({
                                             ...prev,
                                             vendorId: value?.id ?? 0,
                                         }));
                                     }}
-                                    value={vendors.find(v => v.id === newPurchase.vendorId) || null}
+                                    value={vendorsPick.find(v => v.id === newPurchase.vendorId) || null}
                                     renderInput={(params) => (
                                         <TextField
                                             {...params}
                                             label="Lieferant"
                                             id="vendor-autocomplete-input"
                                             aria-label="Lieferant auswählen"
+                                            InputProps={{
+                                                ...params.InputProps,
+                                                endAdornment: (
+                                                    <>
+                                                        {vendorsPickLoading ? <CircularProgress size={18} /> : null}
+                                                        {params.InputProps.endAdornment}
+                                                    </>
+                                                ),
+                                            }}
                                         />
                                     )}
                                 />
@@ -603,9 +616,9 @@ export default function CreatePurchasePage({ onClose, onSubmitSuccess }: CreateP
                     onClose={() => setShowCreateCustomer(false)}
                     onSubmitSuccess={(createdCustomer) => {
                         setShowCreateCustomer(false);
-                        // Добавим нового поставщика
-                        setVendors(prev => [...prev, createdCustomer]);
-                        // Выберем его как активного
+
+                        dispatch(getCustomersPickList()); // обновить список
+
                         setNewPurchase(prev => ({
                             ...prev,
                             vendorId: createdCustomer.id,

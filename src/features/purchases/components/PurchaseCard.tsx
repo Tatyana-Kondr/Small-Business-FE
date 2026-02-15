@@ -31,11 +31,10 @@ import dayjs, { Dayjs } from 'dayjs';
 import { deDE } from '@mui/x-date-pickers/locales';
 import { useAppDispatch, useAppSelector } from '../../../redux/hooks';
 import { NewPurchaseDto, NewPurchaseItemDto, TypeOfDocument } from '../types';
-import { Customer } from '../../customers/types';
 import { getProductCategories, selectProductCategories } from '../../products/productCategoriesSlice';
 import { getPickProducts, selectPickLoading, selectPickProducts } from '../../products/productsSlice';
 import { getPurchaseById, updatePurchase } from '../purchasesSlice';
-import { getCustomers } from '../../customers/customersSlice';
+import { getCustomersPickList, selectCustomersPickList, selectLoadingPick } from '../../customers/customersSlice';
 import { ProductPickDto } from '../../products/types';
 import KeyboardDoubleArrowLeftOutlinedIcon from '@mui/icons-material/KeyboardDoubleArrowLeftOutlined';
 import { handleApiError } from '../../../utils/handleApiError';
@@ -83,7 +82,8 @@ export default function PurchaseCard() {
     paymentStatus: '',
   });
   const [dateValue, setDateValue] = useState<Dayjs | null>(null);
-  const [vendors, setVendors] = useState<Customer[]>([]);
+  const vendorsPick = useAppSelector(selectCustomersPickList);
+  const vendorsPickLoading = useAppSelector(selectLoadingPick);
   const categories = useAppSelector(selectProductCategories);
   const pickProducts = useAppSelector(selectPickProducts);
   const pickLoading = useAppSelector(selectPickLoading);
@@ -98,9 +98,8 @@ export default function PurchaseCard() {
 
   useEffect(() => {
     // Загрузка поставщиков
-    dispatch(getCustomers({ page: 0, size: 100 }))
+    dispatch(getCustomersPickList())
       .unwrap()
-      .then(c => setVendors(c.content))
       .catch(error => handleApiError(error, "Fehler beim Laden der Lieferanten."));
 
     // Загрузка данных покупки
@@ -284,10 +283,10 @@ export default function PurchaseCard() {
   };
 
   const selectedVendor =
-    vendors.find(v => v.id === purchase.vendorId)
+    vendorsPick.find(v => v.id === purchase.vendorId)
     ?? (purchase.vendorName
-      ? { id: purchase.vendorId, name: purchase.vendorName }
-      : null);
+      ? { id: purchase.vendorId, name: purchase.vendorName, customerNumber: null }
+      : null)
 
 
   return (
@@ -320,17 +319,34 @@ export default function PurchaseCard() {
             <Autocomplete
               fullWidth
               sx={{ mb: 2 }}
-              options={[...vendors].sort((a, b) => a.name.localeCompare(b.name))}
-              getOptionLabel={(option) => option.name}
+              loading={vendorsPickLoading}
+              options={[...vendorsPick].sort((a, b) => a.name.localeCompare(b.name))}
+              getOptionLabel={(option) =>
+                option.customerNumber ? `${option.name} (${option.customerNumber})` : option.name
+              }
+              isOptionEqualToValue={(option, value) => option.id === value.id}
               onChange={(_, value) => {
                 setPurchase(prev => ({
                   ...prev,
                   vendorId: value?.id ?? 0,
+                  vendorName: value?.name ?? "",
                 }));
               }}
               value={selectedVendor}
               renderInput={(params) => (
-                <TextField {...params} label="Lieferant" />
+                <TextField
+                  {...params}
+                  label="Lieferant"
+                  InputProps={{
+                    ...params.InputProps,
+                    endAdornment: (
+                      <>
+                        {vendorsPickLoading ? <CircularProgress size={18} /> : null}
+                        {params.InputProps.endAdornment}
+                      </>
+                    ),
+                  }}
+                />
               )}
             />
 
