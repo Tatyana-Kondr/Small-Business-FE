@@ -25,8 +25,7 @@ import { NewPaymentDto, PaymentMethod, PaymentPrefillDto, PaymentProcess } from 
 import { fetchAllPaymentMethods, fetchAllPaymentProcesses, fetchPrefillDataForPurchase, fetchPrefillDataForSale } from "../api";
 import { updatePurchasePaymentStatus } from "../../purchases/purchasesSlice";
 import { updateSalePaymentStatus } from "../../sales/salesSlice";
-import { getCustomers } from "../../customers/customersSlice";
-import { Customer } from "../../customers/types";
+import {  getCustomersPickList, selectCustomersPickList, selectLoadingPick } from "../../customers/customersSlice";
 import CreateCustomer from "../../customers/components/CreateCustomer";
 import { handleApiError } from "../../../utils/handleApiError";
 import { showSuccessToast } from "../../../utils/toast";
@@ -58,7 +57,8 @@ export default function CreatePayment({
   const documentTypes = useAppSelector(selectTypeOfDocuments);
   const error = useAppSelector(selectError);
 
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  const customersPick = useAppSelector(selectCustomersPickList);
+  const customersPickLoading = useAppSelector(selectLoadingPick);
   const [showCreateCustomer, setShowCreateCustomer] = useState(false);
 
   const [prefillData, setPrefillData] = useState<PaymentPrefillDto | null>(null);
@@ -88,10 +88,9 @@ export default function CreatePayment({
   }, [dispatch]);
 
   useEffect(() => {
-    dispatch(getCustomers({ page: 0, size: 100 }))
+    dispatch(getCustomersPickList())
       .unwrap()
-      .then((data) => setCustomers(data.content))
-      .catch((err) => handleApiError(err, "Fehler beim Laden von Kunden."));
+      .catch((err) => handleApiError(err, "Fehler beim Laden von Geschäftspartnern."));
   }, [dispatch]);
 
 
@@ -250,8 +249,12 @@ export default function CreatePayment({
               <Grid item xs={10}>
                 <Autocomplete
                   fullWidth
-                  options={[...customers].sort((a, b) => a.name.localeCompare(b.name))}
-                  getOptionLabel={(option) => option.name}
+                  loading={customersPickLoading}
+                  options={[...customersPick].sort((a, b) => a.name.localeCompare(b.name))}
+                  getOptionLabel={(option) =>
+                    option.customerNumber ? `${option.name} (${option.customerNumber})` : option.name
+                  }
+                  isOptionEqualToValue={(option, value) => option.id === value.id}
                   onChange={(_, value) => {
                     setForm((prev) => ({
                       ...prev,
@@ -259,7 +262,7 @@ export default function CreatePayment({
                       customerName: value?.name ?? "",
                     }));
                   }}
-                  value={customers.find((c) => c.id === form.customerId) || null}
+                  value={customersPick.find((c) => c.id === form.customerId) || null}
                   renderInput={(params) => (
                     <TextField
                       {...params}
@@ -267,7 +270,16 @@ export default function CreatePayment({
                       required
                       inputProps={{
                         ...params.inputProps,
-                        'aria-label': 'Geschäftspartner auswählen',
+                        "aria-label": "Geschäftspartner auswählen",
+                      }}
+                      InputProps={{
+                        ...params.InputProps,
+                        endAdornment: (
+                          <>
+                            {customersPickLoading ? <CircularProgress size={18} /> : null}
+                            {params.InputProps.endAdornment}
+                          </>
+                        ),
                       }}
                     />
                   )}
@@ -414,7 +426,7 @@ export default function CreatePayment({
           onClose={() => setShowCreateCustomer(false)}
           onSubmitSuccess={(createdCustomer) => {
             setShowCreateCustomer(false);
-            setCustomers(prev => [...prev, createdCustomer]);
+            dispatch(getCustomersPickList());
             setForm(prev => ({
               ...prev,
               customerId: createdCustomer.id,
