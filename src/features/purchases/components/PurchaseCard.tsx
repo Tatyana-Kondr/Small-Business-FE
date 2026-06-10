@@ -571,7 +571,7 @@ export default function PurchaseCard() {
                     {pickProducts.map(product => (
                       <StyledTableRow
                         key={product.id}
-                        onClick={() => handleAddProductToCart(product)}
+                        onDoubleClick={() => handleAddProductToCart(product)}
                       >
                         <TableCell>{product.name}</TableCell>
                         <TableCell>{product.article}</TableCell>

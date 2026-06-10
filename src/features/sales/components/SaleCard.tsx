@@ -1032,7 +1032,7 @@ export default function SaleCard() {
                     </StyledTableHead>
                     <TableBody>
                       {pickProducts.map(p => (
-                        <StyledTableRow key={p.id} onClick={() => handleAddProductToCart(p)}>
+                        <StyledTableRow key={p.id} onDoubleClick={() => handleAddProductToCart(p)}>
                           <TableCell>{p.name}</TableCell>
                           <TableCell>{p.article}</TableCell>
                           <TableCell>{p.vendorArticle ?? ''}</TableCell>
