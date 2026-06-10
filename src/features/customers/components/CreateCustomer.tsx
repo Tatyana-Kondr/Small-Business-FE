@@ -21,16 +21,17 @@ import { addCustomer } from "../customersSlice";
 import { countries } from "../../../utils/countries";
 import Flag from "react-world-flags";
 import { Customer } from "../types";
-import {showSuccessToast } from "../../../utils/toast";
+import { showSuccessToast } from "../../../utils/toast";
 import { handleApiError } from "../../../utils/handleApiError";
 
 
 type CreateCustomerProps = {
   onClose: () => void;
   onSubmitSuccess: (customer: Customer) => void;
+  mode: "customer" | "vendor";
 };
 
-export default function CreateCustomer({ onClose, onSubmitSuccess }: CreateCustomerProps) {
+export default function CreateCustomer({ onClose, onSubmitSuccess, mode }: CreateCustomerProps) {
   const dispatch = useAppDispatch();
 
   const [formData, setFormData] = useState({
@@ -82,7 +83,7 @@ export default function CreateCustomer({ onClose, onSubmitSuccess }: CreateCusto
 
     const newCustomerDto = {
       name: formData.name,
-      customerNumber: formData.customerNumber || null,
+      customerNumber: mode === "customer" ? formData.customerNumber || null : null,
       addressDto: {
         country: formData.countryCode,
         city: formData.city,
@@ -126,18 +127,20 @@ export default function CreateCustomer({ onClose, onSubmitSuccess }: CreateCusto
                 autoFocus
               />
             </Grid>
-            <Grid item xs={12}>
-              <TextField
-                id="customerNumber"
-                fullWidth
-                label="Kundennummer"
-                name="customerNumber"
-                value={formData.customerNumber}
-                onChange={handleChange}
-                placeholder="(optional)"
-                helperText="ausschließlich für Kunden"
-              />
-            </Grid>
+            {mode === "customer" && (
+              <Grid item xs={12}>
+                <TextField
+                  id="customerNumber"
+                  fullWidth
+                  label="Kundennummer"
+                  name="customerNumber"
+                  value={formData.customerNumber}
+                  onChange={handleChange}
+                  placeholder="(optional)"
+                  helperText="ausschließlich für Kunden"
+                />
+              </Grid>
+            )}
           </Grid>
 
           {/* Adresse */}

@@ -55,17 +55,12 @@ export default function CustomersWithNumber() {
     return (
         <Container>
             {/* Верхняя панель */}
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} sx={{
-                position: "sticky", // Сделаем панель фиксированной
-                top: 0, // Закрепим сверху
-                zIndex: 1000, // Повышаем приоритет на случай, если другие элементы будут сверху
-                padding: "10px 0", // Отступы
-            }}>
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
                 <Typography variant="h6" sx={{ textAlign: "left", fontWeight: "bold", textDecoration: 'underline', color: "#0277bd" }}>KUNDEN</Typography>
 
             </Box>
             {/* Таблица */}
-            <Box sx={{ height: "550px" }}>
+            <Box sx={{ height: "100%" }}>
                 <TableContainer component={Paper}>
                     <Table>
                         <StyledTableHead>

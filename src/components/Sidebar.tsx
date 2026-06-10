@@ -30,6 +30,7 @@ import { useAppDispatch, useAppSelector } from "../redux/hooks";
 import { closeModal, openModal } from "../modal/modalSlice";
 import { selectUser } from "../features/auth/authSlice";
 import SettingsIcon from "@mui/icons-material/Settings";
+import { getCustomers, getCustomersWithCustomerNumber } from "../features/customers/customersSlice";
 
 const drawerWidth = 200;
 const collapsedWidth = 60;
@@ -136,9 +137,11 @@ const navItems: NavItem[] = [
         label: "Neuen Kunde",
         modal: {
           name: "createCustomer",
-          props: {},
+          props: {
+            mode: "customer",
+          },
         },
-      },
+      }
     ],
   },
   {
@@ -150,9 +153,11 @@ const navItems: NavItem[] = [
         label: "Neuen Lieferant",
         modal: {
           name: "createCustomer",
-          props: {},
+          props: {
+            mode: "vendor",
+          },
         },
-      },
+      }
     ],
   },
   {
@@ -204,18 +209,30 @@ export default function Sidebar({ mobileOpen, onDrawerToggle, onCollapseChange, 
   };
 
   const handleOpenModal = (modalConfig: ModalConfig) => {
-    const baseProps = {
-      onClose: () => dispatch(closeModal()),
-      onSubmitSuccess: () => {
-        console.log(`✅ ${modalConfig.name} erfolgreich erstellt.`);
-      },
-    };
+  const mode = modalConfig.props?.mode;
 
-    dispatch(openModal({
-      name: modalConfig.name,
-      props: { ...baseProps, ...modalConfig.props },
-    }));
+  const baseProps = {
+    onClose: () => dispatch(closeModal()),
+    onSubmitSuccess: () => {
+      if (modalConfig.name === "createCustomer") {
+        if (mode === "customer") {
+          dispatch(getCustomersWithCustomerNumber({ page: 0, size: 15 }));
+        }
+
+        if (mode === "vendor") {
+          dispatch(getCustomers({ page: 0, size: 15 }));
+        }
+      }
+
+      console.log(`✅ ${modalConfig.name} erfolgreich erstellt.`);
+    },
   };
+
+  dispatch(openModal({
+    name: modalConfig.name,
+    props: { ...baseProps, ...modalConfig.props },
+  }));
+};
 
   const handleCollapseToggle = () => {
     setCollapsed((prev) => {
@@ -306,7 +323,7 @@ function SidebarContent({
         sx={{
           position: "fixed", // ← фиксируем относительно окна
           top: headerHeight + 8, // ← чуть ниже хедера
-          left: collapsed ? collapsedWidth  : drawerWidth , // ← на краю панели
+          left: collapsed ? collapsedWidth : drawerWidth, // ← на краю панели
           width: 20,
           height: 30,
           backgroundColor: "white",
