@@ -46,6 +46,30 @@ const TYPE_MAP: Record<string, "EINNAHME" | "AUSGABE"> = {
   VERKAUF: "EINNAHME",
 };
 
+const getCustomerMode = ( typeOfOperation?: string, prefillType?: "sale" | "purchase"): "customer" | "vendor" => {
+  if (typeOfOperation) {
+    switch (typeOfOperation) {
+      case "VERKAUF":
+      case "KUNDENERSTATTUNG":
+        return "customer";
+
+      case "EINKAUF":
+      case "LIEFERANT_RABATT":
+        return "vendor";
+    }
+  }
+
+  if (prefillType === "sale") {
+    return "customer";
+  }
+
+  if (prefillType === "purchase") {
+    return "vendor";
+  }
+
+  return "customer";
+};
+
 export default function CreatePayment({
   onClose,
   prefillType,
@@ -65,6 +89,8 @@ export default function CreatePayment({
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [paymentProcesses, setPaymentProcesses] = useState<PaymentProcess[]>([]);
   const [loadingPrefill, setLoadingPrefill] = useState(true);
+
+  const [partnerMode] = useState<"customer" | "vendor">("customer");
 
   const [form, setForm] = useState<NewPaymentDto>({
     paymentDate: new Date().toISOString().substring(0, 10),
@@ -183,6 +209,10 @@ export default function CreatePayment({
     }
   };
 
+  const customerMode =
+  typeOfOperation || prefillType
+    ? getCustomerMode(typeOfOperation, prefillType)
+    : partnerMode;
 
   if (loadingPrefill) {
     return (
@@ -423,7 +453,7 @@ export default function CreatePayment({
       </DialogContent>
       {showCreateCustomer && (
         <CreateCustomer
-          mode={form.type === "EINNAHME" ? "customer" : "vendor"}
+          mode={customerMode}
           onClose={() => setShowCreateCustomer(false)}
           onSubmitSuccess={(createdCustomer) => {
             setShowCreateCustomer(false);
