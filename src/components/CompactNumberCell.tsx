@@ -4,47 +4,87 @@ interface Props {
   value: number;
   onChange: (value: number) => void;
   disabled?: boolean;
+  min?: number;
+  max?: number;
+  step?: number;
+  align?: "left" | "center" | "right";
 }
 
-export default function CompactNumberCell({ value, onChange, disabled }: Props) {
+export default function CompactNumberCell({
+  value,
+  onChange,
+  disabled = false,
+  min = 0,
+  max,
+  step = 0.01,
+  align = "right",
+}: Props) {
   return (
     <TextField
       type="number"
       variant="standard"
-      value={value}
+      value={
+        Number.isFinite(Number(value))
+          ? value
+          : ""
+      }
       disabled={disabled}
       onChange={(e) => {
-        const val = Number(e.target.value);
-        if (!isNaN(val)) onChange(val);
+        const rawValue = e.target.value;
+
+        if (rawValue === "") {
+          onChange(0);
+          return;
+        }
+
+        const parsedValue = Number(rawValue);
+
+        if (Number.isFinite(parsedValue)) {
+          onChange(parsedValue);
+        }
       }}
       onFocus={(e) => {
-        // Выделяет ВСЁ число при клике
-        setTimeout(() => e.target.select(), 0);
+        setTimeout(() => {
+          e.target.select();
+        }, 0);
       }}
-      InputProps={{
-        disableUnderline: true,
-        sx: {
-          "& input[type=number]": {
-            MozAppearance: "textfield",
-          },
-          "& input[type=number]::-webkit-outer-spin-button": {
-            WebkitAppearance: "none",
-            margin: 0,
-          },
-          "& input[type=number]::-webkit-inner-spin-button": {
-            WebkitAppearance: "none",
-            margin: 0,
-          },
-          "& .MuiInputBase-input": {
-            fontSize: "0.875rem",
-            padding: 0,
-            textAlign: "right",
-          },
+      slotProps={{
+        input: {
+          disableUnderline: true,
+        },
+
+        htmlInput: {
+          min,
+          max,
+          step,
         },
       }}
       sx={{
+        width: "100%",
+
         "& .MuiInputBase-root": {
-          padding: 0,
+          width: "100%",
+          p: 0,
+        },
+
+        "& .MuiInputBase-input": {
+          fontSize: "0.875rem",
+          p: 0,
+          textAlign: align,
+        },
+
+        "& input[type=number]": {
+          MozAppearance: "textfield",
+        },
+
+        "& input[type=number]::-webkit-outer-spin-button": {
+          WebkitAppearance: "none",
+          margin: 0,
+        },
+
+        "& input[type=number]::-webkit-inner-spin-button": {
+          WebkitAppearance: "none",
+          margin: 0,
         },
       }}
     />
