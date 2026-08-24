@@ -1,24 +1,42 @@
 export class HttpError extends Error {
   status: number;
-  constructor(message: string, status: number) {
+  data?: unknown;
+
+  constructor(
+    message: string,
+    status: number,
+    data?: unknown
+  ) {
     super(message);
+
     this.name = "HttpError";
     this.status = status;
+    this.data = data;
   }
 }
 
-export async function handleFetchError(response: Response, defaultMessage: string): Promise<never> {
+export async function handleFetchError(
+  response: Response,
+  defaultMessage: string
+): Promise<never> {
   let message: string = defaultMessage;
+  let errorData: unknown;
 
   try {
-    const errorData = await response.json();
+    errorData = await response.json();
+
     if (typeof errorData === "string") {
       message = errorData;
-    } else if (errorData?.message) {
+    } else if (
+      typeof errorData === "object" &&
+      errorData !== null &&
+      "message" in errorData &&
+      typeof errorData.message === "string"
+    ) {
       message = errorData.message;
     }
   } catch {
-    // тело не JSON — возможно пустой ответ
+    // Тело ответа не JSON или пустое
   }
 
   if (!message || message === defaultMessage) {
@@ -26,21 +44,30 @@ export async function handleFetchError(response: Response, defaultMessage: strin
       case 400:
         message = "Ungültige Anfrage.";
         break;
+
       case 401:
       case 403:
         message = "Nicht autorisiert.";
         break;
+
       case 404:
         message = "Ressource wurde nicht gefunden.";
         break;
+
       case 409:
         message = "Konflikt beim Verarbeiten der Anfrage.";
         break;
+
       case 500:
-        message = "Interner Serverfehler. Versuchen Sie es später erneut.";
+        message =
+          "Interner Serverfehler. Versuchen Sie es später erneut.";
         break;
     }
   }
 
-  throw new HttpError(message, response.status);
+  throw new HttpError(
+    message,
+    response.status,
+    errorData
+  );
 }

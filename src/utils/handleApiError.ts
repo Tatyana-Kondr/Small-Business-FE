@@ -5,7 +5,7 @@ type ErrorWithMessage = {
   message: string;
 };
 
-const errorMap: Record<string, string> = {
+export const errorMap: Record<string, string> = {
   // Customer
   "Customer with the same name and address already exists": "Ein Kunde/Lieferant mit diesem Namen und dieser Adresse existiert bereits.",
   "The customer number already exists.": "Ein Kunde mit diesem Nummer existiert bereits.",
@@ -24,6 +24,8 @@ const errorMap: Record<string, string> = {
   //Product
   "Category not found": "Kategorie wurde nicht gefunden.",
   "Category already exists": "Kategorie existiert bereits.",
+  "Category article name already exists": "Artiklename existiert bereits.",
+  "Name must be between 2 and 5 characters": "Artikelname muss zwischen 2 und 5 Zeichen lang sein.",
   "Product not found": "Produkt wurde nicht gefunden.",
   "Product with the same name and article already exists.": "Produkt mit gleichem Namen und Artikel existiert bereits.",
   "List of products is empty": "Die Produktliste ist leer.",
