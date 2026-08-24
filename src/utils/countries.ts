@@ -7,7 +7,7 @@ export const countries = [
     { code: "FR", name: "France" },
     { code: "RU", name: "Russia" },
     { code: "KZ", name: "Kazakhstan" },
-    { code: "CN", name: "Great Britain" },
+    { code: "CN", name: "China" },
     { code: "IT", name: "Italy" },
     { code: "ES", name: "Spain" },
     // Можно добавить все страны по ISO 3166-1 или использовать библиотеку, как `country-list`
