@@ -200,7 +200,7 @@ export default function CreatePurchasePage({ onClose, onSubmitSuccess }: CreateP
         const newPurchaseToSend: NewPurchaseDto = {
             ...newPurchase,
             purchaseItems: updatedPurchaseItems,
-            paymentStatus: 'AUSSTEHEND',
+            paymentStatus: 'OFFEN',
         };
 
         dispatch(addPurchase(newPurchaseToSend))
@@ -613,6 +613,7 @@ export default function CreatePurchasePage({ onClose, onSubmitSuccess }: CreateP
             </Grid>
             {showCreateCustomer && (
                 <CreateCustomer
+                    mode="vendor"
                     onClose={() => setShowCreateCustomer(false)}
                     onSubmitSuccess={(createdCustomer) => {
                         setShowCreateCustomer(false);
