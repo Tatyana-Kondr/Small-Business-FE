@@ -4,8 +4,9 @@ import { useParams, useNavigate } from "react-router-dom"
 import { useAppDispatch, useAppSelector } from "../../../redux/hooks"
 import { getProduct, selectProduct, selectLoading, selectError } from "../productsSlice"
 import { getProductFiles, deleteProductFile, selectProductFiles, uploadProductFile } from "../productFilesSlice"
-import { CircularProgress, Container, Box, Typography, Button, Paper, Grid, Modal, IconButton, Dialog, DialogContent, Tabs, Tab, Table, TableHead, TableRow, TableCell, TableBody, styled, Pagination } from "@mui/material"
+import { CircularProgress, Container, Box, Typography, Button, Paper, Grid, Modal, IconButton, Dialog, DialogContent, Tabs, Tab, Table, TableRow, TableCell, TableBody, Pagination, Tooltip } from "@mui/material"
 import { ArrowBackIos, ArrowForwardIos, Close } from "@mui/icons-material"
+import CloseIcon from "@mui/icons-material/Close"
 import EditProduct from "./EditProduct"
 import DeleteProduct from "./DeleteProduct"
 import { showSuccessToast } from "../../../utils/toast"
@@ -13,23 +14,11 @@ import { handleApiError } from "../../../utils/handleApiError"
 import { selectRoles } from "../../auth/authSlice"
 import { getProductHistory, getProductStock, selectLoadingRecords, selectSelectedWarehouseStock, selectWarehouseRecordPages, selectWarehouseRecords } from "../../warehouse/warehouseSlice"
 import { motion, AnimatePresence } from "framer-motion"
+import { galleryActionsStyle, galleryArrowLeftStyle, galleryArrowRightStyle, imageModalStyle, productCardContainerStyle, productCardHeaderStyle, productCardPaperStyle, productCardTabsStyle, productDetailLabelStyle, productDetailRowStyle, productDetailsBoxStyle, productDetailValueStyle, productGalleryStyle, productMainImageBoxStyle, thumbnailListStyle, thumbnailStyle } from "../../../styles/productCardStyles"
+import { outlinedButtonStyle, primaryButtonStyle } from "../../../styles/buttonStyles"
+import { cellStyle, leftBorderCellStyle, StyledTableHead, tableRowHoverStyle, tableStyle } from "../../../styles/tableStyles"
+import { colors } from "../../../styles/colors"
 
-// Стили для заголовков таблицы
-const StyledTableHead = styled(TableHead)({
-    backgroundColor: "#1a3d6d",
-    "& th": {
-        color: "white",
-        fontWeight: "bold",
-        borderRight: "1px solid #ddd",
-    },
-});
-
-// Стили для полей в таблице
-const cellStyle = {
-    whiteSpace: "nowrap",  // запрещаем перенос строк
-    borderRight: "1px solid #ddd",
-    padding: "6px 12px",
-};
 
 export default function ProductCard() {
     const { productId } = useParams<{ productId: string }>()
@@ -207,60 +196,107 @@ export default function ProductCard() {
 
     return (
 
-        <Container maxWidth="lg" sx={{ display: "flex", justifyContent: "center", py: 3 }}>
-            <Paper
-                elevation={3}
-                sx={{
-                    borderRadius: 2,
-                    overflow: "hidden",
-                    p: 3,
-                    width: { xs: "100%", sm: "95%", md: "90%", lg: "1200px" },
-                    mx: "auto",
-                    minHeight: "750px",
-                    display: "flex",
-                    flexDirection: "column",
-                    transition: "all 0.3s ease"
-                }}
-            >
-                {/* Заголовок */}
-                <Box
-                    sx={{
-                        backgroundImage: "linear-gradient(to right, #003c8f, #0288d1)",
-                        color: "#fff",
-                        padding: "12px 20px",
-                        borderRadius: "8px",
-                        mb: 2,
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center"
-                    }}
-                >
-                    <Typography variant="h5">{product.name}</Typography>
-                    {getStockQuantity(product, stock) !== null && (
-                        <Typography variant="h6">
-                            Auf Lager: {getStockQuantity(product, stock)}
-                        </Typography>
-                    )}
+        <Container maxWidth="lg" sx={productCardContainerStyle}>
+            <Paper elevation={3} sx={productCardPaperStyle}>
+                <Box sx={productCardHeaderStyle}>
+                    <Typography
+                        variant="h5"
+                        sx={{
+                            color: "inherit",
+                            fontWeight: 700,
+                            textAlign: "left",
+                            whiteSpace: "normal",
+                            wordBreak: "break-word",
+                            flex: 1,
+                            pr: 2,
+                        }}
+                    >
+                        {product.name}
+                    </Typography>
+
+                    <Box
+                        sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 1,
+                            flexShrink: 0,
+                        }}
+                    >
+                        {getStockQuantity(product, stock) !== null && (
+                            <Box
+                                sx={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    minHeight: 34,
+                                    px: 1.5,
+                                    borderRadius: 1,
+                                    backgroundColor: "rgba(255,255,255,0.12)",
+                                }}
+                            >
+                                <Typography
+                                    variant="subtitle2"
+                                    sx={{
+                                        color: "inherit",
+                                        fontWeight: 700,
+                                        whiteSpace: "nowrap",
+                                    }}
+                                >
+                                    Auf Lager: {getStockQuantity(product, stock)}
+                                </Typography>
+                            </Box>
+                        )}
+
+                        {isAdmin && (
+                            <DeleteProduct
+                                productId={product.id}
+                                productName={product.name}
+                                productArticle={product.article}
+                                onSuccessDelete={() => navigate("/products")}
+                            />
+                        )}
+
+                        <Box
+                            sx={{
+                                width: "1px",
+                                height: 24,
+                                backgroundColor: "rgba(255,255,255,0.35)",
+                                mx: 0.5,
+                            }}
+                        />
+
+                        <Tooltip title="Schließen" arrow>
+                            <IconButton
+                                aria-label="Produktkarte schließen"
+                                onClick={() => navigate("/products")}
+                                sx={{
+                                    width: 36,
+                                    height: 36,
+                                    color: colors.white,
+                                    transition:
+                                        "transform 0.2s ease, background-color 0.2s ease",
+
+                                    "&:hover": {
+                                        transform: "scale(1.3)",
+                                    },
+                                }}
+                            >
+                                <CloseIcon fontSize="small" />
+                            </IconButton>
+                        </Tooltip>
+                    </Box>
                 </Box>
 
-                {/* Вкладки */}
                 <Tabs
                     value={tabIndex}
                     onChange={(_, newValue) => setTabIndex(newValue)}
-                    indicatorColor="primary"
-                    textColor="primary"
-                    sx={{
-                        mb: 2,
-                        "& .MuiTab-root": { textTransform: "none", fontWeight: 600 },
-                        "& .Mui-selected": { color: "#0288d1" },
-                    }}
+                    sx={productCardTabsStyle}
                 >
                     <Tab label="Artikelinfo" />
                     <Tab label="Verlauf" />
                 </Tabs>
 
                 {/* Анимированное содержимое */}
-                <Box sx={{ flexGrow: 1, position: "relative" }}>
+                <Box sx={{ flexGrow: 1 }}>
                     <AnimatePresence mode="wait">
                         {tabIndex === 0 ? (
                             <motion.div
@@ -269,145 +305,152 @@ export default function ProductCard() {
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: -15 }}
                                 transition={{ duration: 0.3 }}
-                                style={{ position: "absolute", width: "100%" }}
+                                style={{ width: "100%" }}
                             >
                                 {/*  "Artikelinfo" */}
-                                <Grid container spacing={3}>
-                                    <Grid item xs={12} sm={5}>
-                                        <Box sx={{ p: 3 }}>
-                                            {[
-                                                ["Artikel", product.article],
-                                                ["Lieferantartikel", product.vendorArticle || "—"],
-                                                ["Kaufpreis", `${product.purchasingPrice} €`],
-                                                ["Aufschlag", `${product.markupPercentage} %`],
-                                                ["Verkaufspreis", `${product.sellingPrice} €`],
-                                                ["Maßeinheit", product.unitOfMeasurement.name || "—"],
-                                                ["Gewicht", product.weight ? `${product.weight} kg` : "—"],
-                                                ["Abmessungen", formatDimensions(product.newDimensions)],
-                                                ["Kategorie", product.productCategory?.name || "—"],
-                                                ["Beschreibung", product.description || "—"],
-                                                ["Lagerplatz", product.storageLocation || "—"],
-                                                ["Erstellungsdatum", formattedDate]
-                                            ].map(([label, value]) => (
-                                                <Box
-                                                    key={label}
-                                                    display="flex"
-                                                    justifyContent="space-between"
-                                                    borderBottom="1px solid #eee"
-                                                    py={0.5}
-                                                >
-                                                    <Typography sx={{ fontWeight: 600, color: "#01579b" }}>
-                                                        {label}:
-                                                    </Typography>
-                                                    <Typography>{value}</Typography>
-                                                </Box>
-                                            ))}
-                                            <Box mt={4} display="flex" flexDirection="column" gap={1}>
-                                                <Button variant="contained" onClick={handleOpenEditModal}>
-                                                    Daten bearbeiten
-                                                </Button>
+                                <Grid container spacing={3} alignItems="stretch">
+                                    {/* Характеристики */}
+                                    <Grid item xs={12} md={6}>
+                                        <Box >
+                                            <Box sx={productDetailsBoxStyle}>
+                                                {[
+                                                    ["Artikel", product.article],
+                                                    ["Lieferantartikel", product.vendorArticle || "—"],
+                                                    ["Kaufpreis", `${product.purchasingPrice} €`],
+                                                    ["Aufschlag", `${product.markupPercentage} %`],
+                                                    ["Verkaufspreis", `${product.sellingPrice} €`],
+                                                    ["Maßeinheit", product.unitOfMeasurement?.name || "—"],
+                                                    ["Gewicht", product.weight ? `${product.weight} kg` : "—"],
+                                                    ["Abmessungen", formatDimensions(product.newDimensions)],
+                                                    ["Kategorie", product.productCategory?.name || "—"],
+                                                    ["Beschreibung", product.description || "—"],
+                                                    ["Lagerplatz", product.storageLocation || "—"],
+                                                    ["Erstellungsdatum", formattedDate],
+                                                ].map(([label, value]) => (
+                                                    <Box key={label} sx={productDetailRowStyle}>
+                                                        <Typography sx={productDetailLabelStyle}>
+                                                            {label}:
+                                                        </Typography>
+
+                                                        <Typography sx={productDetailValueStyle}>
+                                                            {value}
+                                                        </Typography>
+                                                    </Box>
+                                                ))}
+
                                                 {isAdmin && (
-                                                    <DeleteProduct
-                                                        productId={product.id}
-                                                        productName={product.name}
-                                                        productArticle={product.article}
-                                                        onSuccessDelete={() => navigate("/")}
-                                                    />
+                                                    <Button
+                                                        variant="contained"
+                                                        onClick={handleOpenEditModal}
+                                                        sx={{
+                                                            ...primaryButtonStyle,
+                                                            width: "100%",
+                                                            mt: 5,
+                                                        }}
+                                                    >
+                                                        Daten bearbeiten
+                                                    </Button>
                                                 )}
                                             </Box>
                                         </Box>
                                     </Grid>
 
-                                    {/* Правая часть с окном для просмотра картинок */}
-                                    <Grid item xs={12} sm={7} >
-                                        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, height: "100%" }}>
-                                            <Box sx={{ position: "relative", display: "flex", justifyContent: "center", width: "100%", mb: 1 }}>
-                                                <IconButton onClick={handlePrevFile} sx={{ position: "absolute", left: 0, top: "50%", transform: "translateY(-50%)", zIndex: 1, }}>
-                                                    <ArrowBackIos />
-                                                </IconButton>
-                                                <img
-                                                    src={imageUrl}
-                                                    alt={imageAlt}
-                                                    style={{
-                                                        maxWidth: "calc(100% - 80px)", // оставляем место для обеих стрелок
-                                                        maxHeight: "400px",
-                                                        objectFit: "contain",
-                                                        borderRadius: 8,
-                                                        cursor: currentFile ? "pointer" : "default",
-                                                    }}
-                                                    onClick={() => currentFile && handleOpenModal(currentFileIndex)}
-                                                />
-                                                <IconButton onClick={handleNextFile} sx={{ position: "absolute", right: 0, top: "50%", transform: "translateY(-50%)", zIndex: 1, }}>
-                                                    <ArrowForwardIos />
-                                                </IconButton>
-                                            </Box>
-
-                                            {/* Миниатюрная галерея */}
-                                            {files.length > 0 && (
+                                    {/* Галерея */}
+                                    <Grid item xs={12} md={6}>
+                                        <Box >
+                                            <Box sx={productGalleryStyle}>
                                                 <Box
                                                     sx={{
-                                                        display: "flex",
-                                                        justifyContent: "center",
-                                                        flexWrap: "wrap",
-                                                        gap: 1,
-                                                        mt: 1,
+                                                        ...productMainImageBoxStyle,
+                                                        minHeight: 360,
                                                     }}
                                                 >
-                                                    {files.map((file, index) => (
-                                                        <Box
-                                                            key={file.id}
-                                                            onClick={() => setCurrentFileIndex(index)}
-                                                            sx={{
-                                                                border:
-                                                                    index === currentFileIndex
-                                                                        ? "2px solid #0288d1"
-                                                                        : "1px solid #ccc",
-                                                                borderRadius: 2,
-                                                                padding: "2px",
-                                                                cursor: "pointer",
-                                                                transition: "transform 0.2s ease",
-                                                                "&:hover": {
-                                                                    transform: "scale(1.05)",
-                                                                },
-                                                            }}
+                                                    {files.length > 1 && (
+                                                        <IconButton
+                                                            onClick={handlePrevFile}
+                                                            sx={galleryArrowLeftStyle}
                                                         >
-                                                            <img
-                                                                src={`${import.meta.env.VITE_API_URL}${file.fileUrl}`}
-                                                                alt={file.originFileName}
-                                                                style={{
-                                                                    width: 60,
-                                                                    height: 60,
-                                                                    objectFit: "cover",
-                                                                    borderRadius: 4,
-                                                                }}
-                                                            />
-                                                        </Box>
-                                                    ))}
+                                                            <ArrowBackIos />
+                                                        </IconButton>
+                                                    )}
+
+                                                    <Box
+                                                        component="img"
+                                                        src={imageUrl}
+                                                        alt={imageAlt}
+                                                        onClick={() =>
+                                                            currentFile && handleOpenModal(currentFileIndex)
+                                                        }
+                                                        sx={{
+                                                            width: "100%",
+                                                            maxWidth: 430,
+                                                            height: 340,
+                                                            objectFit: "contain",
+                                                            cursor: currentFile ? "pointer" : "default",
+                                                        }}
+                                                    />
+
+                                                    {files.length > 1 && (
+                                                        <IconButton
+                                                            onClick={handleNextFile}
+                                                            sx={galleryArrowRightStyle}
+                                                        >
+                                                            <ArrowForwardIos />
+                                                        </IconButton>
+                                                    )}
                                                 </Box>
-                                            )}
 
-                                            {/* Кнопки загрузки и удаления фото под изображением */}
-                                            <Box sx={{ display: "flex", justifyContent: "center", gap: 8, mt: 0 }}>
-                                                <label htmlFor="upload-file-input">
-                                                    <Button component="span">
+                                                {files.length > 0 && (
+                                                    <Box sx={thumbnailListStyle}>
+                                                        {files.map((file, index) => (
+                                                            <Box
+                                                                key={file.id}
+                                                                onClick={() => setCurrentFileIndex(index)}
+                                                                sx={thumbnailStyle(index === currentFileIndex)}
+                                                            >
+                                                                <Box
+                                                                    component="img"
+                                                                    src={`${import.meta.env.VITE_API_URL}${file.fileUrl}`}
+                                                                    alt={file.originFileName}
+                                                                    sx={{
+                                                                        display: "block",
+                                                                        width: 60,
+                                                                        height: 60,
+                                                                        objectFit: "cover",
+                                                                    }}
+                                                                />
+                                                            </Box>
+                                                        ))}
+                                                    </Box>
+                                                )}
+
+                                                <Box sx={galleryActionsStyle}>
+                                                    <Button
+                                                        component="label"
+                                                        variant="outlined"
+                                                        sx={outlinedButtonStyle}
+                                                    >
                                                         Bild hochladen
-                                                    </Button>
-                                                </label>
-                                                <input
-                                                    id="upload-file-input"
-                                                    type="file"
-                                                    accept="image/*"
-                                                    style={{ display: 'none' }}
-                                                    onChange={handleFileChange}
-                                                />
 
-                                                <Button
-                                                    color="error"
-                                                    onClick={() => currentFile && handleDeleteFile(currentFile.id)}
-                                                    disabled={!currentFile}
-                                                >
-                                                    Bild löschen
-                                                </Button>
+                                                        <input
+                                                            hidden
+                                                            type="file"
+                                                            accept="image/*"
+                                                            onChange={handleFileChange}
+                                                        />
+                                                    </Button>
+
+                                                    <Button
+                                                        variant="outlined"
+                                                        color="error"
+                                                        disabled={!currentFile}
+                                                        onClick={() =>
+                                                            currentFile && handleDeleteFile(currentFile.id)
+                                                        }
+                                                    >
+                                                        Bild löschen
+                                                    </Button>
+                                                </Box>
                                             </Box>
                                         </Box>
                                     </Grid>
@@ -421,7 +464,7 @@ export default function ProductCard() {
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: -15 }}
                                 transition={{ duration: 0.3 }}
-                                style={{ position: "absolute", width: "100%" }}
+                                style={{ width: "100%" }}
                             >
                                 {/* Таблица истории */}
                                 {loadingHistory ? (
@@ -429,7 +472,7 @@ export default function ProductCard() {
                                         <CircularProgress />
                                     </Box>
                                 ) : historyRecords.length > 0 ? (
-                                    <Table>
+                                    <Table sx={tableStyle}>
                                         <StyledTableHead>
                                             <TableRow>
                                                 <TableCell>Datum</TableCell>
@@ -439,48 +482,81 @@ export default function ProductCard() {
                                                 <TableCell align="center">Dokument</TableCell>
                                             </TableRow>
                                         </StyledTableHead>
+
                                         <TableBody>
                                             {historyRecords.map((record) => {
                                                 const type = record.typeOfOperation;
-                                                const isPositive =
-                                                    ["EINKAUF", "KUNDENERSTATTUNG", "PRODUKTION"].includes(type);
-                                                const isNegative =
-                                                    ["VERKAUF", "LIEFERANT_RABATT", "PRODUKTIONSMATERIAL"].includes(type);
 
-                                                const color = isPositive
-                                                    ? "green"
-                                                    : isNegative
-                                                        ? "red"
-                                                        : "inherit";
+                                                const isPositive = [
+                                                    "EINKAUF",
+                                                    "KUNDENERSTATTUNG",
+                                                    "PRODUKTION",
+                                                ].includes(type);
 
-                                                // определяем путь для перехода
-                                                let docPath = null;
+                                                const isNegative = [
+                                                    "VERKAUF",
+                                                    "LIEFERANT_RABATT",
+                                                    "PRODUKTIONSMATERIAL",
+                                                ].includes(type);
+
+                                                let docPath: string | null = null;
+
                                                 if (["EINKAUF", "KUNDENERSTATTUNG"].includes(type)) {
                                                     docPath = `/purchases/${record.documentId}`;
                                                 } else if (["VERKAUF", "LIEFERANT_RABATT"].includes(type)) {
                                                     docPath = `/sales/${record.documentId}`;
-                                                } else if (["PRODUKTION", "PRODUKTIONSMATERIAL"].includes(type)) {
+                                                } else if (
+                                                    ["PRODUKTION", "PRODUKTIONSMATERIAL"].includes(type)
+                                                ) {
                                                     docPath = `/productions/${record.documentId}`;
                                                 }
 
                                                 return (
                                                     <TableRow
                                                         key={record.id}
-                                                        hover
                                                         onClick={() => docPath && navigate(docPath)}
                                                         sx={{
+                                                            ...tableRowHoverStyle,
                                                             cursor: docPath ? "pointer" : "default",
-                                                            transition: "background-color 0.2s ease",
-                                                            "&:hover": {
-                                                                backgroundColor: docPath ? "rgba(0,0,0,0.04)" : "inherit",
-                                                            },
                                                         }}
                                                     >
-                                                        <TableCell sx={{ ...cellStyle, borderLeft: "1px solid #ddd" }}>  {new Date(record.date).toLocaleDateString("de-DE")} </TableCell>
-                                                        <TableCell sx={{ ...cellStyle }}>{type}</TableCell>
-                                                        <TableCell sx={{ ...cellStyle }}> {record.partnerName || "—"} </TableCell>
-                                                        <TableCell sx={{ ...cellStyle, fontWeight: "bold", color, }}  align="center">  {isPositive && "+"}  {isNegative && "-"} {record.quantity} </TableCell>
-                                                        <TableCell align="center" sx={cellStyle}> {record.documentId} </TableCell>
+                                                        <TableCell
+                                                            sx={{
+                                                                ...cellStyle,
+                                                                ...leftBorderCellStyle,
+                                                            }}
+                                                        >
+                                                            {new Date(record.date).toLocaleDateString("de-DE")}
+                                                        </TableCell>
+
+                                                        <TableCell sx={cellStyle}>
+                                                            {type}
+                                                        </TableCell>
+
+                                                        <TableCell sx={cellStyle}>
+                                                            {record.partnerName || "—"}
+                                                        </TableCell>
+
+                                                        <TableCell
+                                                            align="center"
+                                                            sx={{
+                                                                ...cellStyle,
+                                                                fontWeight: 700,
+                                                                color: isPositive
+                                                                    ? "success.main"
+                                                                    : isNegative
+                                                                        ? "error.main"
+                                                                        : "text.primary",
+                                                            }}
+                                                        >
+                                                            {isPositive && "+"}
+                                                            {isNegative && "-"}
+                                                            {record.quantity}
+                                                        </TableCell>
+
+                                                        <TableCell align="center" sx={cellStyle}>
+                                                            {record.documentId}
+                                                        </TableCell>
                                                     </TableRow>
                                                 );
                                             })}
@@ -507,40 +583,52 @@ export default function ProductCard() {
             </Paper >
 
             <Modal open={openModal} onClose={handleCloseModal}>
-                <Box
-                    sx={{
-                        position: "absolute",
-                        top: "50%",
-                        left: "50%",
-                        transform: "translate(-50%, -50%)",
-                        width: "80%",
-                        maxWidth: 800,
-                        bgcolor: "background.paper",
-                        boxShadow: 24,
-                        p: 4,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                    }}
-                >
-                    <IconButton onClick={handleCloseModal} sx={{ position: "absolute", top: 10, right: 10 }}>
+                <Box sx={imageModalStyle}>
+                    <IconButton
+                        onClick={handleCloseModal}
+                        sx={{
+                            position: "absolute",
+                            top: 8,
+                            right: 8,
+                        }}
+                    >
                         <Close />
                     </IconButton>
-                    <IconButton onClick={handlePrevFile} sx={{ position: "absolute", left: 10 }}>
-                        <ArrowBackIos />
-                    </IconButton>
-                    <img
+
+                    {files.length > 1 && (
+                        <IconButton
+                            onClick={handlePrevFile}
+                            sx={{
+                                position: "absolute",
+                                left: 8,
+                            }}
+                        >
+                            <ArrowBackIos />
+                        </IconButton>
+                    )}
+
+                    <Box
+                        component="img"
                         src={imageUrl}
                         alt={imageAlt}
-                        style={{
+                        sx={{
                             maxWidth: "100%",
-                            maxHeight: "500px",
+                            maxHeight: "75vh",
                             objectFit: "contain",
                         }}
                     />
-                    <IconButton onClick={handleNextFile} sx={{ position: "absolute", right: 10 }}>
-                        <ArrowForwardIos />
-                    </IconButton>
+
+                    {files.length > 1 && (
+                        <IconButton
+                            onClick={handleNextFile}
+                            sx={{
+                                position: "absolute",
+                                right: 8,
+                            }}
+                        >
+                            <ArrowForwardIos />
+                        </IconButton>
+                    )}
                 </Box>
             </Modal>
             {/* Модальное окно для редактирования */}

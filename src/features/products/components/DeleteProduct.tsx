@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from "@mui/material";
+import { Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, Tooltip } from "@mui/material";
 import { deleteProduct } from "../productsSlice";
 import { useAppDispatch } from "../../../redux/hooks";
 import { showSuccessToast } from "../../../utils/toast";
 import { handleApiError } from "../../../utils/handleApiError";
+import { colors } from "../../../styles/colors";
+import DeleteForeverOutlinedIcon from '@mui/icons-material/DeleteForeverOutlined';
 
 interface DeleteProductProps {
   productId: number;
@@ -21,36 +23,38 @@ export default function DeleteProduct({ productId, productName, productArticle, 
   const handleClose = () => setOpen(false);
 
   const handleDelete = async () => {
-  setLoading(true);
-  try {
-    await dispatch(deleteProduct(productId)).unwrap();
-    handleClose();
-    onSuccessDelete?.();
-    showSuccessToast("Erfolg", "Produkt wurde erfolgreich gelöscht!");
-  } catch (error: any) {
-    handleApiError(error, "Fehler beim Löschen des Produkts.");
-  } finally {
-    setLoading(false);
-  }
-};
+    setLoading(true);
+    try {
+      await dispatch(deleteProduct(productId)).unwrap();
+      handleClose();
+      onSuccessDelete?.();
+      showSuccessToast("Erfolg", "Produkt wurde erfolgreich gelöscht!");
+    } catch (error: any) {
+      handleApiError(error, "Fehler beim Löschen des Produkts.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <>
-      <Button
-        variant="outlined"
-        color="error"
-        size="small"
-        onClick={handleOpen}
-        sx={{
-          "&:hover": {
-            borderColor: "#d32f2f",
-            backgroundColor: "#fddede",
-          },
-        }}
-      >
-        Produkt löschen
-      </Button>
+      <Tooltip title="Produkt löschen" arrow>
+        <IconButton
+          onClick={handleOpen}
+          sx={{
+            color: colors.danger,
+            fontSize: "large",
 
+            "&:hover": {
+              color: colors.dangerLight,
+              //backgroundColor: "#fddede",
+              transform: "scale(1.3)",
+            },
+          }}
+        >
+          <DeleteForeverOutlinedIcon />
+        </IconButton>
+      </Tooltip>
 
       <Dialog open={open} onClose={handleClose}>
         <DialogTitle sx={{ color: "error.main", fontWeight: "bold" }}>⚠️ WARNUNG!</DialogTitle>
@@ -66,7 +70,7 @@ export default function DeleteProduct({ productId, productName, productArticle, 
           </Button>
         </DialogActions>
       </Dialog>
-      
+
     </>
   );
 }

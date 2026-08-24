@@ -1,4 +1,4 @@
-import { Box, Container, Paper, styled, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography, Button } from "@mui/material";
+import { Box, Container, Paper, Table, TableBody, TableCell, TableContainer, TableRow, Button } from "@mui/material";
 import { useAppDispatch, useAppSelector } from "../../../../redux/hooks";
 import { getProductCategories, selectProductCategories } from "../../productCategoriesSlice";
 import { useEffect, useState } from "react";
@@ -6,21 +6,11 @@ import CreateProductCategory from "./CreateProductCategory";
 import EditProductCategory from "./EditProductCategory";
 import { ProductCategory } from "../../types";
 import DeleteProductCategory from "./DeleteProductCategory";
+import PageTitle from "../../../../components/PageTitle";
+import { pageToolbarStyle } from "../../../../styles/formStyles";
+import { cellStyle, fixedCellWidth, leftBorderCellStyle, StyledTableHead, tableContainerStyle, tableRowHoverStyle, tableStyle } from "../../../../styles/tableStyles";
+import { outlinedButtonStyle } from "../../../../styles/buttonStyles";
 
-const StyledTableHead = styled(TableHead)(({
-    backgroundColor: "#1a3d6d",
-    "& th": {
-        color: "white",
-        fontWeight: "bold",
-        borderRight: "1px solid #ddd",
-    },
-}));
-const StyledTableRow = styled(TableRow)({
-    "&:hover": {
-        backgroundColor: "#f5f5f5", // Подсветка строки при наведении
-        cursor: "pointer",
-    },
-});
 
 export default function ProductCategoryList() {
     const dispatch = useAppDispatch();
@@ -33,43 +23,59 @@ export default function ProductCategoryList() {
 
     return (
         <Container>
-            {/* Верхняя панель */}
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                <Typography variant="h6" sx={{ textAlign:"left", fontWeight: "bold", textDecoration: 'underline', color: "#0277bd"}}>PRODUKTKATEGORIEN</Typography>
+            <Box sx={pageToolbarStyle}>
+                <PageTitle>PRODUKTKATEGORIEN</PageTitle>
+                <Box />
+
                 <CreateProductCategory />
             </Box>
 
+
+
             {/* Таблица */}
-            <TableContainer component={Paper} sx={{ boxShadow: "none" }}>
-                <Table>
+            <TableContainer component={Paper} sx={tableContainerStyle}>
+                <Table sx={tableStyle}>
                     <StyledTableHead>
                         <TableRow>
-                            <TableCell>ID</TableCell>
+                            <TableCell sx={fixedCellWidth(80)}>ID</TableCell>
                             <TableCell>Name</TableCell>
-                            <TableCell>ArtName</TableCell>
-                            <TableCell></TableCell>
+                            <TableCell sx={fixedCellWidth(160)}>ArtName</TableCell>
+                            <TableCell sx={fixedCellWidth(220)}>Aktionen</TableCell>
                         </TableRow>
                     </StyledTableHead>
                     <TableBody>
                         {productCategories.length > 0 ? (
                             productCategories.map((category) => (
-                                <StyledTableRow key={category.id}>
-                                    <TableCell style={{ padding: "6px 12px", borderRight: "1px solid #ddd", borderLeft: "1px solid #ddd" }}>{category.id}</TableCell>
-                                    <TableCell sx={{ width: "400px", padding: "6px 12px", borderRight: "1px solid #ddd" }}>{category.name}</TableCell>
-                                    <TableCell sx={{ width: "100px", padding: "6px 12px", borderRight: "1px solid #ddd" }}>{category.artName}</TableCell>
-                                    <TableCell sx={{ width: "200px", padding: "6px", borderRight: "1px solid #ddd" }}>
-                                        <Box display="flex" justifyContent="space-between">
+                                <TableRow key={category.id} sx={tableRowHoverStyle}>
+                                    <TableCell sx={{ ...cellStyle,  ...leftBorderCellStyle,  ...fixedCellWidth(80), }} >
+                                        {category.id}
+                                    </TableCell>
+
+                                    <TableCell sx={cellStyle}>
+                                        {category.name}
+                                    </TableCell>
+
+                                    <TableCell
+                                        sx={{ ...cellStyle,  ...fixedCellWidth(160), }} >
+                                        {category.artName}
+                                    </TableCell>
+
+                                    <TableCell
+                                        sx={{ ...cellStyle, ...fixedCellWidth(220), }}>
+                                        <Box display="flex" justifyContent="space-between" alignItems="center" gap={1} >
                                             <Button
                                                 variant="outlined"
-                                                color="primary"
                                                 size="small"
                                                 onClick={() => setSelectedCategory(category)}
-                                                sx={{ minWidth: "100px", "&:hover": { borderColor: "#00acc1" } }}
+                                                sx={{
+                                                    ...outlinedButtonStyle,
+                                                    minWidth: 110,
+                                                }}
                                             >
                                                 Bearbeiten
                                             </Button>
 
-                                            <Box sx={{ minWidth: "80px" }}>
+                                            <Box sx={{ minWidth: 80 }}>
                                                 <DeleteProductCategory
                                                     categoryId={category.id}
                                                     categoryName={category.name}
@@ -77,25 +83,25 @@ export default function ProductCategoryList() {
                                             </Box>
                                         </Box>
                                     </TableCell>
-
-                                </StyledTableRow>
+                                </TableRow>
                             ))
                         ) : (
                             <TableRow>
-                                <TableCell colSpan={4} align="center">Keine Kategorien vorhanden</TableCell>
+                                <TableCell colSpan={4} align="center">
+                                    Keine Kategorien vorhanden
+                                </TableCell>
                             </TableRow>
                         )}
                     </TableBody>
                 </Table>
             </TableContainer>
 
-            {/* Модальное окно редактирования */}
             {selectedCategory && (
                 <EditProductCategory
                     category={selectedCategory}
                     onClose={() => {
                         setSelectedCategory(null);
-                        dispatch(getProductCategories()); // Обновляем список после закрытия
+                        dispatch(getProductCategories());
                     }}
                 />
             )}

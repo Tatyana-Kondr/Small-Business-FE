@@ -13,7 +13,6 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableHead,
   TableRow,
   TextField,
   Typography,
@@ -23,8 +22,8 @@ import {
   Alert,
   SelectChangeEvent,
   CircularProgress,
+  FormHelperText,
 } from '@mui/material';
-import { styled } from '@mui/material/styles';
 import { Delete as DeleteIcon, Clear as ClearIcon } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
 import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
@@ -39,34 +38,20 @@ import { ProductPickDto } from '../../products/types';
 import { handleApiError } from '../../../utils/handleApiError';
 import { showSuccessToast } from '../../../utils/toast';
 import { NewSaleDto, NewSaleItemDto, NewShippingDimensionsDto, Shipping } from '../types';
-import { getSaleById, updateSale } from '../salesSlice';
+import { getSaleById } from '../salesSlice';
 import { getShippings, selectShippings } from '../shippingsSlice';
 import { getTermsOfPayment, selectTermsOfPayment } from '../termOfPaymentSlice';
 import CompactNumberCell from '../../../components/CompactNumberCell';
+import { backendErrorsToFormErrors, clearFieldError, FormErrors, hasErrors, isBackendValidationErrors, validateRequiredFields } from '../../../utils/validation/validation';
+import { fetchUpdateSale } from '../api';
+import { HttpError } from '../../../utils/handleFetchError';
+import { formSectionStyle, saleDateFieldStyle } from '../../../styles/formStyles';
+import { cancelButtonStyle, primaryButtonStyle } from '../../../styles/buttonStyles';
+import { formSaleSectionTitleStyle } from '../../../styles/typographyStyles';
+import { fixedCellWidth, saleTableCellStyle, saleTableCenterCellStyle, saleTableDeleteCellStyle, saleTableNameCellStyle, saleTableNameInputStyle, saleTableRightCellStyle, StyledTableHead, tableRowHoverStyle } from '../../../styles/tableStyles';
+import { colors } from '../../../styles/colors';
+import { formatNumber } from '../../../utils/formatNumber';
 
-const StyledTableHead = styled(TableHead)(({
-  backgroundColor: "#1a3d6d",
-  "& th": {
-    position: "sticky",
-    top: 0,
-    backgroundColor: "#1a3d6d",
-    color: "white",
-    fontWeight: "bold",
-    borderRight: "1px solid #ddd",
-    textAlign: "center",
-    zIndex: 1,
-  },
-}));
-
-const StyledTableRow = styled(TableRow)({
-  "&:hover": {
-    backgroundColor: "#f5f5f5",
-    cursor: "pointer",
-  },
-  "& td": {
-    verticalAlign: "middle", // выравнивание по вертикали
-  },
-});
 
 const typeOptions = ['VERKAUF', 'KUNDENERSTATTUNG'] as const;
 type SaleType = typeof typeOptions[number];
@@ -115,12 +100,13 @@ export default function SaleCard() {
   const [selectedShipping, setSelectedShipping] = useState<Shipping | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [weightInput, setWeightInput] = useState("");
-  const [deliveryDateValue, setDeliveryDateValue] = useState<Dayjs | null>(
-    sale.deliveryDate ? dayjs(sale.deliveryDate) : null
-  );
+  const [deliveryDateValue, setDeliveryDateValue] = useState<Dayjs | null>(sale.deliveryDate ? dayjs(sale.deliveryDate) : null);
   const [debouncedTerm, setDebouncedTerm] = useState(searchTerm);
+  const [errors, setErrors] = useState<FormErrors<NewSaleDto>>({});
+  const [loading, setLoading] = useState(false);
 
   const isPaid = sale.paymentStatus === "BEZAHLT";
+  const formattedPaymentDate = sale.paymentDate ? dayjs(sale.paymentDate).format("DD.MM.YYYY") : null;
 
   // 1. Загружаем данные продажи и справочники
   useEffect(() => {
@@ -300,39 +286,66 @@ export default function SaleCard() {
   }, [sale.salesItems]);
 
 
-  const handleAddProductToCart = (product: ProductPickDto) => {
-    const quantity = 1;
-    const unitPrice = Number(product.sellingPrice ?? 0); // если number
-    const totalPrice = quantity * unitPrice;
+  const handleAddProductToCart = (
+    product: ProductPickDto
+  ) => {
+    setSale((prev) => {
+      const quantity = 1;
+      const unitPrice = Number(
+        product.sellingPrice ?? 0
+      );
 
-    const discount = sale.defaultDiscount;
-    const discountAmount = (totalPrice * discount) / 100;
-    const totalPriceWithDiscount = totalPrice - discountAmount;
+      const totalBeforeDiscount =
+        roundMoney(quantity * unitPrice);
 
-    const tax = sale.defaultTax;
-    const taxAmount = (totalPriceWithDiscount * tax) / 100;
-    const totalAmount = totalPriceWithDiscount + taxAmount;
+      const discount = prev.defaultDiscount;
 
-    const item: NewSaleItemDto = {
-      position: sale.salesItems.length + 1,
-      saleId: 0,
-      productId: product.id,
-      productArticle: product.article,
-      productName: product.name,
-      quantity,
-      unitPrice,
-      totalPrice,
-      discount,
-      discountAmount,
-      tax,
-      taxAmount,
-      totalAmount,
-    };
+      const discountAmount = roundMoney(
+        (totalBeforeDiscount * discount) / 100
+      );
 
-    setSale(prev => ({
-      ...prev,
-      salesItems: [...prev.salesItems, item],
-    }));
+      const totalPrice = roundMoney(
+        totalBeforeDiscount - discountAmount
+      );
+
+      const tax = prev.defaultTax;
+
+      const taxAmount = roundMoney(
+        (totalPrice * tax) / 100
+      );
+
+      const totalAmount = roundMoney(
+        totalPrice + taxAmount
+      );
+
+      const item: NewSaleItemDto = {
+        position: prev.salesItems.length + 1,
+        saleId: id,
+        productId: product.id,
+        productArticle: product.article,
+        productName: product.name,
+        quantity,
+        unitPrice,
+        totalPrice,
+        discount,
+        discountAmount,
+        tax,
+        taxAmount,
+        totalAmount,
+      };
+
+      return {
+        ...prev,
+        salesItems: [
+          ...prev.salesItems,
+          item,
+        ],
+      };
+    });
+
+    setErrors((prev) =>
+      clearFieldError(prev, "salesItems")
+    );
   };
 
 
@@ -406,54 +419,95 @@ export default function SaleCard() {
     });
   };
 
-  const handleSubmit = () => {
+  const roundMoney = (value: number): number => {
+    return Number(value.toFixed(2));
+  };
+
+  const handleSubmit = async () => {
+    const validationErrors = validateRequiredFields(sale, [
+      "customerId",
+      "salesDate",
+      "termsOfPaymentId",
+    ]);
 
     if (!sale.salesItems.length) {
-      handleApiError(new Error("Der Auftrag enthält keine Artikel."));
+      validationErrors.salesItems =
+        "Bitte mindestens einen Artikel hinzufügen.";
+    }
+
+    setErrors(validationErrors);
+
+    if (hasErrors(validationErrors)) {
       return;
     }
 
-    if (!sale.customerId || !sale.salesDate) {
-      handleApiError(new Error("Bitte füllen Sie alle Pflichtfelder korrekt aus."));
-      return;
+    setLoading(true);
+
+    try {
+      const updatedSaleItems = sale.salesItems.map(
+        (item, index) => ({
+          ...item,
+          position: index + 1,
+
+          unitPrice: roundMoney(
+            Number(item.unitPrice)
+          ),
+
+          discountAmount: roundMoney(
+            Number(item.discountAmount)
+          ),
+
+          totalPrice: roundMoney(
+            Number(item.totalPrice)
+          ),
+
+          taxAmount: roundMoney(
+            Number(item.taxAmount)
+          ),
+
+          totalAmount: roundMoney(
+            Number(item.totalAmount)
+          ),
+        })
+      );
+
+      const updatedSaleToSend: NewSaleDto = {
+        ...sale,
+        paymentDate: sale.paymentDate,
+        salesItems: updatedSaleItems,
+      };
+
+      await fetchUpdateSale(id, updatedSaleToSend);
+
+      showSuccessToast(
+        "Erfolg",
+        "Auftrag erfolgreich aktualisiert."
+      );
+
+      navigate("/sales");
+
+    } catch (error) {
+      if (
+        error instanceof HttpError &&
+        isBackendValidationErrors(error.data)
+      ) {
+        setErrors(
+          backendErrorsToFormErrors<NewSaleDto>(
+            error.data.errors
+          )
+        );
+
+        return;
+      }
+
+      handleApiError(
+        error,
+        "Der Auftrag konnte nicht aktualisiert werden."
+      );
+
+    } finally {
+      setLoading(false);
     }
-
-    const updatedSaleItems = sale.salesItems.map((item, index) => ({
-      ...item,
-      taxPercentage: item.tax ?? 0,
-      taxAmount: ((item.unitPrice ?? 0) * (item.quantity ?? 0)) * ((item.tax ?? 0) / 100),
-      totalAmount: (item.unitPrice ?? 0) * (item.quantity ?? 0) + (((item.unitPrice ?? 0) * (item.quantity ?? 0)) * ((item.tax ?? 0) / 100)),
-      position: index + 1,
-    }));
-
-    const updatedSaleToSend: NewSaleDto = {
-      customerId: sale.customerId,
-      invoiceNumber: sale.invoiceNumber,
-      accountObject: sale.accountObject,
-      typeOfOperation: sale.typeOfOperation,
-      shippingId: sale.shippingId,
-      shippingDimensions: sale.shippingDimensions,
-      termsOfPaymentId: sale.termsOfPaymentId,
-      salesDate: sale.salesDate,
-      paymentStatus: sale.paymentStatus,
-      paymentDate: sale.paymentDate,
-      orderNumber: sale.orderNumber,
-      orderType: sale.orderType,
-      deliveryDate: sale.deliveryDate,
-      deliveryBill: sale.deliveryBill,
-      defaultTax: sale.defaultTax,
-      defaultDiscount: sale.defaultDiscount,
-      salesItems: updatedSaleItems
-    };
-    console.log("UPDATED SALE TO SEND:", updatedSaleToSend);
-
-    dispatch(updateSale({ id, updatedSale: updatedSaleToSend }))
-      .unwrap()
-      .then(() => {
-        showSuccessToast("Erfolg", "Auftrag erfolgreich aktualisiert");
-        navigate('/sales');
-      })
-      .catch(error => handleApiError(error, "Der Auftrag konnte nicht aktualisiert werden."));
   };
 
   const selectedCustomer =
@@ -471,7 +525,8 @@ export default function SaleCard() {
 
             {isPaid && (
               <Alert severity="warning" sx={{ mb: 2 }}>
-                Dieser Auftrag ist bereits <b>bezahlt</b>.
+                Dieser Auftrag ist bereits bezahlt
+                {formattedPaymentDate ? ` am ${formattedPaymentDate}.` : "."}
               </Alert>
             )}
 
@@ -480,7 +535,7 @@ export default function SaleCard() {
                 {`Auftrag Nr. ${id} `}
               </Typography>
 
-              <Grid item xs={4} sx={{ pl: 2, pb: 2, pt: 2 }}>
+              <Grid item xs={3} sx={{ pl: 2, pb: 2, pt: 2 }}>
                 <FormControl fullWidth>
                   <InputLabel id="typeOfOperation-label">Art der Operation</InputLabel>
                   <Select
@@ -500,12 +555,11 @@ export default function SaleCard() {
               </Grid>
             </Box>
 
-            <Grid container spacing={2}>
+            <Grid container spacing={2} sx={{ mb: 2 }}>
               {/* Kunde */}
-              <Grid item xs={8}>
+              <Grid item xs={6}>
                 <Autocomplete
                   fullWidth
-                  sx={{ mb: 3 }}
                   loading={customersPickLoading}
                   options={[...customersPickWithNumber].sort((a, b) => a.name.localeCompare(b.name))}
                   getOptionLabel={(option) =>
@@ -513,81 +567,120 @@ export default function SaleCard() {
                   }
                   isOptionEqualToValue={(option, value) => option.id === value.id}
                   value={selectedCustomer}
-                  onChange={(_, value) =>
-                    setSale(prev => ({ ...prev, customerId: value?.id ?? 0 }))
-                  }
+                  onChange={(_, value) => {
+                    setSale((prev) => ({
+                      ...prev,
+                      customerId: value?.id ?? 0,
+                    }));
+
+                    setErrors((prev) =>
+                      clearFieldError(prev, "customerId")
+                    );
+                  }}
                   renderInput={(params) => (
                     <TextField
                       {...params}
                       label="Kunde"
+                      error={Boolean(errors.customerId)}
+                      helperText={errors.customerId}
+                      disabled={isPaid || loading}
                       InputProps={{
                         ...params.InputProps,
                         endAdornment: (
                           <>
-                            {customersPickLoading ? <CircularProgress size={18} /> : null}
+                            {customersPickLoading ? (
+                              <CircularProgress size={18} />
+                            ) : null}
+
                             {params.InputProps.endAdornment}
                           </>
                         ),
                       }}
                     />
                   )}
-                  disabled={isPaid}
+                  disabled={isPaid || loading}
                 />
 
               </Grid>
               {/* Datum */}
-              <Grid item xs={4}>
+              <Grid item xs={3}>
                 <LocalizationProvider
                   dateAdapter={AdapterDayjs}
                   adapterLocale="de"
                   localeText={deDE.components.MuiLocalizationProvider.defaultProps.localeText}
                 >
                   <DatePicker
-                    label="Datum"
+                    label="Auftragsdatum"
                     value={dateValue}
                     onChange={(newValue) => {
                       setDateValue(newValue);
-                      setSale(prev => ({
+
+                      setSale((prev) => ({
                         ...prev,
-                        salesDate: newValue ? newValue.format('YYYY-MM-DD') : '',
+                        salesDate: newValue
+                          ? newValue.format("YYYY-MM-DD")
+                          : "",
                       }));
+
+                      setErrors((prev) =>
+                        clearFieldError(prev, "salesDate")
+                      );
                     }}
-                    slotProps={{ textField: { fullWidth: true } }}
-                    disabled={isPaid}
+                    slotProps={{
+                      textField: {
+                        fullWidth: true,
+                        size: "small",
+                        sx: saleDateFieldStyle,
+                        error: Boolean(errors.salesDate),
+                        helperText: errors.salesDate,
+                      },
+                    }}
+                    disabled={isPaid || loading}
                   />
                 </LocalizationProvider>
               </Grid>
-            </Grid>
-
-            {/* Details Block */}
-            <Grid container spacing={2} sx={{ mb: 4 }}>
               {/* Rechnung */}
               <Grid item xs={3}>
                 <TextField
                   label="Rechnung"
                   value={sale.invoiceNumber}
                   onChange={(e) => setSale({ ...sale, invoiceNumber: e.target.value })}
-                  disabled={isPaid}
+                  disabled={isPaid || loading}
                   fullWidth
                 />
               </Grid>
+            </Grid>
 
+            {/* Details Block */}
+            <Grid container spacing={2} sx={{ mb: 2 }}>
+              {/* Objekt */}
               <Grid item xs={4}>
-                <FormControl fullWidth>
-                  <TextField
-                    id="account-object"
-                    name="accountObject"
-                    label="Objekt"
-                    value={sale.accountObject}
-                    onChange={(e) => setSale({ ...sale, accountObject: e.target.value })}
-                    fullWidth
-                  />
-                </FormControl>
+                <TextField
+                  id="account-object"
+                  name="accountObject"
+                  label="Objekt"
+                  value={sale.accountObject}
+                  onChange={(e) =>
+                    setSale((prev) => ({
+                      ...prev,
+                      accountObject: e.target.value,
+                    }))
+                  }
+                  fullWidth
+                  disabled={loading}
+                />
               </Grid>
 
-              <Grid item xs={5}>
-                <FormControl fullWidth>
-                  <InputLabel id="terms-of-payment-label">Zahlungsbedingung</InputLabel>
+              {/* Zahlungsbedingung */}
+              <Grid item xs={4}>
+                <FormControl
+                  fullWidth
+                  error={Boolean(errors.termsOfPaymentId)}
+                  disabled={isPaid || loading}
+                >
+                  <InputLabel id="terms-of-payment-label">
+                    Zahlungsbedingung
+                  </InputLabel>
 
                   <Select
                     id="terms-of-payment"
@@ -596,29 +689,102 @@ export default function SaleCard() {
                     value={sale.termsOfPaymentId || ""}
                     onChange={(e: SelectChangeEvent<number>) => {
                       const selectedId = Number(e.target.value);
-                      setSale(prev => ({
+
+                      setSale((prev) => ({
                         ...prev,
                         termsOfPaymentId: selectedId,
                       }));
+
+                      setErrors((prev) =>
+                        clearFieldError(
+                          prev,
+                          "termsOfPaymentId"
+                        )
+                      );
                     }}
                   >
-                    <MenuItem value="">Bitte wählen</MenuItem>
+                    <MenuItem value="">
+                      Bitte wählen
+                    </MenuItem>
 
-                    {termsOfPayment.map(term => (
+                    {termsOfPayment.map((term) => (
                       <MenuItem key={term.id} value={term.id}>
                         {term.name}
                       </MenuItem>
                     ))}
                   </Select>
-                </FormControl>
 
+                  {errors.termsOfPaymentId && (
+                    <FormHelperText>
+                      {errors.termsOfPaymentId}
+                    </FormHelperText>
+                  )}
+                </FormControl>
+              </Grid>
+
+              {/* MWSt */}
+              <Grid item xs={2}>
+                <FormControl
+                  fullWidth
+                  disabled={isPaid || loading}
+                >
+                  <InputLabel id="default-tax-label">
+                    MWSt %
+                  </InputLabel>
+
+                  <Select
+                    labelId="default-tax-label"
+                    label="MWSt %"
+                    value={sale.defaultTax}
+                    onChange={(e) =>
+                      setSale((prev) => ({
+                        ...prev,
+                        defaultTax: Number(e.target.value),
+                      }))
+                    }
+                  >
+                    <MenuItem value={0}>0%</MenuItem>
+                    <MenuItem value={7}>7%</MenuItem>
+                    <MenuItem value={19}>19%</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              {/* Rabatt */}
+              <Grid item xs={2}>
+                <FormControl
+                  fullWidth
+                  disabled={isPaid || loading}
+                >
+                  <InputLabel id="default-discount-label">
+                    Rabatt %
+                  </InputLabel>
+
+                  <Select
+                    labelId="default-discount-label"
+                    label="Rabatt %"
+                    value={sale.defaultDiscount}
+                    onChange={(e) =>
+                      setSale((prev) => ({
+                        ...prev,
+                        defaultDiscount: Number(e.target.value),
+                      }))
+                    }
+                  >
+                    <MenuItem value={0}>0%</MenuItem>
+                    <MenuItem value={5}>5%</MenuItem>
+                    <MenuItem value={10}>10%</MenuItem>
+                    <MenuItem value={15}>15%</MenuItem>
+                    <MenuItem value={20}>20%</MenuItem>
+                  </Select>
+                </FormControl>
               </Grid>
             </Grid>
 
             {/* 📦 Versand & Maße Block */}
             <Grid item xs={12}>
-              <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
-                <Typography gutterBottom sx={{ color: "#00acc1", mb: 2, textAlign: 'left' }}>
+              <Paper sx={formSectionStyle}>
+                <Typography sx={formSaleSectionTitleStyle}>
                   Versand & Maße
                 </Typography>
 
@@ -704,9 +870,9 @@ export default function SaleCard() {
 
             {/* 📝 Bestellung Block */}
             <Grid item xs={12}>
-              <Paper elevation={2} sx={{ p: 2, mb: 5 }}>
-                <Typography gutterBottom sx={{ color: "#00acc1", mb: 2, textAlign: 'left' }}>
-                  Lieferung & Bestelldaten
+              <Paper sx={formSectionStyle}>
+                <Typography sx={formSaleSectionTitleStyle}>
+                  Bestelldaten
                 </Typography>
                 <Grid container spacing={2}>
                   {/* Lieferschein */}
@@ -730,14 +896,23 @@ export default function SaleCard() {
                         value={deliveryDateValue}
                         onChange={(newValue) => {
                           setDeliveryDateValue(newValue);
+
                           setSale((prev) => ({
                             ...prev,
-                            deliveryDate: newValue ? newValue.format('YYYY-MM-DD') : '',
+                            deliveryDate: newValue
+                              ? newValue.format("YYYY-MM-DD")
+                              : "",
                           }));
                         }}
                         slotProps={{
-                          textField: { id: 'delivery-date', fullWidth: true },
+                          textField: {
+                            id: "delivery-date",
+                            fullWidth: true,
+                            size: "small",
+                            sx: saleDateFieldStyle,
+                          },
                         }}
+                        disabled={loading}
                       />
                     </LocalizationProvider>
                   </Grid>
@@ -766,146 +941,115 @@ export default function SaleCard() {
               </Paper>
             </Grid>
 
-            {/* DefaultTax and DefaultDiscount */}
-            <Grid container spacing={2} justifyContent="flex-end" sx={{ mb: 2 }}>
-              <Grid item xs={2}>
-                <FormControl fullWidth>
-                  <InputLabel id="default-tax-label" htmlFor="default-tax-select">MWSt %</InputLabel>
-                  <Select
-                    id="default-tax-select"
-                    labelId="default-tax-label"
-                    label="MWSt %"
-                    value={sale.defaultTax}
-                    onChange={(e) =>
-                      setSale(prev => ({
-                        ...prev,
-                        defaultTax: typeof e.target.value === 'string'
-                          ? parseFloat(e.target.value)
-                          : e.target.value,
-                      }))
-                    }
-                    disabled={isPaid}
-                  >
-                    <MenuItem value={0}>0%</MenuItem>
-                    <MenuItem value={7}>7%</MenuItem>
-                    <MenuItem value={19}>19%</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-
-              <Grid item xs={2}>
-                <FormControl fullWidth>
-                  <InputLabel id="default-discount-label" htmlFor="default-discount-select">Rabatt %</InputLabel>
-                  <Select
-                    id="default-discount-select"
-                    labelId="default-discount-label"
-                    label="Rabatt %"
-                    value={sale.defaultDiscount}
-                    onChange={(e) =>
-                      setSale(prev => ({
-                        ...prev,
-                        defaultDiscount: typeof e.target.value === 'string'
-                          ? parseFloat(e.target.value)
-                          : e.target.value,
-                      }))
-                    }
-                    disabled={isPaid}
-                  >
-                    <MenuItem value={0}>0%</MenuItem>
-                    <MenuItem value={5}>5%</MenuItem>
-                    <MenuItem value={10}>10%</MenuItem>
-                    <MenuItem value={15}>15%</MenuItem>
-                    <MenuItem value={20}>20%</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-            </Grid>
-
             {/* Artikeln_Tabelle */}
             <Box sx={{ minHeight: 200, overflowY: 'auto', mb: 2, border: "1px solid #ddd" }}>
               <Table size="small">
                 <StyledTableHead>
                   <TableRow>
-                    <TableCell sx={{ width: 50, fontSize: "12px" }}>Pos</TableCell>
-                    <TableCell>Artikel</TableCell>
-                    <TableCell sx={{ minWidth: 200 }}>Name</TableCell>
-                    <TableCell sx={{ width: 70 }}>Menge</TableCell>
-                    <TableCell sx={{ width: 90 }}>Preis</TableCell>
-                    <TableCell sx={{ width: 70, fontSize: "12px" }}>Rabatt%</TableCell>
-                    <TableCell sx={{ width: 70, fontSize: "12px" }}>MWSt%</TableCell>
-                    <TableCell sx={{ width: 90 }}>Netto</TableCell>
-                    <TableCell sx={{ width: 90 }}>MWSt</TableCell>
-                    <TableCell sx={{ width: 40 }}></TableCell>
+                    <TableCell sx={{ ...fixedCellWidth(45), fontSize: "12px" }}>Pos</TableCell>
+                    <TableCell sx={fixedCellWidth(110)}>Artikel</TableCell>
+                    <TableCell sx={{ width: "40%" }}>Name</TableCell>
+                    <TableCell sx={fixedCellWidth(75)}>Menge</TableCell>
+                    <TableCell sx={fixedCellWidth(90)}>Preis</TableCell>
+                    <TableCell sx={{ ...fixedCellWidth(75), fontSize: "12px" }}>Rabatt%</TableCell>
+                    <TableCell sx={{ ...fixedCellWidth(75), fontSize: "12px" }}>MWSt%</TableCell>
+                    <TableCell sx={fixedCellWidth(90)}>Netto</TableCell>
+                    <TableCell sx={fixedCellWidth(90)}>MWSt</TableCell>
+                    <TableCell sx={fixedCellWidth(40)}></TableCell>
                   </TableRow>
                 </StyledTableHead>
                 <TableBody>
                   {sale.salesItems.map((item, index) => (
-                    <StyledTableRow key={index}>
-                      <TableCell sx={{ padding: "6px 16px", borderRight: "1px solid #ddd", textAlign: "center", width: 50, }}>{index + 1}</TableCell>
-                      <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", minWidth: 200, textAlign: "left" }}>
+                    <TableRow key={index} sx={tableRowHoverStyle}>
+                      <TableCell sx={{ ...saleTableCenterCellStyle, ...fixedCellWidth(45), borderLeft: `1px solid ${colors.border}`, }}>{index + 1}</TableCell>
+                      <TableCell sx={{ ...saleTableCellStyle, ...fixedCellWidth(110), }}>
                         <TextField
                           variant="standard"
                           value={item.productArticle}
-                          size="small"
                           onChange={(e) => handleItemChange(index, 'productName', e.target.value)}
-                          InputProps={{ disableUnderline: true, }}
-                          sx={{ fontSize: '0.875rem', '& .MuiInputBase-root': { border: 'none', }, '& .MuiInputBase-input': { fontSize: '0.875rem', padding: 0 } }}
+                          slotProps={{ input: { disableUnderline: true, }, }}
                         />
                       </TableCell>
-                      <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", minWidth: 200, textAlign: "left" }}>
+                      <TableCell sx={{ ...saleTableNameCellStyle, width: "40%", verticalAlign: "middle", py: 1 }}>
                         <TextField
                           variant="standard"
                           multiline
                           minRows={1}
-                          maxRows={4}
+                          maxRows={3}
+                          fullWidth
                           value={item.productName}
-                          size="small"
-                          onChange={(e) => handleItemChange(index, 'productName', e.target.value)}
-                          InputProps={{ disableUnderline: true, }}
-                          sx={{ fontSize: '0.875rem', '& .MuiInputBase-root': { border: 'none', }, '& .MuiInputBase-input': { fontSize: '0.875rem', padding: 0 } }}
-                        />
-                      </TableCell>
-                      <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", width: "70px" }}>
-                        <TextField
-                          variant="standard"
-                          type="number"
-                          value={item.quantity}
-                          size="small"
-                          onChange={(e) => handleItemChange(index, 'quantity', parseFloat(e.target.value))}
-                          onFocus={(e) => { setTimeout(() => e.target.select(), 0); }}
-                          InputProps={{ disableUnderline: true, sx: { textAlign: "center" } }}
-                          sx={{ fontSize: '0.875rem', '& .MuiInputBase-root': { border: 'none', }, '& .MuiInputBase-input': { fontSize: '0.875rem', padding: 0, textAlign: 'center' }, min: 0, step: 0.01 }}
                           disabled={isPaid}
+                          onChange={(e) => handleItemChange(index, 'productName', e.target.value)}
+                          slotProps={{ input: { disableUnderline: true, }, }}
+                          sx={saleTableNameInputStyle}
                         />
                       </TableCell>
-                      <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", width: "70px" }}>
+                      <TableCell sx={{ ...saleTableCellStyle, ...fixedCellWidth(75), }}>
+                        <CompactNumberCell
+                          value={item.quantity}
+                          disabled={isPaid}
+                          min={0}
+                          step={1}
+                          align="center"
+                          onChange={(value) =>
+                            handleItemChange(index, "quantity", value)
+                          }
+                        />
+                      </TableCell>
+                      <TableCell sx={{ ...saleTableCellStyle, ...fixedCellWidth(90), }}>
                         <CompactNumberCell
                           value={item.unitPrice}
                           disabled={isPaid}
-                          onChange={(val) => handleItemChange(index, "unitPrice", val)}
+                          min={0}
+                          step={0.01}
+                          onChange={(value) =>
+                            handleItemChange(
+                              index,
+                              "unitPrice",
+                              value
+                            )
+                          }
                         />
                       </TableCell>
-                      <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", width: 70 }}>
+                      <TableCell sx={{ ...saleTableCellStyle, ...fixedCellWidth(75), }}>
                         <CompactNumberCell
                           value={item.discount}
                           disabled={isPaid}
-                          onChange={(val) => handleItemChange(index, "discount", val)}
+                          min={0}
+                          max={100}
+                          step={1}
+                          onChange={(value) =>
+                            handleItemChange(
+                              index,
+                              "discount",
+                              value
+                            )
+                          }
                         />
                       </TableCell>
-                      <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", width: 70 }}>
+                      <TableCell sx={{ ...saleTableCellStyle, ...fixedCellWidth(75), }}>
                         <CompactNumberCell
                           value={item.tax}
                           disabled={isPaid}
-                          onChange={(val) => handleItemChange(index, "tax", val)}
+                          min={0}
+                          max={100}
+                          step={1}
+                          onChange={(value) =>
+                            handleItemChange(
+                              index,
+                              "tax",
+                              value
+                            )
+                          }
                         />
                       </TableCell>
-                      <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", width: 90, textAlign: "right" }}>
+                      <TableCell sx={{ ...saleTableRightCellStyle, ...fixedCellWidth(90), }}>
                         {item.totalPrice.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </TableCell>
-                      <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", width: 90, textAlign: "right" }}>
+                      <TableCell sx={{ ...saleTableRightCellStyle, ...fixedCellWidth(90), }}>
                         {item.taxAmount.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </TableCell>
-                      <TableCell>
+                      <TableCell sx={{ ...saleTableDeleteCellStyle, ...fixedCellWidth(40), }}>
                         <Tooltip title="Löschen" arrow>
                           <IconButton
                             size="small"
@@ -925,7 +1069,7 @@ export default function SaleCard() {
                           </IconButton>
                         </Tooltip>
                       </TableCell>
-                    </StyledTableRow>
+                    </TableRow>
                   ))}
                   {sale.salesItems.length === 0 && (
                     <TableRow>
@@ -936,30 +1080,83 @@ export default function SaleCard() {
                   )}
                 </TableBody>
               </Table>
+              {errors.salesItems && (
+                <Typography
+                  variant="caption"
+                  color="error"
+                  sx={{
+                    display: "block",
+                    mt: 0.5,
+                    ml: 0.5,
+                  }}
+                >
+                  {errors.salesItems}
+                </Typography>
+              )}
             </Box>
 
-            <Grid container spacing={2} alignItems="flex-end" sx={{ mb: 5 }}>
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "flex-end",
+                justifyContent: "space-between",
+                gap: 3,
+                mt: 3,
+                mb: 5,
+              }}
+            >
+              <Box
+                sx={{
+                  display: "flex",
+                  gap: 2,
+                }}
+              >
+                <Button
+                  onClick={() => navigate("/sales")}
+                  sx={cancelButtonStyle}
+                  disabled={loading}
+                >
+                  Abbrechen
+                </Button>
 
-              <Grid item xs={4}>
                 <Button
                   variant="contained"
-                  color="primary"
                   onClick={handleSubmit}
-                  disabled={!sale.customerId || !sale.salesDate || sale.salesItems.length === 0}
-                  fullWidth
+                  sx={primaryButtonStyle}
+                  disabled={isPaid || loading}
                 >
-                  Aktualisieren
+                  {loading ? (
+                    <CircularProgress size={24} />
+                  ) : (
+                    "Aktualisieren"
+                  )}
                 </Button>
-              </Grid>
+              </Box>
 
-              <Grid item xs={8}>
-                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1 }}>
-                  <Typography>Netto: {subtotal.toFixed(2)} €</Typography>
-                  <Typography>MWSt: {taxSum.toFixed(2)} €</Typography>
-                  <Typography variant='h6' sx={{ fontWeight: 'bold' }}>Gesamtbetrag: {total.toFixed(2)} €</Typography>
-                </Box>
-              </Grid>
-            </Grid>
+              <Box
+                sx={{
+                  minWidth: 260,
+                  textAlign: "right",
+                }}
+              >
+                <Typography>
+                  Netto: {subtotal.toFixed(2)} €
+                </Typography>
+
+                <Typography>
+                  MWSt: {taxSum.toFixed(2)} €
+                </Typography>
+
+                <Typography
+                  variant="h6"
+                  sx={{
+                    fontWeight: "bold",
+                  }}
+                >
+                  Gesamtbetrag: {total.toFixed(2)} €
+                </Typography>
+              </Box>
+            </Box>
 
             {!isPaid && (
               <Box sx={{ mb: 2 }}>
@@ -1032,14 +1229,14 @@ export default function SaleCard() {
                     </StyledTableHead>
                     <TableBody>
                       {pickProducts.map(p => (
-                        <StyledTableRow key={p.id} onDoubleClick={() => handleAddProductToCart(p)}>
-                          <TableCell>{p.name}</TableCell>
-                          <TableCell>{p.article}</TableCell>
-                          <TableCell>{p.vendorArticle ?? ''}</TableCell>
-                          <TableCell align="right">
-                            {Number(p.sellingPrice ?? 0).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        <TableRow key={p.id} sx={tableRowHoverStyle} onDoubleClick={() => handleAddProductToCart(p)}>
+                          <TableCell sx={saleTableCellStyle}>{p.name}</TableCell>
+                          <TableCell sx={saleTableCellStyle}>{p.article}</TableCell>
+                          <TableCell sx={saleTableCellStyle}>{p.vendorArticle ?? ''}</TableCell>
+                          <TableCell sx={saleTableRightCellStyle}>
+                            {formatNumber(p.sellingPrice ?? 0)}
                           </TableCell>
-                        </StyledTableRow>
+                        </TableRow>
                       ))}
 
                       {!productsPickLoading && pickProducts.length === 0 && (

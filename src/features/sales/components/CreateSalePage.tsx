@@ -1,16 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
     Box, TextField, Button, Typography, IconButton,
-    FormControl, Select, MenuItem, Table, TableHead,
+    FormControl, Select, MenuItem, Table,
     TableRow, TableCell, TableBody, Autocomplete,
     Grid,
-    styled,
     Paper,
     InputAdornment,
     InputLabel,
     Tooltip,
     SelectChangeEvent,
-    CircularProgress
+    CircularProgress,
+    FormHelperText
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { ProductPickDto } from '../../products/types';
@@ -24,7 +24,6 @@ import { deDE } from '@mui/x-date-pickers/locales';
 import { getPickProducts, selectPickLoading, selectPickProducts } from '../../products/productsSlice';
 import { getProductCategories, selectProductCategories } from '../../products/productCategoriesSlice';
 import { NewSaleDto, NewSaleItemDto, NewShippingDimensionsDto } from '../types';
-import { addSale } from '../salesSlice';
 import { Dialog } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import CreateCustomer from '../../customers/components/CreateCustomer';
@@ -32,26 +31,16 @@ import { handleApiError } from '../../../utils/handleApiError';
 import { showSuccessToast } from '../../../utils/toast';
 import { getShippings, selectShippings } from '../shippingsSlice';
 import { getTermsOfPayment, selectTermsOfPayment } from '../termOfPaymentSlice';
+import { actionIconButtonStyle, fixedCellWidth, saleTableCellStyle, saleTableCenterCellStyle, saleTableDeleteCellStyle, saleTableNameCellStyle, saleTableNameInputStyle, saleTableRightCellStyle, StyledTableHead, tableRowHoverStyle, tableStyle } from '../../../styles/tableStyles';
+import { formSectionStyle, saleDateFieldStyle } from '../../../styles/formStyles';
+import { formSaleSectionTitleStyle } from '../../../styles/typographyStyles';
+import { addButtonStyle, cancelButtonStyle, primaryButtonStyle } from '../../../styles/buttonStyles';
+import { HttpError } from "../../../utils/handleFetchError";
+import { backendErrorsToFormErrors, clearFieldError, FormErrors, hasErrors, isBackendValidationErrors, validateRequiredFields } from '../../../utils/validation/validation';
+import { fetchAddSale } from '../api';
+import { colors } from '../../../styles/colors';
+import CompactNumberCell from '../../../components/CompactNumberCell';
 
-const StyledTableHead = styled(TableHead)(({
-    backgroundColor: "#1a3d6d",
-    "& th": {
-        position: "sticky",
-        top: 0,
-        backgroundColor: "#1a3d6d",
-        color: "white",
-        fontWeight: "bold",
-        borderRight: "1px solid #ddd",
-        textAlign: "center",
-        zIndex: 1,
-    },
-}));
-const StyledTableRow = styled(TableRow)({
-    "&:hover": {
-        backgroundColor: "#f5f5f5", // Подсветка строки при наведении
-        cursor: "pointer",
-    },
-});
 
 const typeOptions = ['VERKAUF', 'KUNDENERSTATTUNG'] as const;
 type SaleType = typeof typeOptions[number];
@@ -63,19 +52,22 @@ type CreateSaleModalProps = {
 
 export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSaleModalProps) {
     const dispatch = useAppDispatch();
+    const today = dayjs();
+    const todayString = today.format("YYYY-MM-DD");
 
-    const [newSale, setNewSale] = useState<Omit<NewSaleDto, 'paymentStatus'>>({
+    type SaleFormDto = Omit<NewSaleDto, "paymentStatus">;
+    const [newSale, setNewSale] = useState<SaleFormDto>({
         customerId: 0,
         invoiceNumber: '',
         accountObject: '',
         typeOfOperation: 'VERKAUF',
         shippingId: null,
-        termsOfPaymentId: 0,
-        salesDate: '',
+        termsOfPaymentId: 1,
+        salesDate: todayString,
         paymentDate: '',
         orderNumber: '',
         orderType: '',
-        deliveryDate: '',
+        deliveryDate: todayString,
         deliveryBill: '',
         defaultTax: 19,
         defaultDiscount: 0,
@@ -84,7 +76,7 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
 
     const customersPickWithNumber = useAppSelector(selectCustomersPickListWithNumber);
     const customersPickLoading = useAppSelector(selectLoadingPick);
-    const [dateValue, setDateValue] = useState<Dayjs | null>(null);
+    const [dateValue, setDateValue] = useState<Dayjs | null>(today);
     const categories = useAppSelector(selectProductCategories);
     const shippings = useAppSelector(selectShippings);
     const termsOfPayment = useAppSelector(selectTermsOfPayment);
@@ -93,10 +85,11 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
     const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [weightInput, setWeightInput] = useState<string>('');
-    const [deliveryDateValue, setDeliveryDateValue] = useState<Dayjs | null>(
-        newSale.deliveryDate ? dayjs(newSale.deliveryDate) : null
-    );
+    const [deliveryDateValue, setDeliveryDateValue] = useState<Dayjs | null>(today);
     const [showCreateCustomer, setShowCreateCustomer] = useState(false);
+
+    const [loading, setLoading] = useState(false);
+    const [errors, setErrors] = useState<FormErrors<NewSaleDto>>({});
 
 
     useEffect(() => {
@@ -135,8 +128,12 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
     }, [selectedCategory]);
 
     const { subtotal, taxSum, total } = useMemo(() => {
-        if (!newSale.salesItems || newSale.salesItems.length === 0) {
-            return { subtotal: 0, taxSum: 0, total: 0 };
+        if (!newSale.salesItems.length) {
+            return {
+                subtotal: 0,
+                taxSum: 0,
+                total: 0,
+            };
         }
 
         let subtotal = 0;
@@ -144,15 +141,29 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
         let total = 0;
 
         for (const item of newSale.salesItems) {
-            subtotal += item.totalPrice;
-            taxSum += item.taxAmount;
-            total += item.totalAmount;
+            subtotal += Number.isFinite(
+                Number(item.totalPrice)
+            )
+                ? Number(item.totalPrice)
+                : 0;
+
+            taxSum += Number.isFinite(
+                Number(item.taxAmount)
+            )
+                ? Number(item.taxAmount)
+                : 0;
+
+            total += Number.isFinite(
+                Number(item.totalAmount)
+            )
+                ? Number(item.totalAmount)
+                : 0;
         }
 
         return {
-            subtotal: parseFloat(subtotal.toFixed(2)),
-            taxSum: parseFloat(taxSum.toFixed(2)),
-            total: parseFloat(total.toFixed(2)),
+            subtotal: Number(subtotal.toFixed(2)),
+            taxSum: Number(taxSum.toFixed(2)),
+            total: Number(total.toFixed(2)),
         };
     }, [newSale.salesItems]);
 
@@ -190,36 +201,63 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
     }, [newSale.defaultTax, newSale.defaultDiscount]);
 
     const handleAddProductToCart = (product: ProductPickDto) => {
-        const quantity = 1;
-        const unitPrice = product.sellingPrice;
-        const totalPrice = quantity * unitPrice;
-        const discount = newSale.defaultDiscount;
-        const discountAmount = (totalPrice * discount) / 100;
-        const totalPriceWithDiscount = totalPrice - discountAmount;
-        const tax = newSale.defaultTax;
-        const taxAmount = (totalPriceWithDiscount * tax) / 100;
-        const totalAmount = totalPriceWithDiscount + taxAmount;
+        setNewSale((prev) => {
+            const quantity = 1;
+            const unitPrice = product.sellingPrice;
 
-        const item: NewSaleItemDto = {
-            position: newSale.salesItems.length + 1,
-            saleId: 0,
-            productId: product.id,
-            productArticle: product.article,
-            productName: product.name,
-            quantity,
-            unitPrice,
-            totalPrice,
-            discount,
-            discountAmount,
-            tax,
-            taxAmount,
-            totalAmount,
-        };
+            const totalPriceBeforeDiscount = roundMoney(
+                quantity * unitPrice
+            );
 
-        setNewSale(prev => ({
-            ...prev,
-            salesItems: [...prev.salesItems, item],
-        }));
+            const discount = prev.defaultDiscount;
+
+            const discountAmount = roundMoney(
+                (totalPriceBeforeDiscount * discount) / 100
+            );
+
+            const totalPrice = roundMoney(
+                totalPriceBeforeDiscount - discountAmount
+            );
+
+            const tax = prev.defaultTax;
+
+            const taxAmount = roundMoney(
+                (totalPrice * tax) / 100
+            );
+
+            const totalAmount = roundMoney(
+                totalPrice + taxAmount
+            );
+
+            const item: NewSaleItemDto = {
+                position: prev.salesItems.length + 1,
+                saleId: 0,
+                productId: product.id,
+                productArticle: product.article,
+                productName: product.name,
+                quantity,
+                unitPrice,
+                totalPrice,
+                discount,
+                discountAmount,
+                tax,
+                taxAmount,
+                totalAmount,
+            };
+
+            const updatedItems = [...prev.salesItems, item];
+
+            console.log("Artikel im Auftrag:", updatedItems);
+
+            return {
+                ...prev,
+                salesItems: updatedItems,
+            };
+        });
+        setErrors((prev) =>
+            clearFieldError(prev, "salesItems")
+        );
+
     };
 
     const handleRemoveItem = (index: number) => {
@@ -233,36 +271,77 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
         setShowCreateCustomer(true);
     };
 
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
+        const validationErrors = validateRequiredFields(newSale, [
+            "customerId",
+            "salesDate",
+            "termsOfPaymentId",
+        ]);
+
         if (!newSale.salesItems.length) {
-            handleApiError(new Error("Der Autrag enthält keine Artikel."));
-            return;
+            validationErrors.salesItems =
+                "Bitte mindestens einen Artikel hinzufügen.";
         }
 
-        if (!newSale.customerId || !newSale.salesDate) {
-            handleApiError(new Error("Bitte füllen Sie alle Pflichtfelder korrekt aus."));
+        setErrors(validationErrors);
+
+        if (hasErrors(validationErrors)) {
             return;
         }
+        setLoading(true);
 
-        const updatedSaleItems = newSale.salesItems.map((item, index) => ({
-            ...item,
-            position: index + 1,
-        }));
+        try {
+            const updatedSaleItems = newSale.salesItems.map(
+                (item, index) => ({
+                    ...item,
+                    position: index + 1,
+                    unitPrice: roundMoney(Number(item.unitPrice)),
+                    discountAmount: roundMoney(Number(item.discountAmount)),
+                    totalPrice: roundMoney(Number(item.totalPrice)),
+                    taxAmount: roundMoney(Number(item.taxAmount)),
+                    totalAmount: roundMoney(Number(item.totalAmount)),
+                })
+            );
 
-        const newSaleToSend: NewSaleDto = {
-            ...newSale,
-            salesItems: updatedSaleItems,
-            paymentStatus: 'AUSSTEHEND',
-        };
+            const dtoToSend: NewSaleDto = {
+                ...newSale,
+                paymentDate: undefined,
+                salesItems: updatedSaleItems,
+                paymentStatus: "OFFEN",
+            };
 
-        dispatch(addSale(newSaleToSend))
-            .unwrap()
-            .then(() => {
-                showSuccessToast("Erfolg", "Auftrag erfolgreich erstellt.");
-                onSubmitSuccess?.();
-                onClose();
-            })
-            .catch(error => handleApiError(error, "Der Auftrag konnte nicht erstellt werden."));
+            await fetchAddSale(dtoToSend);
+
+            showSuccessToast(
+                "Erfolg",
+                "Auftrag erfolgreich erstellt."
+            );
+
+            onSubmitSuccess?.();
+            onClose();
+
+        } catch (error) {
+            if (
+                error instanceof HttpError &&
+                isBackendValidationErrors(error.data)
+            ) {
+                setErrors(
+                    backendErrorsToFormErrors<SaleFormDto>(
+                        error.data.errors
+                    )
+                );
+
+                return;
+            }
+
+            handleApiError(
+                error,
+                "Der Auftrag konnte nicht erstellt werden."
+            );
+
+        } finally {
+            setLoading(false);
+        }
     };
     const updateShippingDimension = (
         field: keyof NewShippingDimensionsDto,
@@ -279,22 +358,75 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
         }));
     };
 
+    const roundMoney = (value: number): number => {
+        return Number(value.toFixed(2));
+    };
+
     const handleItemChange = (
         index: number,
         field: keyof NewSaleItemDto,
         value: string | number
     ) => {
-        setNewSale(prev => {
+        setNewSale((prev) => {
             const updatedItems = [...prev.salesItems];
-            const currentItem = { ...updatedItems[index], [field]: value };
 
-            // Пересчитать суммы, если изменилось числовое поле
-            const subTotalPrice = currentItem.quantity * currentItem.unitPrice;
-            currentItem.discountAmount = (subTotalPrice * currentItem.discount) / 100;
-            currentItem.totalPrice = subTotalPrice - currentItem.discountAmount;
-            const appliedTax = currentItem.tax ?? newSale.defaultTax;
-            currentItem.taxAmount = (currentItem.totalPrice * appliedTax) / 100;
-            currentItem.totalAmount = currentItem.totalPrice + currentItem.taxAmount;
+            const currentItem: NewSaleItemDto = {
+                ...updatedItems[index],
+                [field]: value,
+            };
+
+            const quantity = Number.isFinite(
+                Number(currentItem.quantity)
+            )
+                ? Number(currentItem.quantity)
+                : 0;
+
+            const unitPrice = Number.isFinite(
+                Number(currentItem.unitPrice)
+            )
+                ? Number(currentItem.unitPrice)
+                : 0;
+
+            const discount = Number.isFinite(
+                Number(currentItem.discount)
+            )
+                ? Number(currentItem.discount)
+                : 0;
+
+            const tax = Number.isFinite(
+                Number(currentItem.tax)
+            )
+                ? Number(currentItem.tax)
+                : prev.defaultTax;
+
+            const subtotalBeforeDiscount = roundMoney(
+                quantity * unitPrice
+            );
+
+            const discountAmount = roundMoney(
+                (subtotalBeforeDiscount * discount) / 100
+            );
+
+            const totalPrice = roundMoney(
+                subtotalBeforeDiscount - discountAmount
+            );
+
+            const taxAmount = roundMoney(
+                (totalPrice * tax) / 100
+            );
+
+            const totalAmount = roundMoney(
+                totalPrice + taxAmount
+            );
+
+            currentItem.quantity = quantity;
+            currentItem.unitPrice = unitPrice;
+            currentItem.discount = discount;
+            currentItem.tax = tax;
+            currentItem.discountAmount = discountAmount;
+            currentItem.totalPrice = totalPrice;
+            currentItem.taxAmount = taxAmount;
+            currentItem.totalAmount = totalAmount;
 
             updatedItems[index] = currentItem;
 
@@ -346,17 +478,27 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
                                             ...prev,
                                             customerId: value?.id ?? 0,
                                         }));
+
+                                        setErrors((prev) =>
+                                            clearFieldError(prev, "customerId")
+                                        );
                                     }}
                                     value={customersPickWithNumber.find((v) => v.id === newSale.customerId) || null}
                                     renderInput={(params) => (
                                         <TextField
                                             {...params}
                                             label="Kunde"
+                                            error={Boolean(errors.customerId)}
+                                            helperText={errors.customerId}
+                                            disabled={loading}
                                             InputProps={{
                                                 ...params.InputProps,
                                                 endAdornment: (
                                                     <>
-                                                        {customersPickLoading ? <CircularProgress size={18} /> : null}
+                                                        {customersPickLoading ? (
+                                                            <CircularProgress size={18} />
+                                                        ) : null}
+
                                                         {params.InputProps.endAdornment}
                                                     </>
                                                 ),
@@ -367,13 +509,12 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
 
                             </Grid>
                             {/* Кнопка для создания нового клиента */}
-                            <Grid item xs={1}>
+                            <Grid item xs={1} sx={{ display: "flex", alignItems: "flex-start" }}>
                                 <Button
                                     variant="outlined"
-                                    fullWidth
                                     onClick={handleCreateNewCustomer}
                                     startIcon={<AddIcon />}
-                                    sx={{ height: "100%", "&:hover": { borderColor: "#00acc1" } }}
+                                    sx={addButtonStyle}
                                 >
                                     Neu
                                 </Button>
@@ -387,23 +528,40 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
                                     localeText={deDE.components.MuiLocalizationProvider.defaultProps.localeText}
                                 >
                                     <DatePicker
-                                        label="Datum auswählen"
+                                        label="Auftragsdatum"
                                         value={dateValue}
                                         onChange={(newValue) => {
                                             setDateValue(newValue);
-                                            const formattedDate = newValue ? newValue.format("YYYY-MM-DD") : "";
+
+                                            const formattedDate = newValue
+                                                ? newValue.format("YYYY-MM-DD")
+                                                : "";
 
                                             setNewSale((prev) => ({
                                                 ...prev,
                                                 salesDate: formattedDate,
-                                                deliveryDate: prev.deliveryDate || formattedDate,
+                                                deliveryDate:
+                                                    prev.deliveryDate || formattedDate,
                                             }));
+
+                                            setErrors((prev) =>
+                                                clearFieldError(prev, "salesDate")
+                                            );
 
                                             if (!deliveryDateValue && newValue) {
                                                 setDeliveryDateValue(newValue);
                                             }
                                         }}
-                                        slotProps={{ textField: { fullWidth: true } }}
+                                        slotProps={{
+                                            textField: {
+                                                fullWidth: true,
+                                                size: "small",
+                                                sx: saleDateFieldStyle,
+                                                error: Boolean(errors.salesDate),
+                                                helperText: errors.salesDate,
+                                                disabled: loading,
+                                            },
+                                        }}
                                     />
                                 </LocalizationProvider>
                             </Grid>
@@ -424,28 +582,55 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
                             </Grid>
 
                             <Grid item xs={4}>
-                                <FormControl fullWidth>
-                                    <InputLabel id="terms-of-payment-label" >Zahlungsbedingung</InputLabel>
+                                <FormControl
+                                    fullWidth
+                                    error={Boolean(errors.termsOfPaymentId)}
+                                >
+                                    <InputLabel id="terms-of-payment-label">
+                                        Zahlungsbedingung
+                                    </InputLabel>
+
                                     <Select
                                         id="terms-of-payment"
                                         labelId="terms-of-payment-label"
                                         label="Zahlungsbedingung"
                                         value={newSale.termsOfPaymentId || ""}
+                                        disabled={loading}
                                         onChange={(e: SelectChangeEvent<number>) => {
                                             const selectedId = Number(e.target.value);
+
                                             setNewSale((prev) => ({
                                                 ...prev,
-                                                termsOfPaymentId: selectedId, // ✅ теперь сохраняем id, а не сам объект
+                                                termsOfPaymentId: selectedId,
                                             }));
+
+                                            setErrors((prev) =>
+                                                clearFieldError(
+                                                    prev,
+                                                    "termsOfPaymentId"
+                                                )
+                                            );
                                         }}
                                     >
-                                        <MenuItem value="">Bitte wählen</MenuItem>
+                                        <MenuItem value="">
+                                            Bitte wählen
+                                        </MenuItem>
+
                                         {termsOfPayment.map((term) => (
-                                            <MenuItem key={term.id} value={term.id}>
+                                            <MenuItem
+                                                key={term.id}
+                                                value={term.id}
+                                            >
                                                 {term.name}
                                             </MenuItem>
                                         ))}
                                     </Select>
+
+                                    {errors.termsOfPaymentId && (
+                                        <FormHelperText>
+                                            {errors.termsOfPaymentId}
+                                        </FormHelperText>
+                                    )}
                                 </FormControl>
                             </Grid>
 
@@ -503,8 +688,9 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
 
                         {/* 📦 Versand & Maße Block */}
                         <Grid item xs={12}>
-                            <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
-                                <Typography gutterBottom sx={{ color: "#00acc1", mb: 2, textAlign: 'left' }}>
+
+                            <Paper sx={formSectionStyle}>
+                                <Typography sx={formSaleSectionTitleStyle}>
                                     Versand & Maße
                                 </Typography>
 
@@ -589,8 +775,8 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
 
                         {/*  Bestellung Block */}
                         <Grid item xs={12}>
-                            <Paper elevation={2} sx={{ p: 2, mb: 5 }}>
-                                <Typography gutterBottom sx={{ color: "#00acc1", mb: 2, textAlign: 'left' }}>
+                            <Paper sx={formSectionStyle}>
+                                <Typography sx={formSaleSectionTitleStyle}>
                                     Bestelldaten
                                 </Typography>
 
@@ -632,7 +818,7 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
                                                     }));
                                                 }}
                                                 slotProps={{
-                                                    textField: { id: 'delivery-date', fullWidth: true },
+                                                    textField: { id: 'delivery-date', fullWidth: true, size: "small", sx: saleDateFieldStyle, },
                                                 }}
                                             />
                                         </LocalizationProvider>
@@ -641,140 +827,118 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
                             </Paper>
                         </Grid>
 
-
+                        {/* Artikeln_Tabelle */}
                         <Box sx={{ minHeight: 200, overflowY: 'auto', mb: 2, border: "1px solid #ddd" }}>
-                            <Table size="small">
+                            <Table size="small" sx={tableStyle}>
                                 <StyledTableHead>
                                     <TableRow>
-                                        <TableCell sx={{ width: 50, fontSize: "12px" }}>Pos</TableCell>
-                                        <TableCell sx={{ minWidth: 200, whiteSpace: "normal", wordBreak: "break-word", lineHeight: 1.25, py: 1, verticalAlign: "top" }}>Name</TableCell>
-                                        <TableCell sx={{ width: 70 }}>Menge</TableCell>
-                                        <TableCell sx={{ width: 90 }}>Preis</TableCell>
-                                        <TableCell sx={{ width: 70, fontSize: "12px" }}>Rabatt%</TableCell>
-                                        <TableCell sx={{ width: 70, fontSize: "12px" }}>MWSt%</TableCell>
-                                        <TableCell sx={{ width: 90 }}>Netto</TableCell>
-                                        <TableCell sx={{ width: 90 }}>MWSt</TableCell>
-                                        <TableCell sx={{ width: 40 }}></TableCell>
+                                        <TableCell sx={{ ...fixedCellWidth(45), fontSize: "12px" }}>Pos</TableCell>
+                                        <TableCell sx={fixedCellWidth(110)}>Artikel</TableCell>
+                                        <TableCell sx={{ width: "40%" }}>Name</TableCell>
+                                        <TableCell sx={fixedCellWidth(75)}>Menge</TableCell>
+                                        <TableCell sx={fixedCellWidth(90)}>Preis</TableCell>
+                                        <TableCell sx={{ ...fixedCellWidth(75), fontSize: "12px" }}>Rabatt%</TableCell>
+                                        <TableCell sx={{ ...fixedCellWidth(75), fontSize: "12px" }}>MWSt%</TableCell>
+                                        <TableCell sx={fixedCellWidth(90)}>Netto</TableCell>
+                                        <TableCell sx={fixedCellWidth(90)}>MWSt</TableCell>
+                                        <TableCell sx={fixedCellWidth(40)}></TableCell>
                                     </TableRow>
                                 </StyledTableHead>
                                 <TableBody>
                                     {newSale.salesItems.map((item, index) => (
-                                        <StyledTableRow key={index}>
-                                            <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", borderLeft: "1px solid #ddd", textAlign: "center", width: 50, }}>{item.position}</TableCell>
-                                            <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", minWidth: 200, textAlign: "left" }}>
+                                        <TableRow key={index} sx={tableRowHoverStyle}>
+                                            <TableCell sx={{ ...saleTableCenterCellStyle, ...fixedCellWidth(45), borderLeft: `1px solid ${colors.border}`, }}>{item.position}</TableCell>
+                                            <TableCell sx={{ ...saleTableCellStyle, ...fixedCellWidth(110), }}>{item.productArticle}</TableCell>
+                                            <TableCell sx={{ ...saleTableNameCellStyle, width: "40%", verticalAlign: "middle", py: 1 }}>
                                                 <TextField
                                                     id={`product-name-${index}`}
                                                     aria-label="Produktname"
                                                     variant="standard"
                                                     multiline
+                                                    fullWidth
                                                     minRows={1}
-                                                    maxRows={4}
                                                     value={item.productName}
-                                                    size="small"
+                                                    disabled={false}
                                                     onChange={(e) => handleItemChange(index, 'productName', e.target.value)}
-                                                    InputProps={{ disableUnderline: true }}
-                                                    sx={{
-                                                        fontSize: '0.875rem',
-                                                        '& .MuiInputBase-root': { border: 'none' },
-                                                        '& .MuiInputBase-input': { fontSize: '0.875rem', padding: 0 },
-                                                    }}
+                                                    slotProps={{ input: { disableUnderline: true, }, }}
+                                                    sx={saleTableNameInputStyle}
                                                 />
                                             </TableCell>
 
-                                            <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", width: "70px" }}>
-                                                <TextField
-                                                    id={`quantity-${index}`}
-                                                    aria-label="Menge"
-                                                    variant="standard"
-                                                    type="number"
+                                            <TableCell sx={{ ...saleTableCellStyle, ...fixedCellWidth(75), }}>
+                                                <CompactNumberCell
                                                     value={item.quantity}
-                                                    size="small"
-                                                    onChange={(e) => handleItemChange(index, 'quantity', parseFloat(e.target.value))}
-                                                    InputProps={{ disableUnderline: true }}
-                                                    sx={{
-                                                        fontSize: '0.875rem',
-                                                        '& .MuiInputBase-root': { border: 'none' },
-                                                        '& .MuiInputBase-input': { fontSize: '0.875rem', padding: 0, textAlign: 'center' },
-                                                    }}
-                                                    inputProps={{ min: 0, step: 1 }}
+                                                    min={0}
+                                                    step={1}
+                                                    align="center"
+                                                    onChange={(value) =>
+                                                        handleItemChange(index, "quantity", value)
+                                                    }
                                                 />
                                             </TableCell>
 
-                                            <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", width: "70px" }}>
-                                                <TextField
-                                                    id={`unit-price-${index}`}
-                                                    aria-label="Stückpreis"
-                                                    variant="standard"
-                                                    type="number"
+                                            <TableCell sx={{ ...saleTableCellStyle, ...fixedCellWidth(90), }}>
+                                                <CompactNumberCell
                                                     value={item.unitPrice}
-                                                    size="small"
-                                                    onChange={(e) => handleItemChange(index, 'unitPrice', parseFloat(e.target.value))}
-                                                    InputProps={{ disableUnderline: true }}
-                                                    sx={{
-                                                        fontSize: '0.875rem',
-                                                        '& .MuiInputBase-root': { border: 'none' },
-                                                        '& .MuiInputBase-input': { fontSize: '0.875rem', padding: 0, textAlign: 'right' },
-                                                    }}
-                                                    inputProps={{ min: 0, step: 0.01 }}
+                                                    min={0}
+                                                    step={0.01}
+                                                    onChange={(value) =>
+                                                        handleItemChange(
+                                                            index,
+                                                            "unitPrice",
+                                                            value
+                                                        )
+                                                    }
                                                 />
                                             </TableCell>
 
-                                            <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", width: 70 }}>
-                                                <TextField
-                                                    id={`discount-${index}`}
-                                                    aria-label="Rabatt"
-                                                    variant="standard"
-                                                    type="number"
+                                            <TableCell sx={{ ...saleTableCellStyle, ...fixedCellWidth(75), }}>
+                                                <CompactNumberCell
                                                     value={item.discount}
-                                                    size="small"
-                                                    fullWidth
-                                                    onChange={(e) => handleItemChange(index, 'discount', parseFloat(e.target.value))}
-                                                    InputProps={{ disableUnderline: true }}
-                                                    sx={{
-                                                        fontSize: '0.875rem',
-                                                        '& .MuiInputBase-root': { border: 'none' },
-                                                        '& .MuiInputBase-input': { fontSize: '0.875rem', padding: 0, textAlign: 'right' },
-                                                    }}
-                                                    inputProps={{ min: 0, step: 1 }}
+                                                    min={0}
+                                                    max={100}
+                                                    step={1}
+                                                    onChange={(value) =>
+                                                        handleItemChange(
+                                                            index,
+                                                            "discount",
+                                                            value
+                                                        )
+                                                    }
                                                 />
                                             </TableCell>
 
-                                            <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", width: 70 }}>
-                                                <TextField
-                                                    id={`tax-${index}`}
-                                                    aria-label="MwSt"
-                                                    variant="standard"
-                                                    type="number"
+                                            <TableCell sx={{ ...saleTableCellStyle, ...fixedCellWidth(75), }}>
+                                                <CompactNumberCell
                                                     value={item.tax}
-                                                    size="small"
-                                                    fullWidth
-                                                    onChange={(e) => handleItemChange(index, 'tax', parseFloat(e.target.value))}
-                                                    InputProps={{ disableUnderline: true }}
-                                                    sx={{
-                                                        fontSize: '0.875rem',
-                                                        '& .MuiInputBase-root': { border: 'none' },
-                                                        '& .MuiInputBase-input': { fontSize: '0.875rem', padding: 0, textAlign: 'right' },
-                                                    }}
-                                                    inputProps={{ min: 0, step: 1 }}
+                                                    min={0}
+                                                    max={100}
+                                                    step={1}
+                                                    onChange={(value) =>
+                                                        handleItemChange(
+                                                            index,
+                                                            "tax",
+                                                            value
+                                                        )
+                                                    }
                                                 />
                                             </TableCell>
-                                            <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", textAlign: 'right' }}>
+                                            <TableCell sx={{ ...saleTableRightCellStyle, ...fixedCellWidth(90), }}>
                                                 {item.totalPrice.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </TableCell>
-                                            <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd", textAlign: 'right' }}>
+                                            <TableCell sx={{ ...saleTableRightCellStyle, ...fixedCellWidth(90), }}>
                                                 {item.taxAmount.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </TableCell>
-                                            <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd" }}>
+                                            <TableCell sx={{ ...saleTableDeleteCellStyle, ...fixedCellWidth(40), }}>
                                                 <Tooltip title="Löschen" arrow>
                                                     <IconButton
                                                         size="small"
                                                         onClick={() => handleRemoveItem(index)}
                                                         aria-label="Zeile löschen"
                                                         sx={{
-                                                            p: 0.5,
-                                                            transition: "transform 0.2s ease-in-out",
+                                                            ...actionIconButtonStyle,
                                                             "&:hover": {
-                                                                color: "#d32f2f",
+                                                                color: colors.danger,
                                                                 transform: "scale(1.2)",
                                                                 backgroundColor: "transparent",
                                                             },
@@ -784,50 +948,103 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
                                                     </IconButton>
                                                 </Tooltip>
                                             </TableCell>
-                                        </StyledTableRow>
+                                        </TableRow>
                                     ))}
                                 </TableBody>
                             </Table>
+                            {errors.salesItems && (
+                                <Typography
+                                    color="error"
+                                    variant="caption"
+                                    sx={{
+                                        display: "block",
+                                        mt: 0.5,
+                                        ml: 0.5,
+                                    }}
+                                >
+                                    {errors.salesItems}
+                                </Typography>
+                            )}
                         </Box>
 
-                        <Grid container spacing={2}>
-                            <Grid item xs={2}>
-                                <Button onClick={onClose} sx={{ marginTop: 7, width: "100%", "&:hover": { borderColor: "#00acc1" } }}>
+                        <Box
+                            sx={{
+                                display: "flex",
+                                alignItems: "flex-end",
+                                justifyContent: "space-between",
+                                gap: 3,
+                                mt: 3,
+                            }}
+                        >
+                            <Box
+                                sx={{
+                                    display: "flex",
+                                    gap: 2,
+                                }}
+                            >
+                                <Button
+                                    onClick={onClose}
+                                    sx={cancelButtonStyle}
+                                    disabled={loading}
+                                >
                                     Abbrechen
                                 </Button>
-                            </Grid>
-                            <Grid item xs={2}>
-                                <Button variant="contained" color="primary" onClick={handleSubmit} sx={{ marginTop: 7, width: "100%" }}>
-                                    Speichern
+
+                                <Button
+                                    variant="contained"
+                                    onClick={handleSubmit}
+                                    sx={primaryButtonStyle}
+                                    disabled={loading}
+                                >
+                                    {loading ? (
+                                        <CircularProgress size={24} />
+                                    ) : (
+                                        "Speichern"
+                                    )}
                                 </Button>
-                            </Grid>
-                            <Grid item xs={8} sx={{ textAlign: 'right' }}>
+                            </Box>
+
+                            <Box sx={{ minWidth: 260, textAlign: 'right' }}>
                                 <Typography>Netto: {subtotal.toFixed(2)} €</Typography>
                                 <Typography>MWSt: {taxSum.toFixed(2)} €</Typography>
                                 <Typography variant="h6">Gesamtbetrag: {total.toFixed(2)} €</Typography>
-                            </Grid>
-                        </Grid>
+                            </Box>
+                        </Box>
                     </Paper>
                 </Grid>
 
                 {/* фильтрация и выбор товаров */}
 
-                <Grid item xs={12} md={12}>
+                {/* фильтрация и выбор товаров */}
+                <Grid item xs={12}>
                     <Paper elevation={3} sx={{ p: 3 }}>
-                        <Typography gutterBottom sx={{ color: "#00acc1", mb: 2, textAlign: 'left' }}>
+                        <Typography sx={formSaleSectionTitleStyle}>
                             Artikel zum Warenkorb hinzufügen
                         </Typography>
-                        <Grid container spacing={2} sx={{ mb: 2 }}>
-                            <Grid item xs={6}>
+
+                        {/* Kategorie + Suche */}
+                        <Grid
+                            container
+                            spacing={2}
+                            alignItems="center"
+                            sx={{ mt: 1, mb: 2 }}
+                        >
+                            {/* Kategorie */}
+                            <Grid item xs={4}>
                                 <Autocomplete
                                     fullWidth
-                                    sx={{ mb: 2, mt: 1 }}
-                                    options={[...categories].sort((a, b) => a.name.localeCompare(b.name))}
+                                    options={[...categories].sort(
+                                        (a, b) => a.name.localeCompare(b.name)
+                                    )}
                                     getOptionLabel={(option) => option.name}
                                     onChange={(_, newCategory) => {
                                         setSelectedCategory(newCategory?.id ?? null);
                                     }}
-                                    value={categories.find(c => c.id === selectedCategory) || null}
+                                    value={
+                                        categories.find(
+                                            (c) => c.id === selectedCategory
+                                        ) || null
+                                    }
                                     renderInput={(params) => (
                                         <TextField
                                             {...params}
@@ -837,78 +1054,159 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
                                         />
                                     )}
                                 />
+                            </Grid>
 
+                            {/* Suche */}
+                            <Grid item xs={8}>
                                 <TextField
                                     id="product-filter"
                                     fullWidth
-                                    sx={{ mb: 2 }}
-                                    label="Suchen und filtern"
-                                    aria-label="Suchen und filtern"
+                                    placeholder="Produktname, Artikel, Lieferanten-Artikel suchen..."
+                                    aria-label="Produkt suchen"
                                     value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    onChange={(e) =>
+                                        setSearchTerm(e.target.value)
+                                    }
                                     InputProps={{
-                                        endAdornment: searchTerm && (
+                                        endAdornment: searchTerm ? (
                                             <InputAdornment position="end">
                                                 <IconButton
-                                                    onClick={() => setSearchTerm('')}
+                                                    onClick={() => setSearchTerm("")}
                                                     size="small"
                                                     aria-label="Suche zurücksetzen"
                                                 >
                                                     <ClearIcon />
                                                 </IconButton>
                                             </InputAdornment>
-                                        ),
+                                        ) : null,
                                     }}
                                 />
                             </Grid>
-
-                            <Grid item xs={6}>
-                                <Box sx={{ height: 200, overflowY: 'auto', mb: 2, border: "1px solid #ddd" }}>
-                                    {productsPickLoading && (
-                                        <Box sx={{ p: 1, textAlign: "center", color: "#00acc1" }}>
-                                            <CircularProgress size={20} />
-                                            <Typography variant="caption" sx={{ ml: 1 }}>
-                                                Produkte werden geladen…
-                                            </Typography>
-                                        </Box>
-                                    )}
-
-                                    {!productsPickLoading && pickProducts.length === 0 && (searchTerm.length >= 2 || selectedCategory !== null) && (
-                                        <Box sx={{ p: 1, textAlign: "center", color: "text.secondary" }}>
-                                            <Typography variant="caption">
-                                                Keine Produkte gefunden
-                                            </Typography>
-                                        </Box>
-                                    )}
-                                    <Table size="small" stickyHeader>
-                                        <StyledTableHead>
-                                            <TableRow>
-                                                <TableCell style={{ display: "none" }}>ID</TableCell>
-                                                <TableCell>Name</TableCell>
-                                                <TableCell>Artikel</TableCell>
-                                                <TableCell>LieferantArtikel</TableCell>
-
-                                            </TableRow>
-                                        </StyledTableHead>
-                                        <TableBody>
-                                            {pickProducts.map(product => (
-                                                <StyledTableRow key={product.id} hover onDoubleClick={() => handleAddProductToCart(product)}>
-                                                    <TableCell sx={{ display: "none", padding: "6px 6px", borderRight: "1px solid #ddd", borderLeft: "1px solid #ddd" }}>{product.id}</TableCell>
-                                                    <TableCell sx={{ maxWidth: "400px", padding: "6px 6px", borderRight: "1px solid #ddd" }}>{product.name}</TableCell>
-                                                    <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd" }}>{product.article}</TableCell>
-                                                    <TableCell sx={{ padding: "6px 6px", borderRight: "1px solid #ddd" }}>{product.vendorArticle}</TableCell>
-                                                </StyledTableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
-                                </Box>
-                            </Grid>
                         </Grid>
+
+                        {/* Tabelle */}
+                        <Box
+                            sx={{
+                                maxHeight: 263,
+                                overflowY: "auto",
+                                border: `1px solid ${colors.border}`,
+                            }}
+                        >
+                            {productsPickLoading && (
+                                <Box
+                                    sx={{
+                                        p: 1,
+                                        textAlign: "center",
+                                        color: colors.accent,
+                                    }}
+                                >
+                                    <CircularProgress size={20} />
+
+                                    <Typography
+                                        variant="caption"
+                                        sx={{ ml: 1 }}
+                                    >
+                                        Produkte werden geladen…
+                                    </Typography>
+                                </Box>
+                            )}
+
+                            {!productsPickLoading &&
+                                pickProducts.length === 0 &&
+                                (searchTerm.length >= 2 ||
+                                    selectedCategory !== null) && (
+                                    <Box
+                                        sx={{
+                                            p: 1,
+                                            textAlign: "center",
+                                            color: "text.secondary",
+                                        }}
+                                    >
+                                        <Typography variant="caption">
+                                            Keine Produkte gefunden
+                                        </Typography>
+                                    </Box>
+                                )}
+
+                            <Table
+                                size="small"
+                                stickyHeader
+                                sx={tableStyle}
+                            >
+                                <StyledTableHead>
+                                    <TableRow>
+                                        <TableCell sx={{ width: "40%" }}>
+                                            Artikelname
+                                        </TableCell>
+
+                                        <TableCell sx={fixedCellWidth(140)}>
+                                            Artikel
+                                        </TableCell>
+
+                                        <TableCell sx={{ width: "30%" }}>
+                                            Lieferanten-Artikel
+                                        </TableCell>
+
+                                        <TableCell sx={fixedCellWidth(100)}>
+                                            Preis
+                                        </TableCell>
+                                    </TableRow>
+                                </StyledTableHead>
+
+                                <TableBody>
+                                    {pickProducts.map((product) => (
+                                        <TableRow
+                                            key={product.id}
+                                            sx={tableRowHoverStyle}
+                                            onDoubleClick={() =>
+                                                handleAddProductToCart(product)
+                                            }
+                                        >
+                                            <TableCell sx={saleTableCellStyle}>
+                                                {product.name}
+                                            </TableCell>
+
+                                            <TableCell sx={saleTableCellStyle}>
+                                                {product.article}
+                                            </TableCell>
+
+                                            <TableCell sx={saleTableCellStyle}>
+                                                {product.vendorArticle ?? ""}
+                                            </TableCell>
+
+                                            <TableCell
+                                                sx={saleTableRightCellStyle}
+                                            >
+                                                {Number(
+                                                    product.sellingPrice ?? 0
+                                                ).toLocaleString("de-DE", {
+                                                    minimumFractionDigits: 2,
+                                                    maximumFractionDigits: 2,
+                                                })}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+
+                                    {!productsPickLoading &&
+                                        pickProducts.length === 0 && (
+                                            <TableRow>
+                                                <TableCell
+                                                    colSpan={4}
+                                                    align="center"
+                                                >
+                                                    Keine Produkte gefunden
+                                                </TableCell>
+                                            </TableRow>
+                                        )}
+                                </TableBody>
+                            </Table>
+                        </Box>
                     </Paper>
                 </Grid>
             </Grid >
             {showCreateCustomer && (
                 <CreateCustomer
+                    mode="customer"
                     onClose={() => setShowCreateCustomer(false)}
                     onSubmitSuccess={(createdCustomer) => {
                         setShowCreateCustomer(false);

@@ -1,5 +1,5 @@
-import { Alert, Box, Button, Dialog, DialogContent, DialogTitle, IconButton, InputAdornment, TextField } from "@mui/material";
-import { Formik, Form, Field, ErrorMessage } from "formik";
+import { Alert, Box, Button, Dialog, DialogContent, IconButton, InputAdornment, TextField, Typography } from "@mui/material";
+import { Formik, Form, Field } from "formik";
 import * as Yup from "yup";
 import { NewUserDto } from "../features/auth/types";
 import { useAppDispatch, useAppSelector } from "../redux/hooks";
@@ -7,6 +7,8 @@ import { getAllUsers, register, selectRegisterError, selectStatus } from "../fea
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import { useState } from "react";
+import { loginButtonStyle, loginCardStyle, loginFieldStyle, loginTitleStyle } from "../styles/loginStyles";
+import { cancelButtonStyle } from "../styles/buttonStyles";
 
 interface Props {
   onClose: () => void;
@@ -33,10 +35,17 @@ export default function Register({ onClose }: Props) {
   });
 
   return (
-    <Dialog open onClose={onClose}>
-      <DialogTitle>Neuen Benutzer registrieren</DialogTitle>
+      <Dialog open onClose={onClose}>
       <DialogContent>
-        <Box sx={{ mt: 1, minWidth: 300 }}>
+        <Box sx={{ ...loginCardStyle, mt: 0, boxShadow: "none" }}>
+          <Typography
+            variant="h5"
+            sx={loginTitleStyle}
+            align="center"
+            gutterBottom
+          >
+            Neuen Benutzer registrieren
+          </Typography>
         {registerErrorMessage && <Alert severity="error">{registerErrorMessage}</Alert>}
 
         <Formik
@@ -55,7 +64,7 @@ export default function Register({ onClose }: Props) {
             }
           }}
         >
-          {({ isSubmitting }) => (
+          {({ isSubmitting, touched, errors }) => (
             <Form>
               {/* Username */}
               <Field
@@ -64,10 +73,10 @@ export default function Register({ onClose }: Props) {
                 name="username"
                 fullWidth
                 margin="normal"
+                sx={loginFieldStyle}
+                  error={Boolean(touched.username && errors.username)}
+                  helperText={touched.username && errors.username}
               />
-              <ErrorMessage name="username">
-                {(msg) => <div style={{ color: "red", fontSize: 12 }}>{msg}</div>}
-              </ErrorMessage>
 
               {/* Email */}
               <Field
@@ -77,10 +86,10 @@ export default function Register({ onClose }: Props) {
                 type="email"
                 fullWidth
                 margin="normal"
+                sx={loginFieldStyle}
+                  error={Boolean(touched.email && errors.email)}
+                  helperText={touched.email && errors.email}
               />
-              <ErrorMessage name="email">
-                {(msg) => <div style={{ color: "red", fontSize: 12 }}>{msg}</div>}
-              </ErrorMessage>
 
               {/* Passwort */}
               <Field
@@ -90,6 +99,9 @@ export default function Register({ onClose }: Props) {
                 type={showPassword ? "text" : "password"}
                 fullWidth
                 margin="normal"
+                sx={loginFieldStyle}
+                  error={Boolean(touched.password && errors.password)}
+                  helperText={touched.password && errors.password}
                 InputProps={{
                   endAdornment: (
                     <InputAdornment position="end">
@@ -103,20 +115,22 @@ export default function Register({ onClose }: Props) {
                   ),
                 }}
               />
-              <ErrorMessage name="password">
-                {(msg) => <div style={{ color: "red", fontSize: 12 }}>{msg}</div>}
-              </ErrorMessage>
 
-               <Box display="flex" justifyContent="space-between" mt={2}>
-                  <Button variant="outlined" onClick={onClose}>
+               <Box display="flex" gap={2} mt={3}>
+                  <Button sx={cancelButtonStyle} fullWidth onClick={onClose}>
                     Abbrechen
                   </Button>
                   <Button
                     type="submit"
                     variant="contained"
                     disabled={isSubmitting || status === "loading"}
+                    fullWidth
+                     sx={{
+                      ...loginButtonStyle,
+                      mt: 0,
+                    }}
                   >
-                    {isSubmitting || status === "loading" ? "Speichern..." : "Benutzer registrieren"}
+                    {isSubmitting || status === "loading" ? "Speichern..." : "Registrieren"}
                   </Button>
                 </Box>
               </Form>

@@ -2,7 +2,6 @@ import {
   Box,
   Button,
   Collapse,
-  Container,
   debounce,
   FormControl,
   IconButton,
@@ -12,12 +11,10 @@ import {
   Paper,
   Select,
   SelectChangeEvent,
-  styled,
   Table,
   TableBody,
   TableCell,
   TableContainer,
-  TableHead,
   TableRow,
   TextField,
   Tooltip,
@@ -33,8 +30,7 @@ import {
 } from "../purchasesSlice";
 import { useCallback, useEffect, useState } from "react";
 import React from "react";
-import { useNavigate } from "react-router-dom";
-import { ClearIcon } from "@mui/x-date-pickers";
+import { useNavigate } from "react-router-dom";;
 import { PaymentStatuses } from "../../../constants/enums";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -44,35 +40,15 @@ import DeletePurchase from "./DeletePurchase";
 import { selectUser } from "../../auth/authSlice";
 import { getDocumentTypes, selectTypeOfDocuments } from "../typeOfDocumentSlice";
 import { TypeOfDocument } from "../types";
-import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
-import ArrowDropUpIcon from '@mui/icons-material/ArrowDropUp';
+import SearchBox from "../../../components/ui/SearchBox";
+import { outlinedButtonStyle } from "../../../styles/buttonStyles";
+import { cellStyle, compactActionCellStyle, compactIconButtonStyle, compactTableCellStyle, compactTableRowStyle, fixedCellWidth, hoverExpandCellStyle, StyledSubTableHead, StyledTableHead, tableActionSlotStyle, tableActionsStyle, tableContainerStyle, tableStyle } from "../../../styles/tableStyles";
+import HoverExpandText from "../../../components/ui/HoverExpandText";
+import { colors } from "../../../styles/colors";
+import { formatNumber } from "../../../utils/formatNumber";
+import SortableHeader from "../../../components/ui/SortableHeader";
+import { filterDateFieldsStyle, filterDateRangeStyle, filterDateRangeTitleStyle, filterOptionsStyle, filterPanelRowStyle, filterPanelStyle, pageToolbarStyle } from "../../../styles/formStyles";
 
-
-const StyledTableHead = styled(TableHead)({
-  backgroundColor: "#1a3d6d",
-  "& th": {
-    color: "white",
-    fontWeight: "bold",
-    borderRight: "1px solid #ddd",
-    textAlign: "center"
-  },
-});
-const StyledSubTableHead = styled(TableHead)({
-  backgroundColor: "#70ABBF",
-  "& th": {
-    color: "white",
-    fontWeight: "bold",
-    borderRight: "1px solid #ddd",
-    textAlign: "center"
-  },
-});
-
-// Стили для полей в таблице
-const cellStyle = {
-  whiteSpace: "nowrap",  // запрещаем перенос строк
-  overflow: "hidden",  // обрезаем всё, что не помещается
-  textOverflow: "ellipsis",  // добавляем "..."
-};
 
 export default function Purchases() {
   const dispatch = useAppDispatch();
@@ -242,47 +218,18 @@ export default function Purchases() {
   };
 
   return (
-    <Container>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-        <Typography variant="h6" sx={{ textAlign: "left", fontWeight: "bold", textDecoration: 'underline', color: "#0277bd" }}>BESTELLUNGEN</Typography>
-      </Box>
+    <Box
+      sx={{ p: 0, m: 0, width: "100%", display: "flex", flexDirection: "column", alignItems: "stretch", }}>
       {/* Верхняя панель */}
-      <Box
-        display="flex"
-        justifyContent="space-between"
-        alignItems="center"
-        mb={2}
-        sx={{
-          position: "sticky",
-          top: 0,
-          zIndex: 1000,
-          padding: "10px 0",
-        }}
-      >
-        {/* Поиск */}
-        <Box display="flex" gap={1}>
-          <TextField
-            id="search-input"
-            label="Suche"
-            variant="outlined"
-            size="small"
+      <Box sx={pageToolbarStyle}>
+        <Box display="flex" gap={2}>
+          <SearchBox
             value={searchTerm}
             onChange={handleSearchChange}
-            sx={{ width: 400, backgroundColor: "white" }}
+            onClear={handleClearSearch}
           />
-          <IconButton
-            aria-label="Suche zurücksetzen"
-            onClick={handleClearSearch}>
-            <ClearIcon />
-          </IconButton>
-        </Box>
 
-        <Box display="flex" gap={1}>
-          <Button
-            variant="outlined"
-            sx={{ "&:hover": { borderColor: "#00acc1" } }}
-            onClick={() => setFiltersVisible((prev) => !prev)}
-          >
+          <Button variant="outlined" sx={outlinedButtonStyle} onClick={() => setFiltersVisible((prev) => !prev)}>
             {filtersVisible ? "Filter ausblenden" : "Filter anzeigen"}
           </Button>
         </Box>
@@ -290,210 +237,157 @@ export default function Purchases() {
 
       {/* Фильтры */}
       <Collapse in={filtersVisible}>
-        <Paper
-          elevation={4}
-          sx={{
-            mb: 3,
-            p: 2,
-            paddingTop: 4,
-            borderRadius: 2,
-            border: "1px solid #ddd",
-            backgroundColor: "#f9f9f9",
-            transition: "all 0.3s ease",
-          }}
-        >
-          <Box display="flex" flexWrap="wrap" gap={2} mb={2}>
-            {/* Дата от */}
-            <TextField
-              id="filter-start-date"
-              label="Von"
-              type="date"
-              size="small"
-              value={filters.startDate}
-              onChange={(e) => handleFilterChange("startDate", e.target.value)}
-              InputLabelProps={{ shrink: true }}
-              aria-label="Startdatum"
-            />
+        <Paper elevation={4} sx={filterPanelStyle}>
+          <Box sx={filterPanelRowStyle}>
+            <Box sx={filterDateRangeStyle}>
+              <Typography variant="caption" sx={filterDateRangeTitleStyle}>
+                Zeitraum:
+              </Typography>
 
-            {/* Дата до */}
-            <TextField
-              id="filter-end-date"
-              label="Bis"
-              type="date"
-              size="small"
-              value={filters.endDate}
-              onChange={(e) => handleFilterChange("endDate", e.target.value)}
-              InputLabelProps={{ shrink: true }}
-              aria-label="Enddatum"
-            />
+              <Box sx={filterDateFieldsStyle}>
+                <TextField
+                  id="filter-start-date"
+                  label="Von"
+                  type="date"
+                  value={filters.startDate}
+                  onChange={(e) => handleFilterChange("startDate", e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                />
 
-            {/* Тип документа */}
-            <FormControl size="small" sx={{ minWidth: 180 }}>
-              <InputLabel id="document-type-label">Dokumenttyp</InputLabel>
-              <Select
-                labelId="document-type-label"
-                id="document-type-select"
-                value={filters.documentId || ""}
-                onChange={(e: SelectChangeEvent) =>
-                  handleFilterChange("documentId", e.target.value)
-                }
-                label="Dokumenttyp"
-                aria-label="Dokumenttyp"
-              >
-                <MenuItem value="">ALLE</MenuItem>
-                {documentTypes.map((doc: TypeOfDocument) => (
-                  <MenuItem key={doc.id} value={doc.id.toString()}>
-                    {doc.name}
+                <TextField
+                  id="filter-end-date"
+                  label="Bis"
+                  type="date"
+                  value={filters.endDate}
+                  onChange={(e) => handleFilterChange("endDate", e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                />
+              </Box>
+            </Box>
+
+            <Box sx={filterOptionsStyle}>
+              {/* Dokumenttyp */}
+              <FormControl sx={{ minWidth: 180 }}>
+                <InputLabel id="document-type-label">
+                  Dokumenttyp
+                </InputLabel>
+
+                <Select
+                  labelId="document-type-label"
+                  id="document-type-select"
+                  value={filters.documentId || ""}
+                  onChange={(e: SelectChangeEvent) => handleFilterChange("documentId", e.target.value)}
+                  label="Dokumenttyp"
+                >
+                  <MenuItem value="">
+                    ALLE
                   </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
 
-            {/* Zahlungsstatus */}
-            <FormControl size="small" sx={{ minWidth: 160 }}>
-              <InputLabel id="payment-status-label">Zahlungsstatus</InputLabel>
-              <Select
-                labelId="payment-status-label"
-                id="payment-status-select"
-                value={filters.paymentStatus}
-                onChange={(e: SelectChangeEvent) =>
-                  handleFilterChange("paymentStatus", e.target.value)
-                }
-                label="Zahlungsstatus"
-                aria-label="Zahlungsstatus"
-              >
-                <MenuItem value="">ALLE</MenuItem>
-                {PaymentStatuses.map((status) => (
-                  <MenuItem key={status} value={status}>
-                    {status}
+                  {documentTypes.map(
+                    (doc: TypeOfDocument) => (
+                      <MenuItem key={doc.id} value={doc.id.toString()}>
+                        {doc.name}
+                      </MenuItem>
+                    )
+                  )}
+                </Select>
+              </FormControl>
+
+              {/* Zahlungsstatus */}
+              <FormControl sx={{ minWidth: 160 }}>
+                <InputLabel id="payment-status-label">
+                  Zahlungsstatus
+                </InputLabel>
+
+                <Select
+                  labelId="payment-status-label"
+                  id="payment-status-select"
+                  value={filters.paymentStatus}
+                  onChange={(e: SelectChangeEvent) => handleFilterChange("paymentStatus", e.target.value)}
+                  label="Zahlungsstatus"
+                >
+                  <MenuItem value="">
+                    ALLE
                   </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
 
-            <Button onClick={handleClearFilters} variant="outlined" sx={{ "&:hover": { borderColor: "#00acc1" } }}>
-              Filter zurücksetzen
-            </Button>
+                  {PaymentStatuses.map((status) => (
+                    <MenuItem key={status} value={status}>
+                      {status}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <Button
+                onClick={handleClearFilters}
+                variant="outlined"
+                sx={outlinedButtonStyle}
+              >
+                Filter zurücksetzen
+              </Button>
+            </Box>
           </Box>
         </Paper>
       </Collapse>
 
-      {/* Таблица */}
-      <Box sx={{ minHeight: "580px" }}>
-        <TableContainer component={Paper} sx={{
-
-        }}>
-          <Table >
+      {/* Tabelle */}
+      <Box sx={{ width: "100%", maxWidth: "100%", overflowX: "auto", mb: 2, }}>
+        <TableContainer
+          component={Paper}
+          sx={{ ...tableContainerStyle, mt: 1, minHeight: 580, }}
+        >
+          <Table sx={tableStyle}>
             <StyledTableHead>
               <TableRow>
-                <TableCell sx={{ userSelect: "none" }}>
-                  <Box display="flex" justifyContent="space-between" alignItems="center">
-                    ID
-                    <Box display="flex" flexDirection="column" ml={0.5}>
-                      <ArrowDropUpIcon
-                        fontSize="small"
-                        onClick={() => handleSort("id", "ASC")}
-                        sx={{
-                          cursor: "pointer",
-                          color: sort[0] === "id,ASC" ? "#0277bd" : "#bdbdbd",
-                          "&:hover": { color: "#0277bd" }
-                        }}
-                      />
-                      <ArrowDropDownIcon
-                        fontSize="small"
-                        onClick={() => handleSort("id", "DESC")}
-                        sx={{
-                          cursor: "pointer",
-                          color: sort[0] === "id,DESC" ? "#0277bd" : "#bdbdbd",
-                          "&:hover": { color: "#0277bd" }
-                        }}
-                      />
-                    </Box>
-                  </Box>
+                {/* ID */}
+                <TableCell sx={fixedCellWidth(80)}>
+                  <SortableHeader
+                    title="DokNr"
+                    field="id"
+                    activeSort={sort}
+                    onSort={handleSort}
+                  />
                 </TableCell>
 
-                <TableCell sx={{ userSelect: "none" }}>
-                  <Box display="flex" justifyContent="space-between" alignItems="center">
-                    Lieferant
-                    <Box display="flex" flexDirection="column" ml={0.5}>
-                      <ArrowDropUpIcon
-                        fontSize="small"
-                        onClick={() => handleSort("vendorName", "ASC")}
-                        sx={{
-                          cursor: "pointer",
-                          color: sort[0] === "vendorName,ASC" ? "#0277bd" : "#bdbdbd",
-                          "&:hover": { color: "#0277bd" }
-                        }}
-                      />
-                      <ArrowDropDownIcon
-                        fontSize="small"
-                        onClick={() => handleSort("vendorName", "DESC")}
-                        sx={{
-                          cursor: "pointer",
-                          color: sort[0] === "vendorName,DESC" ? "#0277bd" : "#bdbdbd",
-                          "&:hover": { color: "#0277bd" }
-                        }}
-                      />
-                    </Box>
-                  </Box>
+                {/* Lieferant */}
+                <TableCell sx={{ width: "28%" }}>
+                  <SortableHeader
+                    title="Lieferant"
+                    field="vendorName"
+                    activeSort={sort}
+                    onSort={handleSort}
+                  />
                 </TableCell>
 
-                <TableCell sx={{ userSelect: "none" }}>
-                  <Box display="flex" justifyContent="space-between" alignItems="center">
-                    Datum
-                    <Box display="flex" flexDirection="column" ml={0.5}>
-                      <ArrowDropUpIcon
-                        fontSize="small"
-                        onClick={() => handleSort("purchasingDate", "ASC")}
-                        sx={{
-                          cursor: "pointer",
-                          color: sort[0] === "purchasingDate,ASC" ? "#0277bd" : "#bdbdbd",
-                          "&:hover": { color: "#0277bd" }
-                        }}
-                      />
-                      <ArrowDropDownIcon
-                        fontSize="small"
-                        onClick={() => handleSort("purchasingDate", "DESC")}
-                        sx={{
-                          cursor: "pointer",
-                          color: sort[0] === "purchasingDate,DESC" ? "#0277bd" : "#bdbdbd",
-                          "&:hover": { color: "#0277bd" }
-                        }}
-                      />
-                    </Box>
-                  </Box>
+                {/* Datum */}
+                <TableCell sx={fixedCellWidth(110)}>
+                  <SortableHeader
+                    title="Datum"
+                    field="purchasingDate"
+                    activeSort={sort}
+                    onSort={handleSort}
+                  />
                 </TableCell>
 
-                <TableCell sx={{ userSelect: "none" }}>
-                  <Box display="flex" justifyContent="space-between" alignItems="center">
-                    Betrag
-                    <Box display="flex" flexDirection="column" ml={0.5}>
-                      <ArrowDropUpIcon
-                        fontSize="small"
-                        onClick={() => handleSort("total", "ASC")}
-                        sx={{
-                          cursor: "pointer",
-                          color: sort[0] === "total,ASC" ? "#0277bd" : "#bdbdbd",
-                          "&:hover": { color: "#0277bd" }
-                        }}
-                      />
-                      <ArrowDropDownIcon
-                        fontSize="small"
-                        onClick={() => handleSort("total", "DESC")}
-                        sx={{
-                          cursor: "pointer",
-                          color: sort[0] === "total,DESC" ? "#0277bd" : "#bdbdbd",
-                          "&:hover": { color: "#0277bd" }
-                        }}
-                      />
-                    </Box>
-                  </Box>
+                {/* Betrag */}
+                <TableCell sx={fixedCellWidth(120)}>
+                  <SortableHeader
+                    title="Betrag"
+                    field="total"
+                    activeSort={sort}
+                    onSort={handleSort}
+                  />
                 </TableCell>
 
-                <TableCell >Dokument</TableCell>
-                <TableCell >Dokument-Nr</TableCell>
-                <TableCell >Zahlungsstatus</TableCell>
-                {isAdmin && <TableCell>Aktionen</TableCell>}
+                <TableCell sx={fixedCellWidth(140)}>Dokument</TableCell>
+                <TableCell sx={fixedCellWidth(140)}>Dokument-Nr</TableCell>
+                <TableCell sx={fixedCellWidth(140)}>Zahlungsstatus</TableCell>
+
+                {isAdmin && (
+                  <TableCell sx={fixedCellWidth(120)}>
+                    Aktionen
+                  </TableCell>
+                )}
               </TableRow>
             </StyledTableHead>
 
@@ -501,100 +395,190 @@ export default function Purchases() {
               {purchases.length > 0 ? (
                 purchases.map((purchase) => (
                   <React.Fragment key={purchase.id}>
-                    <TableRow hover onClick={() => toggleRow(purchase.id)} sx={{ cursor: 'pointer' }} >
-                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{purchase.id}</TableCell>
-                      <TableCell sx={{ ...cellStyle, borderRight: "1px solid #ddd", padding: "6px 12px" }}>{purchase.vendorName}</TableCell>
-                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>
-                        {purchase.purchasingDate
-                          ? new Date(purchase.purchasingDate).toLocaleDateString("de-DE", {
-                            day: "2-digit",
-                            month: "2-digit",
-                            year: "numeric",
-                          })
+                    {/* Основная строка */}
+                    <TableRow
+                      onClick={() => toggleRow(purchase.id)}
+                      sx={compactTableRowStyle}
+                    >
+                      <TableCell sx={{ ...compactTableCellStyle, ...fixedCellWidth(80), }}>
+                        {purchase.id}
+                      </TableCell>
+
+                      <TableCell sx={{  ...hoverExpandCellStyle, width: "28%", }}>
+                        <HoverExpandText
+                          text={ purchase.vendorName ?? "" }
+                          maxWidth={300}
+                          hoverBgColor={ colors.tableHover }
+                        />
+                      </TableCell>
+
+                      <TableCell sx={{ ...compactTableCellStyle, ...fixedCellWidth(110), }}>
+                        {purchase.purchasingDate ? new Date(
+                            purchase.purchasingDate
+                          ).toLocaleDateString(
+                            "de-DE",
+                            {
+                              day: "2-digit",
+                              month: "2-digit",
+                              year: "numeric",
+                            }
+                          )
                           : ""}
                       </TableCell>
-                      <TableCell align="right" sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{purchase.total} €</TableCell>
-                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{purchase.document.name}</TableCell>
-                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{purchase.documentNumber}</TableCell>
-                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{purchase.paymentStatus}</TableCell>
+
+                      <TableCell sx={{ ...compactTableCellStyle, ...fixedCellWidth(120), textAlign: "right", }}>
+                        {formatNumber(
+                          purchase.total
+                        )}{" "}
+                        €
+                      </TableCell>
+
+                      <TableCell sx={{ ...compactTableCellStyle, ...fixedCellWidth(140), }}>
+                        {purchase.document?.name ?? ""}
+                      </TableCell>
+
+                      <TableCell sx={{ ...compactTableCellStyle, ...fixedCellWidth(140), }}>
+                        {purchase.documentNumber}
+                      </TableCell>
+
+                      <TableCell sx={{ ...compactTableCellStyle, ...fixedCellWidth(140), }}>
+                        {purchase.paymentStatus}
+                      </TableCell>
+
+                      {/* Aktionen */}
                       {isAdmin && (
-                        <TableCell sx={{ padding: "2px 12px" }}>
-                          <Box display="flex" sx={{ padding: "2px 12px" }} gap={1} >
-                            <Tooltip title="Bearbeiten" arrow>
-                              <IconButton onClick={(e) => { e.stopPropagation(); navigate(`/purchases/${purchase.id}`); }} sx={{ p: 0.5, transition: 'transform 0.2s ease-in-out', "&:hover": { color: "#bdbdbd", transform: 'scale(1.2)', backgroundColor: "transparent" } }}>
-                                <EditIcon />
-                              </IconButton>
-                            </Tooltip>
-                            <DeletePurchase
-                              purchaseId={purchase.id}
-                              vendorName={purchase.vendorName}
-                              purchasingDate={purchase.purchasingDate}
-                              onSuccessDelete={() => { }}
-                              trigger={
-                                <Tooltip title="Löschen" arrow>
-                                  <IconButton
-                                    sx={{
-                                      p: 0.5,
-                                      transition: "transform 0.2s ease-in-out",
-                                      "&:hover": {
-                                        color: "#bdbdbd",
-                                        transform: "scale(1.2)",
-                                        backgroundColor: "transparent",
-                                      },
-                                    }}
-                                  >
-                                    <DeleteIcon />
-                                  </IconButton>
-                                </Tooltip>
-                              }
-                            />
-                            {purchase.paymentStatus !== "BEZAHLT" && (
-                              <Tooltip title="Bezahlen" arrow>
-                                <IconButton onClick={(e) => {
-                                  e.stopPropagation();
-                                  setOpenPaymentDialogId(purchase.id);
-                                  setSelectedOperationType(purchase.type);
-                                }}
-                                  sx={{ p: 0.5, transition: 'transform 0.2s ease-in-out', "&:hover": { color: "#bdbdbd", transform: 'scale(1.2)', backgroundColor: "transparent" } }}>
-                                  <PaymentsIcon />
+                        <TableCell sx={{ ...compactActionCellStyle, ...fixedCellWidth(120), }}>
+                          <Box sx={tableActionsStyle}>
+                            <Box sx={tableActionSlotStyle}>
+                              <Tooltip title="Bearbeiten" arrow>
+                                <IconButton
+                                  size="small"
+                                  onClick={(e) => { e.stopPropagation();
+                                    navigate( `/purchases/${purchase.id}` );
+                                  }}
+                                  sx={ compactIconButtonStyle }
+                                >
+                                  <EditIcon fontSize="small" />
                                 </IconButton>
                               </Tooltip>
-                            )}
+                            </Box>
+
+                            {/* Löschen */}
+                            <Box sx={tableActionSlotStyle}>
+                              <DeletePurchase
+                                purchaseId={ purchase.id }
+                                vendorName={ purchase.vendorName }
+                                purchasingDate={ purchase.purchasingDate }
+                                onSuccessDelete={() => { }}
+                                trigger={
+                                  <Tooltip title="Löschen" arrow>
+                                    <IconButton
+                                      size="small"
+                                      sx={ compactIconButtonStyle }>
+                                      <DeleteIcon fontSize="small" />
+                                    </IconButton>
+                                  </Tooltip>
+                                }
+                              />
+                            </Box>
+
+                            <Box sx={tableActionSlotStyle}>
+                              {purchase.paymentStatus !== "BEZAHLT" && (
+                                  <Tooltip title="Bezahlen" arrow>
+                                    <IconButton
+                                      size="small"
+                                      onClick={(e) => { e.stopPropagation();
+                                        setOpenPaymentDialogId( purchase.id );
+                                        setSelectedOperationType( purchase.type );
+                                      }}
+                                      sx={ compactIconButtonStyle }
+                                    >
+                                      <PaymentsIcon fontSize="small" />
+                                    </IconButton>
+                                  </Tooltip>
+                                )}
+                            </Box>
                           </Box>
                         </TableCell>
                       )}
-
                     </TableRow>
+
                     {/* Подтаблица */}
                     {openRows[purchase.id] && (
                       <TableRow>
-                        <TableCell colSpan={7} sx={{ paddingBottom: 0, paddingTop: 0 }}>
+                        <TableCell colSpan={isAdmin ? 8 : 7} sx={{ paddingBottom: 0, paddingTop: 0, }}>
                           <Collapse in={openRows[purchase.id]} timeout="auto" unmountOnExit>
                             <Box margin={2}>
-                              <Table size="small" sx={{ backgroundColor: "#f5f5f5", borderRadius: 1 }}>
+                              <Table size="small" sx={tableStyle}>
                                 <StyledSubTableHead>
                                   <TableRow>
-                                    <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>Artikel</TableCell>
-                                    <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>Artikelname</TableCell>
-                                    <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>Menge</TableCell>
-                                    <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>Einzelpreis</TableCell>
-                                    <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>Netto</TableCell>
-                                    <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>MWSt</TableCell>
-                                    <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>Gesamt</TableCell>
+                                    <TableCell sx={fixedCellWidth(120)}>
+                                      Artikel
+                                    </TableCell>
+
+                                    <TableCell sx={{ width: "30%", }}>
+                                      Artikelname
+                                    </TableCell>
+
+                                    <TableCell sx={fixedCellWidth(80)}>
+                                      Menge
+                                    </TableCell>
+
+                                    <TableCell sx={fixedCellWidth(100)}>
+                                      Einzelpreis
+                                    </TableCell>
+
+                                    <TableCell sx={fixedCellWidth(100)}>
+                                      Netto
+                                    </TableCell>
+
+                                    <TableCell sx={fixedCellWidth(100)}>
+                                      MWSt
+                                    </TableCell>
+
+                                    <TableCell sx={fixedCellWidth(110)}>
+                                      Gesamt
+                                    </TableCell>
                                   </TableRow>
                                 </StyledSubTableHead>
+
                                 <TableBody>
-                                  {purchase.purchaseItems?.map((item: any, index: number) => (
-                                    <TableRow key={index}>
-                                      <TableCell sx={{ borderLeft: "1px solid #ddd", borderRight: "1px solid #ddd", padding: "6px 12px" }}>{item.productArticle}</TableCell>
-                                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{item.productName}</TableCell>
-                                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{item.quantity}</TableCell>
-                                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{item.unitPrice} €</TableCell>
-                                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{item.totalPrice} €</TableCell>
-                                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{item.taxAmount} €</TableCell>
-                                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{item.totalAmount} €</TableCell>
-                                    </TableRow>
-                                  ))}
+                                  {purchase.purchaseItems?.map(( item: any, index: number ) => (
+                                      <TableRow key={index}>
+                                        <TableCell sx={{ ...cellStyle, borderLeft: `1px solid ${colors.border}`, }}>
+                                          { item.productArticle }
+                                        </TableCell>
+
+                                        <TableCell sx={{ ...cellStyle, width: "30%", }}>
+                                          <HoverExpandText
+                                            text={ item.productName ?? ""}
+                                            maxWidth={320}
+                                            hoverBgColor={colors.tableHover}
+                                          />
+                                        </TableCell>
+
+                                        <TableCell sx={{ ...cellStyle, textAlign: "center", }}>
+                                          {item.quantity}
+                                        </TableCell>
+
+                                        <TableCell sx={{ ...cellStyle, textAlign: "right", }}>
+                                          {formatNumber(item.unitPrice)}{" "} €
+                                        </TableCell>
+
+                                        <TableCell sx={{ ...cellStyle, textAlign: "right", }}>
+                                          {formatNumber(item.totalPrice)}{" "} €
+                                        </TableCell>
+
+                                        <TableCell sx={{ ...cellStyle, textAlign: "right", }}>
+                                          {formatNumber(item.taxAmount)}{" "} €
+                                        </TableCell>
+
+                                        <TableCell sx={{ ...cellStyle, textAlign: "right", }}>
+                                          {formatNumber(item.totalAmount)}{" "} €
+                                        </TableCell>
+                                      </TableRow>
+                                    )
+                                  )}
                                 </TableBody>
                               </Table>
                             </Box>
@@ -606,7 +590,10 @@ export default function Purchases() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={isAdmin ? 8 : 7} align="center">
+                  <TableCell
+                    colSpan={isAdmin ? 8 : 7}
+                    align="center"
+                  >
                     Keine Bestellungen gefunden
                   </TableCell>
                 </TableRow>
@@ -616,17 +603,16 @@ export default function Purchases() {
         </TableContainer>
       </Box>
 
-      {openPaymentDialogId !== null && selectedOperationType && (
-        <CreatePayment
-          prefillType="purchase"
-          prefillId={openPaymentDialogId}
-          typeOfOperation={selectedOperationType}
-          onClose={() => {
-            setOpenPaymentDialogId(null);
-            setSelectedOperationType(null);
-          }}
-        />
-      )}
+      {/* Zahlung */}
+      {openPaymentDialogId !== null &&
+        selectedOperationType && (
+          <CreatePayment
+            prefillType="purchase"
+            prefillId={openPaymentDialogId}
+            typeOfOperation={selectedOperationType}
+            onClose={() => { setOpenPaymentDialogId(null); setSelectedOperationType(null); }}
+          />
+        )}
 
       {/* Пагинация */}
       <Box display="flex" justifyContent="center" mt={2}>
@@ -637,7 +623,7 @@ export default function Purchases() {
           color="primary"
         />
       </Box>
-    </Container>
+    </Box>
   );
 }
 

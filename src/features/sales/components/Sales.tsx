@@ -1,9 +1,8 @@
-import { Box, Button, Collapse, Container, debounce, FormControl, IconButton, InputLabel, MenuItem, Pagination, Paper, Select, SelectChangeEvent, styled, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Tooltip, Typography } from "@mui/material";
+import { Box, Button, Collapse, debounce, FormControl, IconButton, InputLabel, MenuItem, Pagination, Paper, Select, SelectChangeEvent, Table, TableBody, TableCell, TableContainer, TableRow, TextField, Tooltip, Typography } from "@mui/material";
 import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
 import { getSales, getSalesByFilter, searchSales, selectSales, selectTotalPages } from "../salesSlice";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ClearIcon } from "@mui/x-date-pickers";
 import { PaymentStatuses } from "../../../constants/enums";
 import React from "react";
 import EditIcon from "@mui/icons-material/Edit";
@@ -15,28 +14,16 @@ import { selectUser } from "../../auth/authSlice";
 import axios from "axios";
 import { ACCESS_TOKEN_KEY } from "../../../utils/token";
 import { showErrorToast } from "../../../utils/toast";
-import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
-import ArrowDropUpIcon from '@mui/icons-material/ArrowDropUp';
 import EllipsisTooltip from "../../../components/ui/EllipsisTooltip";
+import HoverExpandText from "../../../components/ui/HoverExpandText";
+import { cellStyle, compactActionCellStyle, compactIconButtonStyle, compactTableCellStyle, compactTableRowStyle, fixedCellWidth, hoverExpandCellStyle, pdfActionsStyle, pdfTextButtonStyle, StyledSubTableHead, StyledTableHead, tableActionSlotStyle, tableActionsStyle, tableContainerStyle, tableStyle } from "../../../styles/tableStyles";
+import { outlinedButtonStyle } from "../../../styles/buttonStyles";
+import { colors } from "../../../styles/colors";
+import SearchBox from "../../../components/ui/SearchBox";
+import { filterDateFieldsStyle, filterDateRangeStyle, filterDateRangeTitleStyle, filterOptionsStyle, filterPanelRowStyle, filterPanelStyle, pageToolbarStyle } from "../../../styles/formStyles";
+import SortableHeader from "../../../components/ui/SortableHeader";
+import { formatNumber } from "../../../utils/formatNumber";
 
-
-const StyledTableHead = styled(TableHead)({
-  backgroundColor: "#1a3d6d",
-  "& th": {
-    color: "white",
-    fontWeight: "bold",
-    borderRight: "1px solid #ddd",
-    textAlign: "center"
-  },
-});
-const StyledSubTableHead = styled(TableHead)({
-  backgroundColor: "#70ABBF",
-  "& th": {
-    color: "white",
-    fontWeight: "bold",
-    borderRight: "1px solid #ddd",
-  },
-});
 
 export default function Sales() {
   const dispatch = useAppDispatch();
@@ -302,45 +289,20 @@ export default function Sales() {
 
 
   return (
-    <Container>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-        <Typography variant="h6" sx={{ textAlign: "left", fontWeight: "bold", textDecoration: 'underline', color: "#0277bd" }}>AUFTRÄGE</Typography>
-      </Box>
+    <Box sx={{ p: 0, m: 0, width: "100%", display: "flex", flexDirection: "column", alignItems: "stretch", }}>
+
       {/* Верхняя панель */}
-      <Box
-        display="flex"
-        justifyContent="space-between"
-        alignItems="center"
-        mb={2}
-        sx={{
-          position: "sticky",
-          top: 0,
-          zIndex: 1000,
-          padding: "10px 0",
-        }}
-      >
-        {/* Поиск */}
-        <Box display="flex" gap={1}>
-          <TextField
-            id="search-input"
-            label="Suche"
-            variant="outlined"
-            size="small"
+      <Box sx={pageToolbarStyle}>
+        <Box display="flex" gap={2}>
+          <SearchBox
             value={searchTerm}
             onChange={handleSearchChange}
-            sx={{ width: 400, backgroundColor: "white" }}
+            onClear={handleClearSearch}
           />
-          <IconButton
-            aria-label="Suche zurücksetzen"
-            onClick={handleClearSearch}>
-            <ClearIcon />
-          </IconButton>
-        </Box>
 
-        <Box display="flex" gap={1}>
           <Button
             variant="outlined"
-            sx={{ "&:hover": { borderColor: "#00acc1" } }}
+            sx={outlinedButtonStyle}
             onClick={() => setFiltersVisible((prev) => !prev)}
           >
             {filtersVisible ? "Filter ausblenden" : "Filter anzeigen"}
@@ -351,344 +313,297 @@ export default function Sales() {
 
       {/* Фильтры */}
       <Collapse in={filtersVisible}>
-        <Paper
-          elevation={4}
-          sx={{
-            mb: 3,
-            p: 2,
-            paddingTop: 4,
-            borderRadius: 2,
-            border: "1px solid #ddd",
-            backgroundColor: "#f9f9f9",
-            transition: "all 0.3s ease",
-          }}
-        >
-          <Box display="flex" flexWrap="wrap" justifyContent="space-between" gap={2} mb={2}>
-            {/* Дата от */}
-            <TextField
-              id="filter-start-date"
-              label="Von"
-              type="date"
-              size="small"
-              value={filters.startDate}
-              onChange={(e) => handleFilterChange("startDate", e.target.value)}
-              InputLabelProps={{ shrink: true }}
-              aria-label="Startdatum"
-            />
+        <Paper elevation={4} sx={filterPanelStyle}>
+          <Box sx={filterPanelRowStyle}>
+            <Box sx={filterDateRangeStyle}>
+              <Typography variant="caption" sx={filterDateRangeTitleStyle}>
+                Zeitraum:
+              </Typography>
 
-            {/* Дата до */}
-            <TextField
-              id="filter-end-date"
-              label="Bis"
-              type="date"
-              size="small"
-              value={filters.endDate}
-              onChange={(e) => handleFilterChange("endDate", e.target.value)}
-              InputLabelProps={{ shrink: true }}
-              aria-label="Enddatum"
-            />
+              <Box sx={filterDateFieldsStyle}>
+                <TextField
+                  id="filter-start-date"
+                  label="Von"
+                  type="date"
+                  value={filters.startDate}
+                  onChange={(e) => handleFilterChange("startDate", e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                />
 
-            {/* PaymentStatus */}
-            <FormControl size="small" sx={{ minWidth: 160 }}>
-              <InputLabel id="payment-status-label">Zahlungsstatus</InputLabel>
-              <Select
-                labelId="payment-status-label"
-                id="payment-status-select"
-                value={filters.paymentStatus}
-                onChange={(e: SelectChangeEvent) =>
-                  handleFilterChange("paymentStatus", e.target.value)
-                }
-                label="Zahlungsstatus"
-                aria-label="Zahlungsstatus"
-              >
-                <MenuItem value="">ALLE</MenuItem>
-                {PaymentStatuses.map((status) => (
-                  <MenuItem key={status} value={status}>
-                    {status}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+                <TextField
+                  id="filter-end-date"
+                  label="Bis"
+                  type="date"
+                  value={filters.endDate}
+                  onChange={(e) => handleFilterChange("endDate", e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                />
+              </Box>
+            </Box>
 
-            <Button onClick={handleClearFilters} variant="outlined" sx={{ "&:hover": { borderColor: "#00acc1" } }}>
-              Filter zurücksetzen
-            </Button>
+            <Box sx={filterOptionsStyle}>
+              {/* PaymentStatus */}
+              <FormControl size="small" sx={{ minWidth: 180 }}>
+                <InputLabel id="payment-status-label">Zahlungsstatus</InputLabel>
+                <Select
+                  labelId="payment-status-label"
+                  id="payment-status-select"
+                  value={filters.paymentStatus}
+                  onChange={(e: SelectChangeEvent) => handleFilterChange("paymentStatus", e.target.value)}
+                  label="Zahlungsstatus"
+                  aria-label="Zahlungsstatus"
+                >
+                  <MenuItem value="">ALLE</MenuItem>
+                  {PaymentStatuses.map((status) => (
+                    <MenuItem key={status} value={status}>
+                      {status}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <Button onClick={handleClearFilters} variant="outlined" sx={outlinedButtonStyle}>
+                Filter zurücksetzen
+              </Button>
+            </Box>
           </Box>
         </Paper>
       </Collapse>
 
       {/* Таблица */}
-      <Box sx={{ minHeight: "580px" }}>
-        <TableContainer component={Paper} sx={{
-
-        }}>
-          <Table sx={{ tableLayout: "fixed" }}>
+      <Box sx={{ width: "100%", maxWidth: "100%", overflowX: "auto", mb: 2, }}>
+        <TableContainer component={Paper} sx={{ ...tableContainerStyle, mt: 1, minHeight: 580, }}>
+          <Table sx={tableStyle}>
             <StyledTableHead>
               <TableRow>
-
-                {/* ID */}
-                <TableCell sx={{ userSelect: "none" }}>
-                  <Box display="flex" justifyContent="space-between" alignItems="center">
-                    ID
-                    <Box display="flex" flexDirection="column" ml={0.5}>
-                      <ArrowDropUpIcon
-                        fontSize="small"
-                        onClick={() => handleSort("id", "ASC")}
-                        sx={{
-                          cursor: "pointer",
-                          color: sort[0] === "id,ASC" ? "#0277bd" : "#bdbdbd",
-                          "&:hover": { color: "#0277bd" }
-                        }}
-                      />
-                      <ArrowDropDownIcon
-                        fontSize="small"
-                        onClick={() => handleSort("id", "DESC")}
-                        sx={{
-                          cursor: "pointer",
-                          color: sort[0] === "id,DESC" ? "#0277bd" : "#bdbdbd",
-                          "&:hover": { color: "#0277bd" }
-                        }}
-                      />
-                    </Box>
-                  </Box>
+                <TableCell sx={fixedCellWidth(80)}>
+                  <SortableHeader
+                    title="DokNr"
+                    field="id"
+                    activeSort={sort}
+                    onSort={handleSort}
+                  />
                 </TableCell>
 
-                {/* Kunde */}
-                <TableCell sx={{ userSelect: "none" }}>
-                  <Box display="flex" justifyContent="space-between" alignItems="center">
-                    Kunde
-                    <Box display="flex" flexDirection="column" ml={0.5}>
-                      <ArrowDropUpIcon
-                        fontSize="small"
-                        onClick={() => handleSort("customerName", "ASC")}
-                        sx={{
-                          cursor: "pointer",
-                          color: sort[0] === "customerName,ASC" ? "#0277bd" : "#bdbdbd",
-                          "&:hover": { color: "#0277bd" }
-                        }}
-                      />
-                      <ArrowDropDownIcon
-                        fontSize="small"
-                        onClick={() => handleSort("customerName", "DESC")}
-                        sx={{
-                          cursor: "pointer",
-                          color: sort[0] === "customerName,DESC" ? "#0277bd" : "#bdbdbd",
-                          "&:hover": { color: "#0277bd" }
-                        }}
-                      />
-                    </Box>
-                  </Box>
+                <TableCell sx={{ width: "28%" }}>
+                  <SortableHeader
+                    title="Kunde"
+                    field="customerName"
+                    activeSort={sort}
+                    onSort={handleSort}
+                  />
                 </TableCell>
 
-                {/* Datum */}
-                <TableCell sx={{ userSelect: "none" }}>
-                  <Box display="flex" justifyContent="space-between" alignItems="center">
-                    Datum
-                    <Box display="flex" flexDirection="column" ml={0.5}>
-                      <ArrowDropUpIcon
-                        fontSize="small"
-                        onClick={() => handleSort("salesDate", "ASC")}
-                        sx={{
-                          cursor: "pointer",
-                          color: sort[0] === "salesDate,ASC" ? "#0277bd" : "#bdbdbd",
-                          "&:hover": { color: "#0277bd" }
-                        }}
-                      />
-                      <ArrowDropDownIcon
-                        fontSize="small"
-                        onClick={() => handleSort("salesDate", "DESC")}
-                        sx={{
-                          cursor: "pointer",
-                          color: sort[0] === "salesDate,DESC" ? "#0277bd" : "#bdbdbd",
-                          "&:hover": { color: "#0277bd" }
-                        }}
-                      />
-                    </Box>
-                  </Box>
+                <TableCell sx={fixedCellWidth(110)}>
+                  <SortableHeader
+                    title="Datum"
+                    field="salesDate"
+                    activeSort={sort}
+                    onSort={handleSort}
+                  />
                 </TableCell>
 
-                {/* Betrag */}
-                <TableCell sx={{ userSelect: "none" }}>
-                  <Box display="flex" justifyContent="space-between" alignItems="center">
-                    Betrag
-                    <Box display="flex" flexDirection="column" ml={0.5}>
-                      <ArrowDropUpIcon
-                        fontSize="small"
-                        onClick={() => handleSort("totalAmount", "ASC")}
-                        sx={{
-                          cursor: "pointer",
-                          color: sort[0] === "totalAmount,ASC" ? "#0277bd" : "#bdbdbd",
-                          "&:hover": { color: "#0277bd" }
-                        }}
-                      />
-                      <ArrowDropDownIcon
-                        fontSize="small"
-                        onClick={() => handleSort("totalAmount", "DESC")}
-                        sx={{
-                          cursor: "pointer",
-                          color: sort[0] === "totalAmount,DESC" ? "#0277bd" : "#bdbdbd",
-                          "&:hover": { color: "#0277bd" }
-                        }}
-                      />
-                    </Box>
-                  </Box>
+                <TableCell sx={fixedCellWidth(120)}>
+                  <SortableHeader
+                    title="Betrag"
+                    field="totalAmount"
+                    activeSort={sort}
+                    onSort={handleSort}
+                  />
                 </TableCell>
 
-                {/* Rechnung-Nr */}
-                <TableCell sx={{ userSelect: "none" }}>
-                  <Box display="flex" justifyContent="space-between" alignItems="center">
-                    Rechnung-Nr
-                    <Box display="flex" flexDirection="column" ml={0.5}>
-                      <ArrowDropUpIcon
-                        fontSize="small"
-                        onClick={() => handleSort("invoiceNumber", "ASC")}
-                        sx={{
-                          cursor: "pointer",
-                          color: sort[0] === "invoiceNumber,ASC" ? "#0277bd" : "#bdbdbd",
-                          "&:hover": { color: "#0277bd" }
-                        }}
-                      />
-                      <ArrowDropDownIcon
-                        fontSize="small"
-                        onClick={() => handleSort("invoiceNumber", "DESC")}
-                        sx={{
-                          cursor: "pointer",
-                          color: sort[0] === "invoiceNumber,DESC" ? "#0277bd" : "#bdbdbd",
-                          "&:hover": { color: "#0277bd" }
-                        }}
-                      />
-                    </Box>
-                  </Box>
+                <TableCell sx={fixedCellWidth(140)}>
+                  <SortableHeader
+                    title="Rechnung-Nr"
+                    field="invoiceNumber"
+                    activeSort={sort}
+                    onSort={handleSort}
+                  />
                 </TableCell>
 
-                <TableCell>Zahlungsstatus</TableCell>
-                <TableCell>PDF</TableCell>
-                <TableCell>Aktionen</TableCell>
+                <TableCell sx={fixedCellWidth(140)}>
+                  Zahlungsstatus
+                </TableCell>
 
+                <TableCell sx={fixedCellWidth(80)}>
+                  PDF
+                </TableCell>
+
+                <TableCell sx={fixedCellWidth(120)}>
+                  Aktionen
+                </TableCell>
               </TableRow>
             </StyledTableHead>
 
             <TableBody>
-              {sales.length > 0 ? (
-                sales.map((sale) => (
+              {sales.length > 0 ? (sales.map((sale) => (
                   <React.Fragment key={sale.id}>
-                    <TableRow hover onClick={() => toggleRow(sale.id)} sx={{ cursor: 'pointer' }} >
-                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{sale.id}</TableCell>
-                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px", width: 280 }}>
-                        <EllipsisTooltip text={sale.customerName ?? ""} placement="right-start" />
-                      </TableCell>
-                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>
-                        {sale.salesDate
-                          ? new Date(sale.salesDate).toLocaleDateString("de-DE", {
-                            day: "2-digit",
-                            month: "2-digit",
-                            year: "numeric",
-                          })
-                          : ""}
-                      </TableCell>
-                      <TableCell align="right" sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{sale.totalAmount} €</TableCell>
-                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{sale.invoiceNumber}</TableCell>
-                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{sale.paymentStatus}</TableCell>
-                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>
-                        <Tooltip title="Rechnung" arrow>
-                          <IconButton onClick={(e) => openInvoice(e, sale)}>
-                            <Typography variant="button"
-                              sx={{ fontWeight: "bold", transition: 'transform 0.2s ease-in-out', "&:hover": { color: "#bdbdbd", transform: 'scale(1.2)', backgroundColor: "transparent" } }}>
-                              RE
-                            </Typography>
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Lieferschein" arrow>
-                          <IconButton onClick={(e) => openDeliveryBill(e, sale)}>
-                            <Typography variant="button"
-                              sx={{ fontWeight: "bold", transition: 'transform 0.2s ease-in-out', "&:hover": { color: "#bdbdbd", transform: 'scale(1.2)', backgroundColor: "transparent" } }}>
-                              LF
-                            </Typography>
-                          </IconButton>
-                        </Tooltip>
+                    <TableRow
+                      onClick={() => toggleRow(sale.id)}
+                      sx={compactTableRowStyle}
+                    >
+                      <TableCell sx={{ ...compactTableCellStyle, ...fixedCellWidth(80), }}>
+                        {sale.id}
                       </TableCell>
 
-                      <TableCell sx={{ padding: "2px 12px" }}>
-                        <Box display="flex" sx={{ padding: "2px 12px" }} gap={1} >
-                          <Tooltip title="Bearbeiten" arrow>
-                            <IconButton onClick={(e) => { e.stopPropagation(); navigate(`/sales/${sale.id}`); }} sx={{ p: 0.5, transition: 'transform 0.2s ease-in-out', "&:hover": { color: "#bdbdbd", transform: 'scale(1.2)', backgroundColor: "transparent" } }}>
-                              <EditIcon />
+                      <TableCell sx={{ ...hoverExpandCellStyle, width: "28%", }}>
+                        <HoverExpandText text={sale.customerName ?? ""}  maxWidth={300} hoverBgColor={colors.tableHover} />
+                      </TableCell>
+
+                      <TableCell sx={{ ...compactTableCellStyle, ...fixedCellWidth(110), }}>
+                        {sale.salesDate ? new Date(sale.salesDate).toLocaleDateString( "de-DE", { day: "2-digit", month: "2-digit", year: "numeric", } ) : ""}
+                      </TableCell>
+
+                      <TableCell sx={{ ...compactTableCellStyle, ...fixedCellWidth(120), textAlign: "right", }}>
+                        {formatNumber(sale.totalAmount)} €
+                      </TableCell>
+
+                      <TableCell sx={{ ...compactTableCellStyle,  ...fixedCellWidth(140), }}>
+                        {sale.invoiceNumber}
+                      </TableCell>
+
+                      <TableCell sx={{ ...compactTableCellStyle, ...fixedCellWidth(140), }}>
+                        {sale.paymentStatus}
+                      </TableCell>
+                      <TableCell sx={{ ...compactActionCellStyle, ...fixedCellWidth(80), }}>
+                        <Box sx={pdfActionsStyle}>
+                          <Tooltip title="Rechnung" arrow>
+                            <IconButton
+                              onClick={(e) => openInvoice(e, sale)}
+                              sx={compactIconButtonStyle}
+                            >
+                              <Typography variant="button" sx={pdfTextButtonStyle}>
+                                RE
+                              </Typography>
                             </IconButton>
                           </Tooltip>
-                          {isAdmin && (
-                            <DeleteSale
-                              saleId={sale.id}
-                              customerName={sale.customerName}
-                              salesDate={sale.salesDate}
-                              onSuccessDelete={() => { }}
-                              trigger={
-                                <Tooltip title="Löschen" arrow>
-                                  <IconButton
-                                    sx={{
-                                      p: 0.5,
-                                      transition: "transform 0.2s ease-in-out",
-                                      "&:hover": {
-                                        color: "#bdbdbd",
-                                        transform: "scale(1.2)",
-                                        backgroundColor: "transparent",
-                                      },
-                                    }}
-                                  >
-                                    <DeleteIcon />
-                                  </IconButton>
-                                </Tooltip>
-                              }
-                            />
-                          )}
 
-                          {sale.paymentStatus !== "BEZAHLT" && (
-                            <Tooltip title="Bezahlen" arrow>
-                              <IconButton onClick={(e) => {
-                                e.stopPropagation();
-                                setOpenPaymentDialogId(sale.id);
-                                setSelectedOperationType(sale.typeOfOperation);
-                              }}
-                                sx={{ transition: 'transform 0.2s ease-in-out', "&:hover": { color: "#bdbdbd", transform: 'scale(1.2)', backgroundColor: "transparent" } }}>
-                                <PaymentsIcon />
+                          <Tooltip title="Lieferschein" arrow>
+                            <IconButton
+                              onClick={(e) => openDeliveryBill(e, sale)}
+                              sx={compactIconButtonStyle}
+                            >
+                              <Typography variant="button" sx={pdfTextButtonStyle}>
+                                LF
+                              </Typography>
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
+                      </TableCell>
+
+                      <TableCell
+                        sx={{
+                          ...compactActionCellStyle,
+                          ...fixedCellWidth(120),
+                        }}
+                      >
+                        <Box sx={tableActionsStyle}>
+                          <Box sx={tableActionSlotStyle}>
+                            <Tooltip title="Bearbeiten" arrow>
+                              <IconButton
+                                size="small"
+                                onClick={(e) => { e.stopPropagation(); navigate(`/sales/${sale.id}`); }}
+                                sx={compactIconButtonStyle}
+                              >
+                                <EditIcon fontSize="small" />
                               </IconButton>
                             </Tooltip>
-                          )}
+                          </Box>
+
+                          <Box sx={tableActionSlotStyle}>
+                            {isAdmin && (
+                              <DeleteSale
+                                saleId={sale.id}
+                                customerName={sale.customerName}
+                                salesDate={sale.salesDate}
+                                onSuccessDelete={() => { }}
+                                trigger={
+                                  <Tooltip title="Löschen" arrow>
+                                    <IconButton sx={compactIconButtonStyle}>
+                                      <DeleteIcon />
+                                    </IconButton>
+                                  </Tooltip>
+                                }
+                              />
+                            )}
+                          </Box>
+
+                          <Box sx={tableActionSlotStyle}>
+                            {sale.paymentStatus !== "BEZAHLT" && (
+                              <Tooltip title="Bezahlen" arrow>
+                                <IconButton
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenPaymentDialogId(sale.id);
+                                    setSelectedOperationType(sale.typeOfOperation);
+                                  }}
+                                  sx={compactIconButtonStyle}
+                                >
+                                  <PaymentsIcon />
+                                </IconButton>
+                              </Tooltip>
+                            )}
+                          </Box>
                         </Box>
                       </TableCell>
                     </TableRow>
+
                     {/* Подтаблица */}
                     {
                       openRows[sale.id] && (
                         <TableRow>
-                          <TableCell colSpan={7} sx={{ paddingBottom: 0, paddingTop: 0 }}>
+                          <TableCell colSpan={8} sx={{ paddingBottom: 0, paddingTop: 0 }}>
                             <Collapse in={openRows[sale.id]} timeout="auto" unmountOnExit>
                               <Box margin={2}>
-                                <Table size="small" sx={{ backgroundColor: "#f5f5f5", borderRadius: 1 }}>
+                                <Table size="small" sx={{ ...tableStyle, }}>
                                   <StyledSubTableHead>
                                     <TableRow>
-                                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>Artikel</TableCell>
-                                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>Artikelname</TableCell>
-                                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>Menge</TableCell>
-                                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>Einzelpreis</TableCell>
-                                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>Rabatt</TableCell>
-                                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>Netto</TableCell>
-                                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>MWSt</TableCell>
-                                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>Gesamt</TableCell>
+                                      <TableCell sx={fixedCellWidth(120)}>
+                                        Artikel
+                                      </TableCell>
+
+                                      <TableCell sx={{ width: "30%" }}>
+                                        Artikelname
+                                      </TableCell>
+
+                                      <TableCell sx={fixedCellWidth(80)}>
+                                        Menge
+                                      </TableCell>
+
+                                      <TableCell sx={fixedCellWidth(100)}>
+                                        Einzelpreis
+                                      </TableCell>
+
+                                      <TableCell sx={fixedCellWidth(80)}>
+                                        Rabatt
+                                      </TableCell>
+
+                                      <TableCell sx={fixedCellWidth(100)}>
+                                        Netto
+                                      </TableCell>
+
+                                      <TableCell sx={fixedCellWidth(100)}>
+                                        MWSt
+                                      </TableCell>
+
+                                      <TableCell sx={fixedCellWidth(110)}>
+                                        Gesamt
+                                      </TableCell>
                                     </TableRow>
                                   </StyledSubTableHead>
                                   <TableBody>
                                     {sale.saleItems?.map((item: any, index: number) => (
                                       <TableRow key={index}>
-                                        <TableCell sx={{ borderLeft: "1px solid #ddd", borderRight: "1px solid #ddd", padding: "6px 12px" }}>{item.productArticle}</TableCell>
-                                        <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px", width: 320 }}>
+                                        <TableCell sx={{ ...cellStyle, borderLeft: "1px solid #ddd", }}>{item.productArticle}</TableCell>
+                                        <TableCell sx={{ ...cellStyle, width: 320 }}>
                                           <EllipsisTooltip text={item.productName ?? ""} placement="right-start" />
                                         </TableCell>
-                                        <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{item.quantity}</TableCell>
-                                        <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{item.unitPrice} €</TableCell>
-                                        <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{item.discount} %</TableCell>
-                                        <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{item.totalPrice} €</TableCell>
-                                        <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{item.taxAmount} €</TableCell>
-                                        <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{item.totalAmount} €</TableCell>
+                                        <TableCell sx={{ ...cellStyle, }}>{item.quantity}</TableCell>
+                                        <TableCell sx={{ ...cellStyle, }}>{item.unitPrice} €</TableCell>
+                                        <TableCell sx={{ ...cellStyle, }}>{item.discount} %</TableCell>
+                                        <TableCell sx={{ ...cellStyle, }}>{item.totalPrice} €</TableCell>
+                                        <TableCell sx={{ ...cellStyle, }}>{item.taxAmount} €</TableCell>
+                                        <TableCell sx={{ ...cellStyle, }}>{item.totalAmount} €</TableCell>
                                       </TableRow>
                                     ))}
                                   </TableBody>
@@ -703,7 +618,7 @@ export default function Sales() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={7} align="center">
+                  <TableCell colSpan={8} align="center">
                     Keine Aufträge gefunden
                   </TableCell>
                 </TableRow>
@@ -719,10 +634,7 @@ export default function Sales() {
             prefillType="sale"
             prefillId={openPaymentDialogId}
             typeOfOperation={selectedOperationType}
-            onClose={() => {
-              setOpenPaymentDialogId(null);
-              setSelectedOperationType(null);
-            }}
+            onClose={() => { setOpenPaymentDialogId(null); setSelectedOperationType(null); }}
           />
         )
       }
@@ -736,7 +648,7 @@ export default function Sales() {
           color="primary"
         />
       </Box>
-    </Container >
+    </Box>
   );
 }
 

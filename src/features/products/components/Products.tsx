@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Table, TableBody, TableCell,
-  TableContainer, TableHead, TableRow, Paper, Box, Pagination,
-  TextField,
+  TableContainer, TableRow, Paper, Box, Pagination,
   IconButton,
   FormControl,
   InputLabel,
@@ -13,15 +12,11 @@ import {
 } from "@mui/material";
 import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
 import { getProducts, getProductsByCategory, selectProductsPaged, selectTotalPages } from "../productsSlice";
-import { styled } from "@mui/material/styles";
 import { useNavigate } from "react-router-dom";
-import ClearIcon from "@mui/icons-material/Clear";
 import debounce from "lodash.debounce";
 import { selectIsAuthenticated } from "../../auth/authSlice";
 import { getProductCategories, selectProductCategories } from "../productCategoriesSlice";
 import { useSearchParams } from "react-router-dom";
-import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
-import ArrowDropUpIcon from '@mui/icons-material/ArrowDropUp';
 import { getWarehouseStocks, selectWarehouseStocks } from "../../warehouse/warehouseSlice";
 import { getAllProductFiles, selectProductFiles } from "../productFilesSlice";
 import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
@@ -30,26 +25,12 @@ import ArrowBackIos from "@mui/icons-material/ArrowBackIos";
 import ArrowForwardIos from "@mui/icons-material/ArrowForwardIos";
 import CloseIcon from "@mui/icons-material/Close";
 import Tooltip from "@mui/material/Tooltip";
-
-
-// Стили для заголовков таблицы
-const StyledTableHead = styled(TableHead)({
-  backgroundColor: "#1a3d6d",
-  "& th": {
-    color: "white",
-    fontWeight: "bold",
-    borderRight: "1px solid #ddd",
-  },
-});
-
-// Стили для полей в таблице
-const cellStyle = {
-  whiteSpace: "nowrap",  // запрещаем перенос строк
-  overflow: "hidden",  // обрезаем всё, что не помещается
-  textOverflow: "ellipsis",  // добавляем "..."
-  borderRight: "1px solid #ddd",
-  padding: "6px 12px",
-};
+import HoverExpandText from "../../../components/ui/HoverExpandText";
+import { cellStyle, fixedCellWidth, hoverExpandCellStyle, leftBorderCellStyle, productPhotoCellStyle, StyledTableHead, tableContainerStyle, tableRowHoverStyle, tableStyle } from "../../../styles/tableStyles";
+import { colors } from "../../../styles/colors";
+import SearchBox from "../../../components/ui/SearchBox";
+import { pageToolbarStyle } from "../../../styles/formStyles";
+import SortableHeader from "../../../components/ui/SortableHeader";
 
 
 // Функция для окрашивания чисел
@@ -224,10 +205,12 @@ export default function Products() {
     }
   };
 
-  const handleSort = (field: string, direction: "asc" | "desc") => {
-    const nextSort = direction === "desc" ? `${field},desc` : field;
+  const handleSort = (field: string, direction: "ASC" | "DESC") => {
+    const nextSort = `${field},${direction}`;
+
     setSort(nextSort);
     setPage(0);
+
     setSearchParams({
       page: "0",
       search: searchTerm,
@@ -297,21 +280,9 @@ export default function Products() {
     <Box sx={{ p: 0, m: 0, width: "100%", display: "flex", flexDirection: "column", alignItems: "stretch", }}>
 
       {/* Верхняя панель */}
-      <Box
-        display="flex"
-        justifyContent="space-between"
-        alignItems="center"
-        mb={2}
-        sx={{
-          position: "sticky", // Сделаем панель фиксированной
-          top: 0, // Закрепим сверху
-          zIndex: 1000, // Повышаем приоритет на случай, если другие элементы будут сверху
-          pl: 0,
-          pr: { xs: 1, sm: 2 },
-        }}
-      >
+      <Box sx={pageToolbarStyle}>
         <Box display="flex" gap={2}>
-          <FormControl size="small" sx={{ minWidth: 200, backgroundColor: "white" }}>
+          <FormControl sx={{ minWidth: 200, backgroundColor: "white" }}>
             <InputLabel id="category-select-label">Kategorie</InputLabel>
             <Select
               labelId="category-select-label"
@@ -327,115 +298,59 @@ export default function Products() {
             </Select>
           </FormControl>
 
-          <TextField
-            id="search-input"
-            label="Suche"
-            variant="outlined"
-            size="small"
+          {/* Поиск */}
+          <SearchBox
             value={searchTerm}
             onChange={handleSearchChange}
-            sx={{ width: 400, backgroundColor: "white" }}
+            onClear={handleClearSearch}
           />
-          <IconButton aria-label="Suche zurücksetzen" onClick={handleClearSearch}>
-            <ClearIcon />
-          </IconButton>
         </Box>
       </Box>
 
       {/* Таблица */}
       <Box sx={{ width: "100%", maxWidth: "100%", overflowX: "auto", mb: 2 }}>
-        <TableContainer component={Paper} sx={{ mt: 1, ml: 0 }}>
-          <Table>
+        <TableContainer component={Paper} sx={{ ...tableContainerStyle, mt: 1 }}>
+          <Table sx={tableStyle}>
             <StyledTableHead>
               <TableRow>
-                <TableCell style={{ display: "none" }}>ID</TableCell>
-                <TableCell align="center"></TableCell>
+                
+                <TableCell align="center" sx={fixedCellWidth(50)} />
                 {/* ===== NAME ===== */}
-                <TableCell sx={{ userSelect: "none" }}>
-                  <Box display="flex" justifyContent="space-between" alignItems="center">
-                    <span style={{ cursor: "default" }}>Name</span>
-                    <Box display="flex" flexDirection="column" ml={0.5} >
-                      <ArrowDropUpIcon
-                        fontSize="small"
-                        onClick={() => handleSort("name", "asc")}
-                        sx={{
-                          cursor: "pointer",
-                          color: sort === "name" ? "#00CBD0" : "#FFFFFF",
-                          "&:hover": { color: "#00CBD0" },
-                        }}
-                      />
-                      <ArrowDropDownIcon
-                        fontSize="small"
-                        onClick={() => handleSort("name", "desc")}
-                        sx={{
-                          cursor: "pointer",
-                          color: sort === "name,desc" ? "#00CBD0" : "#FFFFFF",
-                          "&:hover": { color: "#00CBD0" },
-                        }}
-                      />
-                    </Box>
-                  </Box>
+                 <TableCell sx={{ width: "30%" }}>
+                  <SortableHeader
+                    title="Name"
+                    field="name"
+                    activeSort={[sort]}
+                    onSort={handleSort}
+                  />
                 </TableCell>
 
                 {/* ===== ARTICLE ===== */}
-                <TableCell align="center" sx={{ userSelect: "none" }}>
-                  <Box display="flex" justifyContent="space-between" alignItems="center">
-                    <span style={{ cursor: "default" }}>Artikel Nr</span>
-                    <Box display="flex" flexDirection="column" ml={0.5} >
-                      <ArrowDropUpIcon
-                        fontSize="small"
-                        onClick={() => handleSort("article", "asc")}
-                        sx={{
-                          cursor: "pointer",
-                          color: sort === "article" ? "#00CBD0" : "#FFFFFF",
-                          "&:hover": { color: "#00CBD0" },
-                        }}
-                      />
-                      <ArrowDropDownIcon
-                        fontSize="small"
-                        onClick={() => handleSort("article", "desc")}
-                        sx={{
-                          cursor: "pointer",
-                          color: sort === "article,desc" ? "#00CBD0" : "#FFFFFF",
-                          "&:hover": { color: "#00CBD0" },
-                        }}
-                      />
-                    </Box>
-                  </Box>
+                <TableCell sx={fixedCellWidth(150)}>
+                  <SortableHeader
+                    title="Artikel Nr"
+                    field="article"
+                    activeSort={[sort]}
+                    onSort={handleSort}
+                  />
                 </TableCell>
 
                 {/* ===== VENDOR ARTICLE ===== */}
-                <TableCell align="center" sx={{ userSelect: "none" }}>
-                  <Box display="flex" justifyContent="space-between" alignItems="center">
-                    <span style={{ cursor: "default" }}>Lieferanten Nr</span>
-                    <Box display="flex" flexDirection="column" ml={0.5} >
-                      <ArrowDropUpIcon
-                        fontSize="small"
-                        onClick={() => handleSort("vendorArticle", "asc")}
-                        sx={{
-                          cursor: "pointer",
-                          color: sort === "vendorArticle" ? "#00CBD0" : "#FFFFFF",
-                          "&:hover": { color: "#00CBD0" },
-                        }}
-                      />
-                      <ArrowDropDownIcon
-                        fontSize="small"
-                        onClick={() => handleSort("vendorArticle", "desc")}
-                        sx={{
-                          cursor: "pointer",
-                          color: sort === "vendorArticle,desc" ? "#00CBD0" : "#FFFFFF",
-                          "&:hover": { color: "#00CBD0" },
-                        }}
-                      />
-                    </Box>
-                  </Box>
+                <TableCell align="center" sx={fixedCellWidth(150)}>
+                  <SortableHeader
+                    title="Lieferanten Nr"
+                    field="vendorArticle"
+                    activeSort={[sort]}
+                    onSort={handleSort}
+                    align="center"
+                  />
                 </TableCell>
-                <TableCell align="center">EK preis</TableCell>
-                <TableCell align="center">VK preis</TableCell>
-                <TableCell align="center">ME</TableCell>
-                <TableCell align="center">Gewicht, kg</TableCell>
-                <TableCell align="center">Auf Lager</TableCell>
-                <TableCell align="center">Kategorie</TableCell>
+                <TableCell align="center" sx={fixedCellWidth(90)}>EK preis</TableCell>
+                <TableCell align="center" sx={fixedCellWidth(90)}>VK preis</TableCell>
+                <TableCell align="center" sx={fixedCellWidth(80)}>ME</TableCell>
+                <TableCell align="center" sx={fixedCellWidth(75)}>Gewicht, kg</TableCell>
+                <TableCell align="center" sx={fixedCellWidth(55)}>Auf Lager</TableCell>
+                <TableCell align="center" sx={{ width: "18%" }}>Kategorie</TableCell>
               </TableRow>
             </StyledTableHead>
             <TableBody>
@@ -446,21 +361,15 @@ export default function Products() {
                   return (
                     <TableRow
                       key={product.id}
-                      hover
-                      sx={{
-                        cursor: "pointer",
-                        transition: "background-color 0.2s ease",
-                        "&:hover": {
-                          backgroundColor: "rgba(0, 100, 255, 0.08)", // светло-синий при hover
-                        },
-                      }}
+                      sx={tableRowHoverStyle}
                       onDoubleClick={() => {
                         // сохраняем позицию скролла перед уходом
                         sessionStorage.setItem("products_scrollY", window.scrollY.toString());
                         navigate(`/product-card/${product.id}`);
                       }}
                     >
-                      <TableCell align="center" sx={{ ...cellStyle, maxWidth: 80, borderLeft: "1px solid #ddd" }}>
+                      
+                      <TableCell align="center" sx={productPhotoCellStyle}>
                         {hasPhoto ? (
                           <Tooltip title="Foto ansehen">
                             <IconButton
@@ -470,25 +379,35 @@ export default function Products() {
                                 handleOpenPreview(product.id);
                               }}
                             >
-                              <PhotoCameraIcon sx={{ color: "#00CBD0" }} />
+                              <PhotoCameraIcon sx={{ color: colors.accent, "&:hover": { color: colors.gradientLight, }, }} />
                             </IconButton>
                           </Tooltip>
                         ) : (
                           <Tooltip title="Kein Foto">
-                            <NoPhotographyIcon sx={{ color: "#888" }} />
+                            <NoPhotographyIcon sx={{ color: colors.grey }} />
                           </Tooltip>
                         )}
                       </TableCell>
-                      <TableCell style={{ display: "none", padding: "6px 12px" }}>{product.id}</TableCell>
-                      <TableCell sx={{ ...cellStyle, maxWidth: 400, borderLeft: "1px solid #ddd", }}>{product.name}</TableCell>
-                      <TableCell sx={{ ...cellStyle, maxWidth: 150, }}>{product.article}</TableCell>
-                      <TableCell sx={{ ...cellStyle, maxWidth: 150 }}>{product.vendorArticle}</TableCell>
-                      <TableCell sx={{ ...cellStyle, textAlign: "right", maxWidth: 100 }}>{formatNumber(product.purchasingPrice)} €</TableCell>
-                      <TableCell sx={{ ...cellStyle, textAlign: "right", maxWidth: 100 }}>{formatNumber(product.sellingPrice)} €</TableCell>
-                      <TableCell sx={{ ...cellStyle }}>{product.unitOfMeasurement.name}</TableCell>
-                      <TableCell sx={{ ...cellStyle, maxWidth: 80 }}>{product.weight ? formatNumber(product.weight) : ""} </TableCell>
-                      <TableCell sx={{ ...cellStyle }} align="right">{getStockQuantity(product) === null ? " " : formatNumber(getStockQuantity(product) ?? 0)}</TableCell>
-                      <TableCell sx={{ ...cellStyle, maxWidth: 180 }}>{product.productCategory?.name}</TableCell>
+                      
+                      <TableCell
+                        sx={{
+                          ...hoverExpandCellStyle,
+                          ...leftBorderCellStyle,
+                          width: "30%",
+                        }}
+                      >
+                        <HoverExpandText text={product.name ?? ""} maxWidth={360} hoverBgColor="#f5f5f5"  />
+                      </TableCell>
+                      <TableCell sx={{ ...cellStyle, ...fixedCellWidth(150), }}>{product.article}</TableCell>
+                      <TableCell sx={{ ...cellStyle, ...fixedCellWidth(150), }}>{product.vendorArticle}</TableCell>
+                      <TableCell sx={{ ...cellStyle, ...fixedCellWidth(90), textAlign: "right", }}>{formatNumber(product.purchasingPrice)} €</TableCell>
+                      <TableCell sx={{ ...cellStyle, ...fixedCellWidth(90), textAlign: "right", }}>{formatNumber(product.sellingPrice)} €</TableCell>
+                      <TableCell sx={{ ...cellStyle, ...fixedCellWidth(80), }}>{product.unitOfMeasurement.name}</TableCell>
+                      <TableCell sx={{ ...cellStyle, ...fixedCellWidth(75), }}>{product.weight ? formatNumber(product.weight) : ""} </TableCell>
+                      <TableCell sx={{ ...cellStyle, ...fixedCellWidth(55), }} align="right">{getStockQuantity(product) === null ? " " : formatNumber(getStockQuantity(product) ?? 0)}</TableCell>
+                      <TableCell sx={{ ...hoverExpandCellStyle, width: "18%" }}>
+                        <HoverExpandText text={product.productCategory?.name ?? ""} maxWidth={160} hoverBgColor={colors.tableHover} />
+                      </TableCell>
                     </TableRow>
                   );
                 })

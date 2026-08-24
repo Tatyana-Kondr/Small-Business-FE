@@ -3,7 +3,9 @@ import { TextField, Button, Box, Typography, Alert } from "@mui/material";
 import { useAppDispatch, useAppSelector } from "../redux/hooks";
 import { login, selectIsAuthenticated, selectLoginError, selectStatus } from "../features/auth/authSlice";
 import { AuthRequestDto } from "../features/auth/types";
-import { handleApiError } from "../utils/handleApiError";
+import { errorMap } from "../utils/handleApiError";
+import { loginButtonStyle, loginCardStyle, loginFieldStyle, loginTitleStyle } from "../styles/loginStyles";
+
 
 
 const LoginForm: React.FC = () => {
@@ -20,10 +22,10 @@ const LoginForm: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
     try {
       await dispatch(login(form)).unwrap();
-    } catch (err) {
-      handleApiError(err); 
+    } catch {
     }
   };
 
@@ -39,21 +41,11 @@ const LoginForm: React.FC = () => {
     <Box
       component="form"
       onSubmit={handleSubmit}
-      sx={{
-        maxWidth: 400,
-        mx: "auto",
-        mt: 5,
-        p: 3,
-        bgcolor: "white",
-        boxShadow: 3,
-        borderRadius: 2,
-      }}
+      sx={loginCardStyle}
     >
-      <Typography variant="h5" sx={{ fontWeight: "bold", color: "#0277bd" }} align="center" gutterBottom>
+      <Typography variant="h5" sx={loginTitleStyle} align="center" gutterBottom>
         SIGN IN
       </Typography>
-
-      {loginError && <Alert severity="error">{loginError}</Alert>}
 
       <TextField
         label="Username"
@@ -63,6 +55,7 @@ const LoginForm: React.FC = () => {
         margin="normal"
         value={form.username}
         onChange={handleChange}
+        sx={loginFieldStyle}
       />
 
       <TextField
@@ -73,12 +66,19 @@ const LoginForm: React.FC = () => {
         margin="normal"
         value={form.password}
         onChange={handleChange}
+        sx={loginFieldStyle}
       />
+
+      {loginError && (
+        <Alert severity="error" sx={{ mt: 2 }}>
+          {errorMap[loginError] || loginError}
+        </Alert>
+      )}
 
       <Button
         type="submit"
         variant="contained"
-        sx={{ backgroundImage: "linear-gradient(to right, #006064, #4dd0e1)", mt: 3 }}
+        sx={loginButtonStyle}
         fullWidth
         disabled={status === "loading"}
       >

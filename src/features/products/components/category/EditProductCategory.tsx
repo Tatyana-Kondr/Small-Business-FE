@@ -1,49 +1,80 @@
 import { useState } from "react";
-import { Box, Button, Modal, TextField, Typography, CircularProgress } from "@mui/material";
-import { ProductCategory } from "../../types";
+import { Box, Button, Modal, TextField, CircularProgress } from "@mui/material";
+import { NewProductCategoryDto, ProductCategory } from "../../types";
 import { useAppDispatch } from "../../../../redux/hooks";
-import { editProductCategory, getProductCategories } from "../../productCategoriesSlice";
+import {  getProductCategories } from "../../productCategoriesSlice";
 import { showSuccessToast } from "../../../../utils/toast";
 import { handleApiError } from "../../../../utils/handleApiError";
+import { backendErrorsToFormErrors, clearFieldError, FormErrors, hasErrors, isBackendValidationErrors, validateRequiredFields } from "../../../../utils/validation/validation";
+import { cancelButtonStyle, primaryButtonStyle } from "../../../../styles/buttonStyles";
+import PageTitle from "../../../../components/PageTitle";
+import { HttpError } from "../../../../utils/handleFetchError";
+import { fetchEditProductCategory } from "../../api";
 
 
 interface EditProductCategoryProps {
-  category: ProductCategory;  // Передаём выбранную категорию
-  onClose: () => void;  // Колбэк для закрытия модального окна
+  category: ProductCategory;
+  onClose: () => void;
 }
 
-export default function EditProductCategory({ category, onClose }: EditProductCategoryProps) {
+export default function EditProductCategory({
+  category,
+  onClose,
+}: EditProductCategoryProps) {
   const dispatch = useAppDispatch();
+
   const [name, setName] = useState(category.name);
   const [artName, setArtName] = useState(category.artName);
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<FormErrors<NewProductCategoryDto>>({});
 
   const handleSubmit = async () => {
-  if (!name.trim() || !artName.trim()) {
-    setError("Заполните все поля");
-    return;
-  }
+    const dto: NewProductCategoryDto = {
+      name: name.trim(),
+      artName: artName.trim(),
+    };
 
-  setLoading(true);
+    const validationErrors = validateRequiredFields(dto, ["name", "artName"]);
+    setErrors(validationErrors);
 
-  try {
-    await dispatch(editProductCategory({id: category.id, newProductCategoryDto: { name, artName } })).unwrap();
-    await dispatch(getProductCategories()).unwrap();
+    if (hasErrors(validationErrors)) {
+      return;
+    }
 
-    showSuccessToast("Erfolg", "Kategorie wurde erfolgreich aktualisiert!");
-    onClose();
-  } catch (error) {
-    handleApiError(error, "Fehler bei der Aktualisierung der Kategorie");
-    setError("Fehler bei der Aktualisierung der Kategorie");
-  } finally {
-    setLoading(false);
-  }
-};
+    setLoading(true);
+
+    try {
+      await fetchEditProductCategory({
+        id: category.id,
+        newProductCategoryDto: dto,
+      });
+
+      await dispatch(getProductCategories()).unwrap();
+
+      showSuccessToast("Erfolg", "Kategorie wurde erfolgreich aktualisiert!");
+      onClose();
+    } catch (error) {
+      if (
+        error instanceof HttpError &&
+        isBackendValidationErrors(error.data)
+      ) {
+        setErrors(
+          backendErrorsToFormErrors<NewProductCategoryDto>(
+            error.data.errors
+          )
+        );
+        return;
+      }
+
+      handleApiError(error, "Fehler bei der Aktualisierung der Kategorie");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <Modal open={true} onClose={onClose}>
-      <Box 
+    <Modal open onClose={onClose}>
+      <Box
         sx={{
           position: "absolute",
           top: "50%",
@@ -53,33 +84,51 @@ export default function EditProductCategory({ category, onClose }: EditProductCa
           bgcolor: "background.paper",
           boxShadow: 24,
           p: 4,
-          borderRadius: 2
+          borderRadius: 2,
         }}
       >
-        <Typography variant="h6" sx={{ textAlign:"left", fontWeight: "bold", textDecoration: 'underline', color: "#0277bd"}} mb={2}>Kategorienaktualisierung</Typography>
+        <Box sx={{ mb: 2 }}>
+          <PageTitle>Kategorienaktualisierung</PageTitle>
+        </Box>
 
         <TextField
           label="Name"
           fullWidth
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => {
+            setName(e.target.value);
+            setErrors((prev) => clearFieldError(prev, "name"));
+          }}
           margin="dense"
+          error={Boolean(errors.name)}
+          helperText={errors.name}
+          disabled={loading}
         />
+
         <TextField
           label="ArtName"
           fullWidth
           value={artName}
-          onChange={(e) => setArtName(e.target.value)}
+          onChange={(e) => {
+            setArtName(e.target.value);
+            setErrors((prev) => clearFieldError(prev, "artName"));
+          }}
           margin="dense"
+          error={Boolean(errors.artName)}
+          helperText={errors.artName}
+          disabled={loading}
         />
-        {error && <Typography color="error" mt={1}>{error}</Typography>}
 
         <Box mt={2} display="flex" justifyContent="space-between">
-          <Button onClick={onClose}>Abbrechen</Button>
-          <Button 
-            onClick={handleSubmit} 
-            variant="contained" 
+          <Button onClick={onClose} disabled={loading} sx={cancelButtonStyle}>
+            Abbrechen
+          </Button>
+
+          <Button
+            onClick={handleSubmit}
+            variant="contained"
             disabled={loading}
+            sx={primaryButtonStyle}
           >
             {loading ? <CircularProgress size={24} /> : "Speichern"}
           </Button>
