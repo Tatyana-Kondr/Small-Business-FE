@@ -53,7 +53,7 @@ export async function apiFetch<T>(
     }
 
     if (!response.ok) {
-      throw new HttpError(responseData?.message || fallbackMessage, response.status);
+      throw new HttpError(responseData?.message || fallbackMessage, response.status, responseData);
     }
 
     if (response.status === 204) return undefined as unknown as T;
