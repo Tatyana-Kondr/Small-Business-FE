@@ -25,7 +25,7 @@ import { NewPaymentDto, PaymentMethod, PaymentPrefillDto, PaymentProcess } from 
 import { fetchAllPaymentMethods, fetchAllPaymentProcesses, fetchPrefillDataForPurchase, fetchPrefillDataForSale } from "../api";
 import { updatePurchasePaymentStatus } from "../../purchases/purchasesSlice";
 import { updateSalePaymentStatus } from "../../sales/salesSlice";
-import {  getCustomersPickList, selectCustomersPickList, selectLoadingPick } from "../../customers/customersSlice";
+import { getCustomersPickList, selectCustomersPickList, selectLoadingPick } from "../../customers/customersSlice";
 import CreateCustomer from "../../customers/components/CreateCustomer";
 import { handleApiError } from "../../../utils/handleApiError";
 import { showSuccessToast } from "../../../utils/toast";
@@ -423,6 +423,7 @@ export default function CreatePayment({
       </DialogContent>
       {showCreateCustomer && (
         <CreateCustomer
+          mode={form.type === "EINNAHME" ? "customer" : "vendor"}
           onClose={() => setShowCreateCustomer(false)}
           onSubmitSuccess={(createdCustomer) => {
             setShowCreateCustomer(false);
