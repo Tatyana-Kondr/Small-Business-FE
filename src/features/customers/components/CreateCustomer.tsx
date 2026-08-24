@@ -109,8 +109,16 @@ export default function CreateCustomer({ onClose, onSubmitSuccess, mode }: Creat
 
   return (
     <Dialog open onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle sx={{ fontWeight: "bold", textDecoration: "underline", color: "#0277bd" }}>
-        Neuer Kunde/Lieferant anlegen
+      <DialogTitle
+        sx={{
+          fontWeight: "bold",
+          textDecoration: "underline",
+          color: "#0277bd",
+        }}
+      >
+        {mode === "customer"
+          ? "Neuen Kunden anlegen"
+          : "Neuen Lieferanten anlegen"}
       </DialogTitle>
       <DialogContent>
         <form onSubmit={handleSubmit}>
