@@ -81,56 +81,71 @@ function App() {
   };
 
   return (
-    <div className="App" style={{ textAlign: "center", marginTop: "50px" }}>
+    <div className="App" style={{ textAlign: "center", }}>
 
       <Routes>
-        <Route path="/" element={<Layout />}>
-          {/* Публичные страницы */}
-          <Route path="login" element={isAuthenticated ? <Navigate to="/products" replace /> : <LoginForm />} />
-          <Route index element={isAuthenticated ? <Navigate to="/products" replace /> : <Navigate to="/login" replace />} />
+  {/* Публичные страницы */}
+  <Route
+    path="/login"
+    element={isAuthenticated ? <Navigate to="/products" replace /> : <LoginForm />}
+  />
 
-          {/* Защищённые страницы */}
-          <Route path="products" element={<Suspense fallback={<Spinner />}> {Private(<Products />)} </Suspense>} />
-          <Route path="product-categories" element={Private(<ProductCategoryList />, "ADMIN")} />
-          <Route path="create-product-category" element={Private(<CreateProductCategory />, "ADMIN")} />
-          <Route path="lieferanten" element={Private(<Customers />)} />
-          <Route path="kunden" element={Private(<CustomersWithNumber />)} />
-          <Route path="customer/:customerId" element={Private(<CustomerCard />)} />
-          <Route path="kunde/:customerId" element={Private(<CustomerWithNumberCard />)} />
-          <Route path="product-card/:productId" element={Private(<ProductCard />)} />
-          <Route path="purchases" element={Private(<Purchases />)} />
-          <Route path="purchases/:purchaseId" element={Private(<PurchaseCard />, "ADMIN")} />
-          <Route path="sales" element={Private(<Sales />)} />
-          <Route path="sales/:saleId" element={Private(<SaleCard />)} />
-          <Route path="payments" element={Private(<Payments />, "ADMIN")} />
-          <Route path="payment-methods" element={Private(<PaymentMethodsList />, "ADMIN")} />
-          <Route path="payment-processes" element={Private(<PaymentProcessesList />, "ADMIN")} />
-          <Route path="shippings" element={Private(<ShippingsList />, "ADMIN")} />
-          <Route path="units" element={Private(<UnitsList />, "ADMIN")} />
-          <Route path="payment-terms" element={Private(<TermOfPaymentList />, "ADMIN")} />
-          <Route path="document-types" element={Private(<DocumentTypesList />, "ADMIN")} />
-          <Route path="productions" element={Private(<ProductionsList />, "ADMIN")} />
-          <Route path="productions/:productionId" element={Private(<EditProduction />)} />
-          <Route
-            path="settings"
-            element={
-              Private(
-                <AdminSettings
-                  autoLogoutMinutes={autoLogoutMinutes}
-                  setAutoLogoutMinutes={(minutes) => {
-                    setAutoLogoutMinutes(minutes);
-                    localStorage.setItem("autoLogoutMinutes", String(minutes));
-                  }}
-                />,
-                "ADMIN"
-              )
-            }
-          />
+  {/* Защищённые страницы */}
+  <Route path="/" element={<Layout />}>
+    <Route
+      index
+      element={
+        isAuthenticated ? (
+          <Navigate to="/products" replace />
+        ) : (
+          <Navigate to="/login" replace />
+        )
+      }
+    />
 
-          {/* 404 страница */}
-          <Route path="*" element={<NoSuchPage />} />
-        </Route>
-      </Routes>
+    <Route
+      path="products"
+      element={<Suspense fallback={<Spinner />}>{Private(<Products />)}</Suspense>}
+    />
+
+    <Route path="product-categories" element={Private(<ProductCategoryList />, "ADMIN")} />
+    <Route path="create-product-category" element={Private(<CreateProductCategory />, "ADMIN")} />
+    <Route path="lieferanten" element={Private(<Customers />)} />
+    <Route path="kunden" element={Private(<CustomersWithNumber />)} />
+    <Route path="customer/:customerId" element={Private(<CustomerCard />)} />
+    <Route path="kunde/:customerId" element={Private(<CustomerWithNumberCard />)} />
+    <Route path="product-card/:productId" element={Private(<ProductCard />)} />
+    <Route path="purchases" element={Private(<Purchases />)} />
+    <Route path="purchases/:purchaseId" element={Private(<PurchaseCard />, "ADMIN")} />
+    <Route path="sales" element={Private(<Sales />)} />
+    <Route path="sales/:saleId" element={Private(<SaleCard />)} />
+    <Route path="payments" element={Private(<Payments />, "ADMIN")} />
+    <Route path="payment-methods" element={Private(<PaymentMethodsList />, "ADMIN")} />
+    <Route path="payment-processes" element={Private(<PaymentProcessesList />, "ADMIN")} />
+    <Route path="shippings" element={Private(<ShippingsList />, "ADMIN")} />
+    <Route path="units" element={Private(<UnitsList />, "ADMIN")} />
+    <Route path="payment-terms" element={Private(<TermOfPaymentList />, "ADMIN")} />
+    <Route path="document-types" element={Private(<DocumentTypesList />, "ADMIN")} />
+    <Route path="productions" element={Private(<ProductionsList />, "ADMIN")} />
+    <Route path="productions/:productionId" element={Private(<EditProduction />)} />
+
+    <Route
+      path="settings"
+      element={Private(
+        <AdminSettings
+          autoLogoutMinutes={autoLogoutMinutes}
+          setAutoLogoutMinutes={(minutes) => {
+            setAutoLogoutMinutes(minutes);
+            localStorage.setItem("autoLogoutMinutes", String(minutes));
+          }}
+        />,
+        "ADMIN"
+      )}
+    />
+
+    <Route path="*" element={<NoSuchPage />} />
+  </Route>
+</Routes>
       <ModalManager />
 
       <AutoLogoutModal
