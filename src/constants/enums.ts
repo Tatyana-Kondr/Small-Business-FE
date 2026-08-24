@@ -18,12 +18,12 @@ export const OperationTypes: TypeOfOperation[] = [
 
 // Статусы оплаты
 export type PaymentStatus =
-  | "AUSSTEHEND"
+  | "OFFEN"
   | "ANZAHLUNG"
   | "BEZAHLT";
 
 export const PaymentStatuses: PaymentStatus[] = [
-  "AUSSTEHEND",
+  "OFFEN",
   "ANZAHLUNG",
   "BEZAHLT",
 ];
