@@ -48,6 +48,7 @@ export interface ProductFile {
   product?: Product;
   originFileName: string;
   fileUrl: string;
+  position?: number | null;
 }
 
 export interface UnitOfMeasurement {

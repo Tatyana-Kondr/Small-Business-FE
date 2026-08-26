@@ -39,6 +39,7 @@ export const productCardHeaderStyle: AppSx = {
   justifyContent: "space-between",
   alignItems: "flex-start",
   gap: 2,
+  borderRadius: 1,
 };
 
 export const productCardTabsStyle: AppSx = {
@@ -133,7 +134,6 @@ export const thumbnailListStyle: AppSx = {
   justifyContent: "center",
   flexWrap: "wrap",
   gap: 1,
-  mt: 1,
 };
 
 export const thumbnailStyle = (selected: boolean): AppSx => ({

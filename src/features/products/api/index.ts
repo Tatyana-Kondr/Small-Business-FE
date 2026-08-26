@@ -218,6 +218,39 @@ export async function fetchUploadProductFile(productId: number, file: File): Pro
   );
 }
 
+export async function fetchReplaceProductFile(photoId: number, file: File): Promise<ProductFile> {
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  return apiFetch<ProductFile>(
+    `/api/products/photos/${photoId}/file`,
+    {
+      method: "PUT",
+      body: formData,
+      auth: true,
+    },
+    "Fehler beim Aktualisieren des Fotos."
+  );
+}
+
+export async function fetchReorderProductPhotos(productId: number, photoIds: number[]): Promise<void> {
+  return apiFetch<void>(
+    `/api/products/${productId}/photos/order`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        photoIds,
+      }),
+      auth: true,
+    },
+    "Fehler beim Ändern der Fotoreihenfolge."
+  );
+}
+
 export async function fetchDeleteProductFile(fileId: number): Promise<void> {
   return apiFetch<void>(
     `/api/products/photos/${fileId}`,

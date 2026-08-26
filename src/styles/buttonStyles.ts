@@ -56,3 +56,10 @@ export const addButtonStyle: SxProps<Theme> = {
   },
 };
 
+//обрисованая 
+export const outlinedDeleteButtonStyle: SxProps<Theme> = {
+  "&:hover": {
+    borderColor: colors.dangerLight,
+  },
+};
+
