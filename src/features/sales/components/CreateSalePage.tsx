@@ -62,7 +62,7 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
         accountObject: '',
         typeOfOperation: 'VERKAUF',
         shippingId: null,
-        termsOfPaymentId: 1,
+        termsOfPaymentId: 4,
         salesDate: todayString,
         paymentDate: '',
         orderNumber: '',
