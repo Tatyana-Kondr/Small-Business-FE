@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Table, TableBody, TableCell,
   TableContainer, TableRow, Paper, Box, Pagination,
@@ -17,7 +17,6 @@ import debounce from "lodash.debounce";
 import { selectIsAuthenticated } from "../../auth/authSlice";
 import { getProductCategories, selectProductCategories } from "../productCategoriesSlice";
 import { useSearchParams } from "react-router-dom";
-import { getWarehouseStocks, selectWarehouseStocks } from "../../warehouse/warehouseSlice";
 import { getAllProductFiles, selectProductFiles } from "../productFilesSlice";
 import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
 import NoPhotographyIcon from "@mui/icons-material/NoPhotography";
@@ -31,6 +30,7 @@ import { colors } from "../../../styles/colors";
 import SearchBox from "../../../components/ui/SearchBox";
 import { pageToolbarStyle } from "../../../styles/formStyles";
 import SortableHeader from "../../../components/ui/SortableHeader";
+import { Product } from "../types";
 
 
 // Функция для окрашивания чисел
@@ -43,7 +43,7 @@ export default function Products() {
   const isAuthenticated = useAppSelector(selectIsAuthenticated);
   const products = useAppSelector(selectProductsPaged);
   const totalPages = useAppSelector(selectTotalPages);
-  const warehouseStocks = useAppSelector(selectWarehouseStocks);
+
   const categories = useAppSelector(selectProductCategories);
   const productFiles = useAppSelector(selectProductFiles);
 
@@ -63,12 +63,6 @@ export default function Products() {
   useEffect(() => {
     dispatch(getProductCategories());
   }, [dispatch]);
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      dispatch(getWarehouseStocks({ page: 0, size: 500 })); // Загружаем все остатки
-    }
-  }, [dispatch, isAuthenticated]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -221,30 +215,19 @@ export default function Products() {
 
   const NON_STOCK_CATEGORIES = ["LEISTUNG", "ABO"];
 
-  const getStockQuantity = (product: any): number | null => {
-    const categoryName = product.productCategory?.name?.toUpperCase();
-    if (categoryName && NON_STOCK_CATEGORIES.includes(categoryName)) {
-      return null;
-    }
+const getStockQuantity = (product: Product): number | null => {
+  const categoryName = product.productCategory?.name?.toUpperCase();
 
-    const stock = warehouseStocks.find(s => s.productId === product.id);
-    return stock ? stock.quantity : 0;
-  };
+  if (
+    categoryName &&
+    NON_STOCK_CATEGORIES.includes(categoryName)
+  ) {
+    return null;
+  }
 
-  // Быстрая карта: productId → true
-  const photoMap = useMemo(() => {
-    const map = new Map<number, boolean>();
-    productFiles.forEach((file) => {
-      const productId = file.product?.id || file.productId;
-      if (productId && file.fileUrl && !file.fileUrl.toLowerCase().includes("no.jpg")) {
-        map.set(productId, true);
-      }
-    });
-    console.log("📸 Фото есть у продуктов:", Array.from(map.keys()));
-    return map;
-  }, [productFiles]);
-
-
+  return product.quantity ?? 0;
+};
+  
   // Функция открытия предпросмотра
   const handleOpenPreview = (productId: number) => {
     const related = productFiles
@@ -356,7 +339,7 @@ export default function Products() {
             <TableBody>
               {products.length > 0 ? (
                 products.map((product) => {
-                  const hasPhoto = photoMap.get(product.id) === true;
+                  const hasPhoto = product.hasPhoto === true;
 
                   return (
                     <TableRow
