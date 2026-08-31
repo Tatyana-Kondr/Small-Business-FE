@@ -1,12 +1,20 @@
 import { useState } from "react";
 import { TextField, Button, Box, Typography, Alert } from "@mui/material";
 import { useAppDispatch, useAppSelector } from "../redux/hooks";
-import { login, selectIsAuthenticated, selectLoginError, selectStatus } from "../features/auth/authSlice";
+import {
+  login,
+  selectIsAuthenticated,
+  selectLoginError,
+  selectStatus,
+} from "../features/auth/authSlice";
 import { AuthRequestDto } from "../features/auth/types";
 import { errorMap } from "../utils/handleApiError";
-import { loginButtonStyle, loginCardStyle, loginFieldStyle, loginTitleStyle } from "../styles/loginStyles";
-
-
+import {
+  loginButtonStyle,
+  loginCardStyle,
+  loginFieldStyle,
+  loginTitleStyle,
+} from "../styles/loginStyles";
 
 const LoginForm: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -14,7 +22,10 @@ const LoginForm: React.FC = () => {
   const loginError = useAppSelector(selectLoginError);
   const isAuthenticated = useAppSelector(selectIsAuthenticated);
 
-  const [form, setForm] = useState<AuthRequestDto>({ username: "", password: "" });
+  const [form, setForm] = useState<AuthRequestDto>({
+    username: "",
+    password: "",
+  });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -25,8 +36,7 @@ const LoginForm: React.FC = () => {
 
     try {
       await dispatch(login(form)).unwrap();
-    } catch {
-    }
+    } catch {}
   };
 
   if (isAuthenticated) {
@@ -38,11 +48,7 @@ const LoginForm: React.FC = () => {
   }
 
   return (
-    <Box
-      component="form"
-      onSubmit={handleSubmit}
-      sx={loginCardStyle}
-    >
+    <Box component="form" onSubmit={handleSubmit} sx={loginCardStyle}>
       <Typography variant="h5" sx={loginTitleStyle} align="center" gutterBottom>
         SIGN IN
       </Typography>
