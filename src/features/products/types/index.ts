@@ -17,6 +17,8 @@ export interface Product {
   dateOfLastPurchase: string
   lastModifiedDate: string
   storageLocation: string
+   hasPhoto?: boolean;
+  quantity?: number;
 }
 
 export interface ProductPickDto {
