@@ -95,6 +95,16 @@ const headerMenus: HeaderMenu[] = [
     ],
   },
   {
+  label: "Berichte",
+  adminOnly: true,
+  items: [
+    {
+      label: "Umsatzbericht",
+      to: "/reports/sales",
+    },
+  ],
+},
+  {
     label: "Kontakte",
     items: [
       { label: "Kunden", to: "/kunden" },

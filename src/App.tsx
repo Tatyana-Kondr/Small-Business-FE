@@ -12,6 +12,7 @@ import { useAutoLogout } from './hooks/useAutoLogout';
 import AutoLogoutModal from './components/AutoLogoutModal';
 import PrivateRoute from './components/PrivateRoute';
 import Spinner from './components/Spinner';
+import SalesReport from './features/reports/components/SalesReport';
 
 const Layout = lazy(() => import("./components/Layout"));
 const Customers = lazy(() => import("./features/customers/components/Customers"));
@@ -119,6 +120,7 @@ function App() {
     <Route path="purchases/:purchaseId" element={Private(<PurchaseCard />, "ADMIN")} />
     <Route path="sales" element={Private(<Sales />)} />
     <Route path="sales/:saleId" element={Private(<SaleCard />)} />
+    <Route path="reports/sales" element={Private(<SalesReport />, "ADMIN")} />
     <Route path="payments" element={Private(<Payments />, "ADMIN")} />
     <Route path="payment-methods" element={Private(<PaymentMethodsList />, "ADMIN")} />
     <Route path="payment-processes" element={Private(<PaymentProcessesList />, "ADMIN")} />

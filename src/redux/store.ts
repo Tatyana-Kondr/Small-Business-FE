@@ -19,6 +19,7 @@ import { unitsOfMeasurementSlice } from "../features/products/unitsOfMeasurement
 import { typeOfDocumentSlice } from "../features/purchases/typeOfDocumentSlice";
 import { warehouseSlice } from "../features/warehouse/warehouseSlice";
 import { termOfPaymentSlice } from "../features/sales/termOfPaymentSlice";
+import { salesReportSlice } from "../features/reports/salesReportSlice";
 
 
 const rootReducer = combineSlices(productsSlice, 
@@ -39,6 +40,7 @@ const rootReducer = combineSlices(productsSlice,
                                   warehouseSlice,
                                   termOfPaymentSlice,
                                   modalSlice,
+                                  salesReportSlice,
 )
 
 // TypeScript-оператор, который позволяет получить тип возвращаемого значения функции. 
