@@ -50,38 +50,47 @@ export const purchaseDocumentsSlice = createAppSlice({
     ),
 
     uploadPurchaseDocument: create.asyncThunk(
-      async ({
-        purchaseId,
-        file,
-      }: {
-        purchaseId: number;
-        file: File;
-      }) => {
-        return await fetchUploadPurchaseDocument(
-          purchaseId,
-          file
-        );
-      },
-      {
-        pending: (state) => {
-          state.loading = true;
-          state.error = null;
-        },
+  async ({
+    purchaseId,
+    file,
+    documentName,
+    vendorName,
+    purchaseDate,
+  }: {
+    purchaseId: number;
+    file: File;
+    documentName: string;
+    vendorName: string;
+    purchaseDate: string;
+  }) => {
+    return await fetchUploadPurchaseDocument(
+      purchaseId,
+      file,
+      documentName,
+      vendorName,
+      purchaseDate
+    );
+  },
+  {
+    pending: (state) => {
+      state.loading = true;
+      state.error = null;
+    },
 
-        fulfilled: (state, action) => {
-          state.loading = false;
+    fulfilled: (state, action) => {
+      state.loading = false;
 
-          state.documentsList.push(action.payload);
-        },
+      state.documentsList.push(action.payload);
+    },
 
-        rejected: (state, action) => {
-          state.loading = false;
-          state.error =
-            action.error.message ??
-            "Dokument konnte nicht hochgeladen werden";
-        },
-      }
-    ),
+    rejected: (state, action) => {
+      state.loading = false;
+      state.error =
+        action.error.message ??
+        "Dokument konnte nicht hochgeladen werden";
+    },
+  }
+),
 
     deletePurchaseDocument: create.asyncThunk(
       async (documentId: number) => {

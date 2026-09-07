@@ -202,11 +202,44 @@ export async function fetchPurchaseDocuments(
 // Загрузить документ
 export async function fetchUploadPurchaseDocument(
   purchaseId: number,
-  file: File
+  file: File,
+  documentName: string,
+  vendorName: string,
+  purchaseDate: string
 ): Promise<PurchaseDocumentDto> {
+
+  const sanitizeFileName = (value: string) =>
+    value
+      .trim()
+      .replace(/[<>:"/\\|?*]/g, "")
+      .replace(/\s+/g, "_");
+
+  const safeDocumentName =
+    sanitizeFileName(documentName) || "Dokument";
+
+  const safeVendorName =
+    sanitizeFileName(vendorName) || "Lieferant";
+
+  const safePurchaseDate =
+    sanitizeFileName(purchaseDate) || "Datum";
+
+  const extension =
+    file.name.split(".").pop()?.toLowerCase() || "pdf";
+
+  const newFileName =
+    `${safeDocumentName}_${safeVendorName}_${safePurchaseDate}_${purchaseId}.${extension}`;
+
+  const renamedFile = new File(
+    [file],
+    newFileName,
+    {
+      type: file.type,
+    }
+  );
+
   const formData = new FormData();
 
-  formData.append("file", file);
+  formData.append("file", renamedFile);
 
   return apiFetch<PurchaseDocumentDto>(
     `/api/purchases/${purchaseId}/documents`,

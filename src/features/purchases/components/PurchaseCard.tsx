@@ -213,6 +213,12 @@ const [documentFile, setDocumentFile] = useState<File | null>(null);
       uploadPurchaseDocument({
         purchaseId: id,
         file: documentFile,
+        documentName:
+          purchase?.document?.name ?? "Dokument",
+        vendorName:
+          purchase?.vendorName ?? "Lieferant",
+        purchaseDate:
+          purchase?.purchasingDate ?? "Datum",
       })
     ).unwrap();
 
