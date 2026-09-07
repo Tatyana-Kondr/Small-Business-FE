@@ -117,7 +117,7 @@ function App() {
     <Route path="kunde/:customerId" element={Private(<CustomerWithNumberCard />)} />
     <Route path="product-card/:productId" element={Private(<ProductCard />)} />
     <Route path="purchases" element={Private(<Purchases />)} />
-    <Route path="purchases/:purchaseId" element={Private(<PurchaseCard />, "ADMIN")} />
+    <Route path="purchases/:purchaseId" element={Private(<PurchaseCard />)} />
     <Route path="sales" element={Private(<Sales />)} />
     <Route path="sales/:saleId" element={Private(<SaleCard />)} />
     <Route path="reports/sales" element={Private(<SalesReport />, "ADMIN")} />
