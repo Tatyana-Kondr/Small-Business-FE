@@ -237,6 +237,12 @@ export async function fetchUploadPurchaseDocument(
     }
   );
 
+  console.log("Original file:", file.name);
+console.log("New file:", renamedFile.name);
+console.log("Document name:", documentName);
+console.log("Vendor name:", vendorName);
+console.log("Purchase date:", purchaseDate);
+
   const formData = new FormData();
 
   formData.append("file", renamedFile);
