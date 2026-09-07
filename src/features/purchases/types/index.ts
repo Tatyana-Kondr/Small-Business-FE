@@ -54,6 +54,15 @@ export interface NewPurchaseItemDto {
     position: number
 }
 
+export type PurchaseDocumentDto = {
+  id: number;
+  purchaseId: number;
+  originFileName: string;
+  fileUrl: string;
+  contentType: string;
+  createdDate: string;
+};
+
 export interface TypeOfDocument{
     id: number;
     name: string;
@@ -76,6 +85,13 @@ export interface PurchasesState {
 export interface PurchaseItemsState {
     purchaseItemsList: PurchaseItem[];
     selectedPurchaseItem: PurchaseItem | undefined;
+}
+
+export interface PurchaseDocumentsState {
+    documentsList: PurchaseDocumentDto[]
+    selectedDocument: PurchaseDocumentDto | undefined
+    loading: boolean
+    error: string | null
 }
 
 export interface TypeOfDocumentState{

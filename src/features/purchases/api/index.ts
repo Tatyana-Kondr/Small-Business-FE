@@ -1,5 +1,5 @@
 import { apiFetch } from "../../../utils/apiFetch";
-import { NewPurchaseDto, NewTypeOfDocumentDto, PaginatedResponse, Purchase, TypeOfDocument } from "../types";
+import { NewPurchaseDto, NewTypeOfDocumentDto, PaginatedResponse, Purchase, PurchaseDocumentDto, TypeOfDocument } from "../types";
 
 export async function fetchPurchases(
   page: number,
@@ -181,3 +181,77 @@ export async function fetchAllTypesOfDocument(): Promise<TypeOfDocument[]> {
      "Fehler beim Löschen des Dokumenttyps."
    );
  }
+
+ // Получить документы конкретной Bestellung
+export async function fetchPurchaseDocuments(
+  purchaseId: number
+): Promise<PurchaseDocumentDto[]> {
+  return apiFetch<PurchaseDocumentDto[]>(
+    `/api/purchases/${purchaseId}/documents`,
+    {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      auth: true,
+    },
+    "Fehler beim Laden der Bestelldokumente."
+  );
+}
+
+// Загрузить документ
+export async function fetchUploadPurchaseDocument(
+  purchaseId: number,
+  file: File
+): Promise<PurchaseDocumentDto> {
+  const formData = new FormData();
+
+  formData.append("file", file);
+
+  return apiFetch<PurchaseDocumentDto>(
+    `/api/purchases/${purchaseId}/documents`,
+    {
+      method: "POST",
+      body: formData,
+      auth: true,
+    },
+    "Fehler beim Hochladen des Dokuments."
+  );
+}
+
+// Удалить документ
+export async function fetchDeletePurchaseDocument(
+  documentId: number
+): Promise<void> {
+  return apiFetch<void>(
+    `/api/purchases/documents/${documentId}`,
+    {
+      method: "DELETE",
+      auth: true,
+    },
+    "Fehler beim Löschen des Dokuments."
+  );
+}
+
+//открытие документа
+export function openPurchaseDocument(fileUrl: string): void {
+  if (!fileUrl) {
+    return;
+  }
+
+  const apiUrl = import.meta.env.VITE_API_URL;
+
+  const url =
+    fileUrl.startsWith("http://") ||
+    fileUrl.startsWith("https://")
+      ? fileUrl
+      : `${apiUrl.replace(/\/$/, "")}${
+          fileUrl.startsWith("/") ? fileUrl : `/${fileUrl}`
+        }`;
+
+  window.open(
+    url,
+    "_blank",
+    "noopener,noreferrer"
+  );
+}
