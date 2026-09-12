@@ -9,7 +9,6 @@ interface DeleteSaleProps {
   saleId: number;
   customerName: string;
   salesDate: string;
-  onSuccessDelete?: () => void;
   trigger?: React.ReactNode;
 }
 
@@ -17,7 +16,6 @@ export default function DeleteSale({
   saleId,
   customerName,
   salesDate,
-  onSuccessDelete,
   trigger,
 }: DeleteSaleProps) {
   const dispatch = useAppDispatch();
@@ -31,9 +29,8 @@ export default function DeleteSale({
     setLoading(true);
     try {
       await dispatch(deleteSale(saleId)).unwrap();
-      showSuccessToast("Erfolg", `Der Autrag wurde erfolgreich gelöscht.`);
+      showSuccessToast("Erfolg", `Der Auftrag wurde erfolgreich gelöscht.`);
       handleClose();
-      onSuccessDelete?.();
     } catch (error: any) {
       handleApiError(error, "Fehler beim Löschen des Auftrags.");
     } finally {

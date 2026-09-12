@@ -1,508 +1,675 @@
 import {
-    Box,
-    Button,
-    Collapse,
-    Container,
-    debounce,
-    FormControl,
-    IconButton,
-    InputLabel,
-    MenuItem,
-    Pagination,
-    Paper,
-    Select,
-    SelectChangeEvent,
-    styled,
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TableRow,
-    TextField,
-    Tooltip,
-    Typography,
+  Box,
+  Collapse,
+  FormControl,
+  IconButton,
+  InputLabel,
+  MenuItem,
+  Pagination,
+  Paper,
+  Select,
+  SelectChangeEvent,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableRow,
+  TextField,
+  Tooltip,
 } from "@mui/material";
-import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
-
-import { useCallback, useEffect, useState } from "react";
-import React from "react";
-import { ClearIcon } from "@mui/x-date-pickers";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
-import { getAllPurchaseIds, getAllSaleIds, getPayments, getPaymentsByFilter, searchPayments, selectPayments, selectTotalPages } from "../paymentsSlice";
+import { useEffect, useState } from "react";
+
+import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
+
+import {
+  getAllPurchaseIds,
+  getAllSaleIds,
+  getPayments,
+  getPaymentsByFilter,
+  searchPayments,
+  selectPayments,
+  selectPaymentsVersion,
+  selectTotalPages,
+} from "../paymentsSlice";
+
 import DeletePayment from "./DeletePayment";
 import EditPayment from "./EditPayment";
 import { Payment } from "../types";
-import { getDocumentTypes, selectTypeOfDocuments } from "../../purchases/typeOfDocumentSlice";
+
+import {
+  getDocumentTypes,
+  selectTypeOfDocuments,
+} from "../../purchases/typeOfDocumentSlice";
 import { TypeOfDocument } from "../../purchases/types";
 
-const StyledTableHead = styled(TableHead)({
-    backgroundColor: "#014D69",
-    "& th": {
-        color: "white",
-        fontWeight: "bold",
-        borderRight: "1px solid #ddd",
-        textAlign: "center"
-    },
-});
+import SearchBox from "../../../components/ui/SearchBox";
+import FilterToggleButton from "../../../components/ui/FilterToggleButton";
+import ClearFiltersButton from "../../../components/ui/ClearFiltersButton";
+import DateRangeFilter from "../../../components/ui/DateRangeFilter";
+import HoverExpandText from "../../../components/ui/HoverExpandText";
 
-// Стили для полей в таблице
-const cellStyle = {
-  whiteSpace: "nowrap",  // запрещаем перенос строк
-  overflow: "hidden",  // обрезаем всё, что не помещается
-  textOverflow: "ellipsis",  // добавляем "..."
-};
+import {
+  filterOptionsStyle,
+  filterPanelRowStyle,
+  filterPanelStyle,
+  listPageStyle,
+  listPaginationStyle,
+  listTableAreaStyle,
+  pageToolbarStyle,
+} from "../../../styles/formStyles";
+
+import {
+  actionCellStyle,
+  actionIconButtonStyle,
+  cellStyle,
+  centerCellStyle,
+  fixedCellWidth,
+  hoverExpandCellStyle,
+  leftBorderCellStyle,
+  rightCellStyle,
+  StyledTableHead,
+  tableActionSlotStyle,
+  tableActionsStyle,
+  tableContainerStyle,
+  tableRowHoverStyle,
+  tableStyle,
+} from "../../../styles/tableStyles";
+
+import { colors } from "../../../styles/colors";
+import { formatNumber } from "../../../utils/formatNumber";
+import { getAdaptivePageSize } from "../../../utils/getAdaptivePageSize";
+import SortableHeader from "../../../components/ui/SortableHeader";
 
 type PaymentFilters = {
-    documentId: string;
-    documentNumber: string;
-    saleId: number | "";
-    purchaseId: number | "";
-    startDate: string;
-    endDate: string;
+  documentId: string;
+  documentNumber: string;
+  saleId: number | "";
+  purchaseId: number | "";
+  startDate: string;
+  endDate: string;
 };
 
-function convertFiltersToParams(f: PaymentFilters) {
-    const params: Record<string, any> = {};
+function convertFiltersToParams(filters: PaymentFilters) {
+  return {
+    documentId:
+      filters.documentId !== "" ? Number(filters.documentId) : undefined,
 
-    if (f.documentId && f.documentId !== "") params.documentId = Number(f.documentId);
-    if (f.documentNumber) params.documentNumber = f.documentNumber;
-    if (f.startDate) params.startDate = f.startDate;
-    if (f.endDate) params.endDate = f.endDate;
-    if (f.saleId !== "" && f.saleId != null) params.saleId = f.saleId;
-    if (f.purchaseId !== "" && f.purchaseId != null) params.purchaseId = f.purchaseId;
+    documentNumber: filters.documentNumber || undefined,
 
-    return params;
+    saleId: filters.saleId !== "" ? filters.saleId : undefined,
+
+    purchaseId: filters.purchaseId !== "" ? filters.purchaseId : undefined,
+
+    startDate: filters.startDate || undefined,
+
+    endDate: filters.endDate || undefined,
+  };
 }
 
 export default function Payments() {
-    const dispatch = useAppDispatch();
-    const payments = useAppSelector(selectPayments);
-    const totalPages = useAppSelector(selectTotalPages);
-    const documentTypes = useAppSelector(selectTypeOfDocuments);
-    const [page, setPage] = useState(0);
-    const [searchTerm, setSearchTerm] = useState("");
-    const [filtersVisible, setFiltersVisible] = useState(false);
-    const [, setOpenRows] = useState<{ [key: string]: boolean }>({});
-    const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
-    const [saleOptions, setSaleOptions] = useState<number[]>([]);
-    const [purchaseOptions, setPurchaseOptions] = useState<number[]>([]);
+  const dispatch = useAppDispatch();
 
-    const [filters, setFilters] = useState<PaymentFilters>({
-        documentId: "",
-        documentNumber: "",
-        saleId: "",
-        purchaseId: "",
-        startDate: "",
-        endDate: "",
+  const payments = useAppSelector(selectPayments);
+  const totalPages = useAppSelector(selectTotalPages);
+  const paymentsVersion = useAppSelector(selectPaymentsVersion);
+  const documentTypes = useAppSelector(selectTypeOfDocuments);
+
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(getAdaptivePageSize);
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
+
+  const [filtersVisible, setFiltersVisible] = useState(false);
+
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
+
+  const [saleOptions, setSaleOptions] = useState<number[]>([]);
+  const [purchaseOptions, setPurchaseOptions] = useState<number[]>([]);
+
+  const [sort, setSort] = useState<string[]>(["paymentDate,DESC", "id,DESC"]);
+
+  const [filters, setFilters] = useState<PaymentFilters>({
+    documentId: "",
+    documentNumber: "",
+    saleId: "",
+    purchaseId: "",
+    startDate: "",
+    endDate: "",
+  });
+
+  useEffect(() => {
+    dispatch(getDocumentTypes());
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (!filtersVisible) {
+      return;
+    }
+
+    dispatch(getAllSaleIds()).then((res: any) => {
+      setSaleOptions(res.payload ?? []);
     });
 
-    useEffect(() => {
-        dispatch(getDocumentTypes());
-    }, [dispatch]);
+    dispatch(getAllPurchaseIds()).then((res: any) => {
+      setPurchaseOptions(res.payload ?? []);
+    });
+  }, [dispatch, filtersVisible]);
 
-    useEffect(() => {
-        if (filtersVisible) {
-            dispatch(getAllSaleIds()).then((res: any) => {
-                setSaleOptions(res.payload || []);
-            });
-            dispatch(getAllPurchaseIds()).then((res: any) => {
-                setPurchaseOptions(res.payload || []);
-            });
+  useEffect(() => {
+    const handleResize = () => {
+      const newPageSize = getAdaptivePageSize();
+
+      setPageSize((prev) => {
+        if (prev === newPageSize) {
+          return prev;
         }
-    }, [filtersVisible, dispatch]);
 
-    const debouncedSearch = useCallback(
-        debounce((searchTerm: string) => {
-            const hasFilters =
-                filters.documentId ||
-                filters.documentNumber ||
-                filters.saleId ||
-                filters.purchaseId ||
-                filters.startDate ||
-                filters.endDate;
-
-            if (hasFilters) {
-                dispatch(
-                    getPaymentsByFilter({
-                        page,
-                        size: 15,
-                        ...convertFiltersToParams(filters),
-                        searchQuery: searchTerm,
-                    })
-                );
-            } else {
-                dispatch(
-                    searchPayments({
-                        page,
-                        size: 15,
-                        query: searchTerm,
-                    })
-                );
-            }
-        }, 500),
-        [page, dispatch, filters]
-    );
-
-    useEffect(() => {
-        const hasFilters =
-            filters.startDate ||
-            filters.endDate ||
-            filters.documentNumber ||
-            filters.saleId ||
-            filters.purchaseId ||
-            filters.documentId;
-
-        if (hasFilters) {
-            dispatch(getPaymentsByFilter({ page, size: 15, ...convertFiltersToParams(filters), searchQuery: searchTerm, }));
-        } else if (searchTerm) {
-            dispatch(searchPayments({ page, size: 15, query: searchTerm, })
-            );
-        } else {
-            dispatch(getPayments({ page, size: 15 }));
-        }
-    }, [dispatch, page, searchTerm, filters]);
-
-    const handlePageChange = (_: any, value: number) => {
-        setPage(value - 1);
-    };
-
-    const handleFilterChange = (field: string, value: string | number) => {
-        setFilters((prev) => ({
-            ...prev,
-            [field]: (field === "saleId" || field === "purchaseId")
-                ? (value === "" ? "" : Number(value))
-                : value,
-        }));
         setPage(0);
+        return newPageSize;
+      });
     };
 
-    const handleClearFilters = () => {
-        setFilters({
-            documentId: "",
-            documentNumber: "",
-            saleId: "",
-            purchaseId: "",
-            startDate: "",
-            endDate: "",
-        });
-        setPage(0);
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
     };
+  }, []);
 
-    const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const newSearchTerm = event.target.value;
-        setSearchTerm(newSearchTerm);
-        debouncedSearch(newSearchTerm);
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 500);
+
+    return () => {
+      window.clearTimeout(timer);
     };
+  }, [searchTerm]);
 
-    const handleClearSearch = () => {
-        setSearchTerm("");
-        setPage(0);
+  useEffect(() => {
+    const hasFilters =
+      filters.documentId ||
+      filters.documentNumber ||
+      filters.saleId ||
+      filters.purchaseId ||
+      filters.startDate ||
+      filters.endDate;
 
-        const hasFilters =
-            filters.startDate ||
-            filters.endDate ||
-            filters.documentNumber ||
-            filters.saleId ||
-            filters.purchaseId ||
-            filters.documentId;
+    if (hasFilters) {
+      dispatch(
+        getPaymentsByFilter({
+          page,
+          size: pageSize,
+          sort,
+          ...convertFiltersToParams(filters),
+          searchQuery: debouncedSearchTerm,
+        }),
+      );
+    } else if (debouncedSearchTerm) {
+      dispatch(
+        searchPayments({
+          page,
+          size: pageSize,
+          sort,
+          query: debouncedSearchTerm,
+        }),
+      );
+    } else {
+      dispatch(
+        getPayments({
+          page,
+          size: pageSize,
+          sort,
+        }),
+      );
+    }
+  }, [
+    dispatch,
+    page,
+    pageSize,
+    debouncedSearchTerm,
+    filters,
+    sort,
+    paymentsVersion,
+  ]);
 
-        if (hasFilters) {
-            dispatch(
-                getPaymentsByFilter({
-                    page: 0,
-                    size: 15,
-                    ...convertFiltersToParams(filters),
-                    searchQuery: "",
-                })
-            );
-        } else {
-            dispatch(getPayments({ page: 0, size: 15 }));
-        }
-    };
+  const handlePageChange = (_: unknown, value: number) => {
+    setPage(value - 1);
+  };
 
-    const toggleRow = (id: string | number) => {
-        setOpenRows((prev) => ({
-            ...prev,
-            [id]: !prev[id],
-        }));
-    };
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(event.target.value);
+    setPage(0);
+  };
 
-    return (
-        <Container>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                <Typography variant="h6" sx={{ textAlign: "left", fontWeight: "bold", textDecoration: 'underline', color: "#0277bd" }}>ZAHLUNGEN</Typography>
-            </Box>
-            {/* Верхняя панель */}
-            <Box
-                display="flex"
-                justifyContent="space-between"
-                alignItems="center"
-                mb={2}
-                sx={{
-                    position: "sticky",
-                    top: 0,
-                    zIndex: 1000,
-                    padding: "10px 0",
-                }}
-            >
-                {/* Поиск */}
-                <Box display="flex" gap={1}>
-                    <TextField
-                        id="search-input"
-                        label="Suche"
-                        variant="outlined"
-                        size="small"
-                        value={searchTerm}
-                        onChange={handleSearchChange}
-                        sx={{ width: 400, backgroundColor: "white" }}
-                    />
-                    <IconButton
-                        aria-label="Suche zurücksetzen"
-                        onClick={handleClearSearch}>
-                        <ClearIcon />
-                    </IconButton>
-                </Box>
+  const handleClearSearch = () => {
+    setSearchTerm("");
+    setDebouncedSearchTerm("");
+    setPage(0);
+  };
 
-                <Box display="flex" gap={1}>
-                    <Button
-                        variant="outlined"
-                        sx={{ "&:hover": { borderColor: "#00acc1" } }}
-                        onClick={() => setFiltersVisible((prev) => !prev)}
-                    >
-                        {filtersVisible ? "Filter ausblenden" : "Filter anzeigen"}
-                    </Button>
+  const handleFilterChange = (
+    field: keyof PaymentFilters,
+    value: string | number,
+  ) => {
+    setFilters((prev) => ({
+      ...prev,
 
-                </Box>
-            </Box>
+      [field]:
+        field === "saleId" || field === "purchaseId"
+          ? value === ""
+            ? ""
+            : Number(value)
+          : value,
+    }));
 
+    setPage(0);
+  };
 
-            {/* Фильтры */}
-            <Collapse in={filtersVisible}>
-                <Paper
-                    elevation={4}
-                    sx={{
-                        mb: 3,
-                        p: 2,
-                        paddingTop: 4,
-                        borderRadius: 2,
-                        border: "1px solid #ddd",
-                        backgroundColor: "#ffffff",
-                        transition: "all 0.3s ease",
-                    }}
+  const handleClearFilters = () => {
+    setFilters({
+      documentId: "",
+      documentNumber: "",
+      saleId: "",
+      purchaseId: "",
+      startDate: "",
+      endDate: "",
+    });
+
+    setPage(0);
+  };
+
+  const handleSort = (field: string, direction: "ASC" | "DESC") => {
+    const newSort = [`${field},${direction}`];
+
+    if (field !== "paymentDate") {
+      newSort.push("paymentDate,DESC");
+    }
+
+    if (field !== "id") {
+      newSort.push("id,DESC");
+    }
+
+    setSort(newSort);
+    setPage(0);
+  };
+
+  return (
+    <Box sx={listPageStyle}>
+      {/* Верхняя панель */}
+      <Box sx={{ ...pageToolbarStyle, mt: 1 }}>
+        <SearchBox
+          value={searchTerm}
+          onChange={handleSearchChange}
+          onClear={handleClearSearch}
+        />
+
+        <FilterToggleButton
+          visible={filtersVisible}
+          onClick={() => setFiltersVisible((prev) => !prev)}
+        />
+      </Box>
+
+      {/* Фильтры */}
+      <Collapse in={filtersVisible}>
+        <Paper elevation={0} sx={filterPanelStyle}>
+          <Box sx={filterPanelRowStyle}>
+            <DateRangeFilter
+              startDate={filters.startDate}
+              endDate={filters.endDate}
+              onStartDateChange={(value) =>
+                handleFilterChange("startDate", value)
+              }
+              onEndDateChange={(value) => handleFilterChange("endDate", value)}
+            />
+
+            <Box sx={filterOptionsStyle}>
+              {/* Dokumenttyp */}
+              <FormControl size="small" sx={{ minWidth: 170 }}>
+                <InputLabel id="payment-document-type-label">
+                  Dokumenttyp
+                </InputLabel>
+
+                <Select
+                  labelId="payment-document-type-label"
+                  value={filters.documentId}
+                  label="Dokumenttyp"
+                  onChange={(event: SelectChangeEvent<string>) =>
+                    handleFilterChange("documentId", event.target.value)
+                  }
                 >
-                    <Box display="flex" flexWrap="wrap" gap={2} mb={2}>
-                        {/* Дата от */}
-                        <TextField
-                            id="filter-start-date"
-                            label="Von"
-                            type="date"
-                            size="small"
-                            value={filters.startDate}
-                            onChange={(e) => handleFilterChange("startDate", e.target.value)}
-                            aria-label="Startdatum"
-                            InputLabelProps={{ shrink: true }}
-                        />
-                        {/* Дата до */}
-                        <TextField
-                            id="filter-end-date"
-                            label="Bis"
-                            type="date"
-                            size="small"
-                            value={filters.endDate}
-                            onChange={(e) => handleFilterChange("endDate", e.target.value)}
-                            aria-label="Enddatum"
-                            InputLabelProps={{ shrink: true }}
-                        />
-                        {/* Тип документа */}
-                        <FormControl size="small" sx={{ minWidth: 160 }}>
-                            <InputLabel id="filter-document-label">Dokumenttyp</InputLabel>
-                            <Select
-                                labelId="filter-document-label"
-                                id="document-type-select"
-                                value={filters.documentId || ""}
-                                onChange={(e: SelectChangeEvent<string>) =>
-                                    handleFilterChange("documentId", e.target.value)
-                                }
-                                label="Dokumenttyp"
-                                aria-label="Dokumenttyp"
-                            >
-                                <MenuItem value="">ALLE</MenuItem>
-                                {documentTypes.map((doc: TypeOfDocument) => (
-                                    <MenuItem key={doc.id} value={doc.id.toString()}>
-                                        {doc.name}
-                                    </MenuItem>
-                                ))}
-                            </Select>
-                        </FormControl>
+                  <MenuItem value="">ALLE</MenuItem>
 
+                  {documentTypes.map((doc: TypeOfDocument) => (
+                    <MenuItem key={doc.id} value={doc.id.toString()}>
+                      {doc.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
 
-                        {/* Sale ID */}
-                        <FormControl size="small" sx={{ minWidth: 160 }}>
-                            <InputLabel id="filter-sale-id-label">Sale ID</InputLabel>
-                            <Select
-                                labelId="filter-sale-id-label"
-                                id="filter-sale-id"
-                                value={filters.saleId}
-                                onChange={(e) => handleFilterChange("saleId", e.target.value)}
-                            >
-                                <MenuItem value="">ALL</MenuItem>
-                                {saleOptions.map((sale) => (
-                                    <MenuItem key={sale} value={sale}>
-                                        {sale}
-                                    </MenuItem>
-                                ))}
-                            </Select>
-                        </FormControl>
+              {/* Referenz */}
+              <TextField
+                label="Referenz"
+                size="small"
+                value={filters.documentNumber}
+                onChange={(e) =>
+                  handleFilterChange("documentNumber", e.target.value)
+                }
+                sx={{ width: 180 }}
+              />
 
+              {/* Sale ID */}
+              <FormControl size="small" sx={{ minWidth: 140 }}>
+                <InputLabel id="payment-sale-id-label">Auftrag Nr.</InputLabel>
 
-                        {/* Purchase ID */}
-                        <FormControl size="small" sx={{ minWidth: 160 }}>
-                            <InputLabel id="filter-purchase-id-label">Purchase ID</InputLabel>
-                            <Select
-                                labelId="filter-purchase-id-label"
-                                id="filter-purchase-id"
-                                value={filters.purchaseId}
-                                onChange={(e) => handleFilterChange("purchaseId", e.target.value)}
-                            >
-                                <MenuItem value="">ALL</MenuItem>
-                                {purchaseOptions.map((purchase) => (
-                                    <MenuItem key={purchase} value={purchase}>
-                                        {purchase}
-                                    </MenuItem>
-                                ))}
-                            </Select>
-                        </FormControl>
+                <Select
+                  labelId="payment-sale-id-label"
+                  value={filters.saleId}
+                  label="Auftrag Nr."
+                  onChange={(event) =>
+                    handleFilterChange("saleId", event.target.value)
+                  }
+                >
+                  <MenuItem value="">ALLE</MenuItem>
 
-                        <Button onClick={handleClearFilters} variant="outlined" sx={{ "&:hover": { borderColor: "#00acc1" } }}>
-                            Filter zurücksetzen
-                        </Button>
-                    </Box>
-                </Paper>
-            </Collapse>
+                  {saleOptions.map((saleId) => (
+                    <MenuItem key={saleId} value={saleId}>
+                      {saleId}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
 
-            {/* Таблица */}
-            <Box sx={{ minHeight: "580px" }}>
-                <TableContainer component={Paper} sx={{
+              {/* Purchase ID */}
+              <FormControl size="small" sx={{ minWidth: 150 }}>
+                <InputLabel id="payment-purchase-id-label">
+                  Bestellung Nr.
+                </InputLabel>
 
-                }}>
-                    <Table >
-                        <StyledTableHead>
-                            <TableRow>
-                                <TableCell >ID</TableCell>
-                                <TableCell >Geschäftspartner</TableCell>
-                                <TableCell >Datum</TableCell>
-                                <TableCell >Betrag</TableCell>
-                                <TableCell >Dokumenttyp</TableCell>
-                                <TableCell >Referenz</TableCell>
-                                <TableCell >Auftrag Nr</TableCell>
-                                <TableCell >Bestellung Nr</TableCell>
-                                <TableCell >Aktionen</TableCell>
-                            </TableRow>
-                        </StyledTableHead>
+                <Select
+                  labelId="payment-purchase-id-label"
+                  value={filters.purchaseId}
+                  label="Bestellung Nr."
+                  onChange={(event) =>
+                    handleFilterChange("purchaseId", event.target.value)
+                  }
+                >
+                  <MenuItem value="">ALLE</MenuItem>
 
-                        <TableBody>
-                            {payments.length > 0 ? (
-                                payments.map((payment) => (
-                                    <React.Fragment key={payment.id}>
-                                        <TableRow hover onClick={() => toggleRow(payment.id)} sx={{ cursor: 'pointer' }} >
-                                            <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{payment.id}</TableCell>
-                                            <TableCell sx={{ ...cellStyle, borderRight: "1px solid #ddd", padding: "6px 12px" }}>{payment.customerName}</TableCell>
-                                            <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>
-                                                {payment.paymentDate
-                                                    ? new Date(payment.paymentDate).toLocaleDateString("de-DE", {
-                                                        day: "2-digit",
-                                                        month: "2-digit",
-                                                        year: "numeric",
-                                                    })
-                                                    : ""}
-                                            </TableCell>
-                                            <TableCell align="right" sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{payment.amount} €</TableCell>
-                                            <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{payment.document.name}</TableCell>
-                                            <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>{payment.documentNumber}</TableCell>
-                                            <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px", textAlign: "center" }}>{payment.saleId}</TableCell>
-                                            <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px", textAlign: "center" }}>{payment.purchaseId}</TableCell>
-                                            <TableCell sx={{ padding: "2px 12px" }}>
-                                                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                                                    <Tooltip title="Bearbeiten" arrow placement="right-start">
-                                                        <IconButton
-                                                            onClick={(e) => { e.stopPropagation(); setSelectedPayment(payment) }}
-                                                            sx={{
-                                                                width: 32,
-                                                                height: 32,
-                                                                fontSize: "small",
-                                                                transition: "transform 0.2s ease-in-out",
-                                                                "&:hover": {
-                                                                    color: "#bdbdbd",
-                                                                    transform: "scale(1.2)",
-                                                                    backgroundColor: "transparent",
-                                                                },
-                                                            }}
-                                                        >
-                                                            <EditIcon />
-                                                        </IconButton>
-                                                    </Tooltip>
+                  {purchaseOptions.map((purchaseId) => (
+                    <MenuItem key={purchaseId} value={purchaseId}>
+                      {purchaseId}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
 
-                                                    <DeletePayment
-                                                        paymentId={payment.id}
-                                                        customerName={payment.customerName}
-                                                        amount={payment.amount}
-                                                        paymentDate={payment.paymentDate}
-                                                        onSuccessDelete={() => { }}
-                                                        trigger={
-                                                            <Tooltip title="Löschen" arrow placement="right-start">
-                                                                <IconButton
-                                                                    sx={{
-                                                                        width: 32,
-                                                                        height: 32,
-                                                                        fontSize: "small",
-                                                                        transition: "transform 0.2s ease-in-out",
-                                                                        "&:hover": {
-                                                                            color: "#bdbdbd",
-                                                                            transform: "scale(1.2)",
-                                                                            backgroundColor: "transparent",
-                                                                        },
-                                                                    }}
-                                                                >
-                                                                    <DeleteIcon />
-                                                                </IconButton>
-                                                            </Tooltip>
-                                                        }
-                                                    />
-                                                </Box>
-                                            </TableCell>
-                                        </TableRow>
-                                    </React.Fragment>
-                                ))
-                            ) : (
-                                <TableRow>
-                                    <TableCell colSpan={7} align="center">
-                                        Keine Zahlungen gefunden
-                                    </TableCell>
-                                </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
+              <ClearFiltersButton onClick={handleClearFilters} />
             </Box>
-            {selectedPayment && (
-                <EditPayment
-                    payment={selectedPayment}
-                    onClose={() => setSelectedPayment(null)}
-                />
-            )}
-            {/* Пагинация */}
-            <Box display="flex" justifyContent="center" mt={2}>
-                <Pagination
-                    count={totalPages}
-                    page={page + 1}
-                    onChange={handlePageChange}
-                    color="primary"
-                />
-            </Box>
-        </Container >
+          </Box>
+        </Paper>
+      </Collapse>
 
-    );
+      {/* Table */}
+      <Box sx={listTableAreaStyle}>
+        <TableContainer
+          component={Paper}
+          sx={{
+            ...tableContainerStyle,
+            mt: 1,
+          }}
+        >
+          <Table sx={tableStyle}>
+            <StyledTableHead>
+              <TableRow>
+                <TableCell sx={fixedCellWidth(90)}>
+                  <SortableHeader
+                    title="ID"
+                    field="id"
+                    activeSort={sort}
+                    onSort={handleSort}
+                  />
+                </TableCell>
+
+                <TableCell sx={{ minWidth: 260 }}>
+                  <SortableHeader
+                    title="Geschäftspartner"
+                    field="customerName"
+                    activeSort={sort}
+                    onSort={handleSort}
+                  />
+                </TableCell>
+
+                <TableCell sx={fixedCellWidth(130)}>
+                  <SortableHeader
+                    title="Datum"
+                    field="paymentDate"
+                    activeSort={sort}
+                    onSort={handleSort}
+                  />
+                </TableCell>
+
+                <TableCell sx={fixedCellWidth(140)}>
+                  <SortableHeader
+                    title="Betrag"
+                    field="amount"
+                    activeSort={sort}
+                    onSort={handleSort}
+                  />
+                </TableCell>
+
+                <TableCell sx={fixedCellWidth(150)}>
+                  <SortableHeader
+                    title="Dokumenttyp"
+                    field="documentName"
+                    activeSort={sort}
+                    onSort={handleSort}
+                  />
+                </TableCell>
+
+                <TableCell sx={fixedCellWidth(160)}>
+                  <SortableHeader
+                    title="Referenz"
+                    field="documentNumber"
+                    activeSort={sort}
+                    onSort={handleSort}
+                  />
+                </TableCell>
+
+                <TableCell sx={fixedCellWidth(130)}>
+                  <SortableHeader
+                    title="Auftrag Nr."
+                    field="saleId"
+                    activeSort={sort}
+                    onSort={handleSort}
+                  />
+                </TableCell>
+
+                <TableCell sx={fixedCellWidth(140)}>
+                  <SortableHeader
+                    title="Bestellung Nr."
+                    field="purchaseId"
+                    activeSort={sort}
+                    onSort={handleSort}
+                  />
+                </TableCell>
+
+                <TableCell sx={fixedCellWidth(130)}>
+                  Aktionen
+                </TableCell>
+              </TableRow>
+            </StyledTableHead>
+
+            <TableBody>
+              {payments.length > 0 ? (
+                payments.map((payment) => (
+                  <TableRow key={payment.id} sx={tableRowHoverStyle}>
+                    {/* ID */}
+                    <TableCell
+                      sx={{
+                        ...leftBorderCellStyle,
+                        ...cellStyle,
+                        ...fixedCellWidth(90),
+                      }}
+                    >
+                      {payment.id}
+                    </TableCell>
+
+                    {/* Geschäftspartner */}
+                    <TableCell sx={hoverExpandCellStyle}>
+                      <HoverExpandText
+                        text={payment.customerName ?? ""}
+                        hoverBgColor={colors.tableHover}
+                      />
+                    </TableCell>
+
+                    {/* Datum */}
+                    <TableCell
+                      sx={{
+                        ...cellStyle,
+                        ...fixedCellWidth(130),
+                      }}
+                    >
+                      {payment.paymentDate
+                        ? new Date(payment.paymentDate).toLocaleDateString(
+                            "de-DE",
+                            {
+                              day: "2-digit",
+                              month: "2-digit",
+                              year: "numeric",
+                            },
+                          )
+                        : ""}
+                    </TableCell>
+
+                    {/* Betrag */}
+                    <TableCell
+                      sx={{
+                        ...rightCellStyle,
+                        ...fixedCellWidth(140),
+                      }}
+                    >
+                      {formatNumber(payment.amount)} €
+                    </TableCell>
+
+                    {/* Dokumenttyp */}
+                    <TableCell
+                      sx={{
+                        ...cellStyle,
+                        ...fixedCellWidth(150),
+                      }}
+                    >
+                      {payment.document?.name ?? "—"}
+                    </TableCell>
+
+                    {/* Referenz */}
+                    <TableCell
+                      sx={{
+                        ...cellStyle,
+                        ...fixedCellWidth(160),
+                      }}
+                    >
+                      {payment.documentNumber ?? "—"}
+                    </TableCell>
+
+                    {/* Auftrag */}
+                    <TableCell
+                      sx={{
+                        ...centerCellStyle,
+                        ...fixedCellWidth(130),
+                      }}
+                    >
+                      {payment.saleId ?? "—"}
+                    </TableCell>
+
+                    {/* Bestellung */}
+                    <TableCell
+                      sx={{
+                        ...centerCellStyle,
+                        ...fixedCellWidth(140),
+                      }}
+                    >
+                      {payment.purchaseId ?? "—"}
+                    </TableCell>
+
+                    {/* Aktionen */}
+                    <TableCell
+                      sx={{
+                        ...actionCellStyle,
+                        ...fixedCellWidth(130),
+                      }}
+                    >
+                      <Box sx={tableActionsStyle}>
+                        <Box sx={tableActionSlotStyle}>
+                          <Tooltip title="Bearbeiten" arrow>
+                            <IconButton
+                              size="small"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setSelectedPayment(payment);
+                              }}
+                              sx={actionIconButtonStyle}
+                            >
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
+
+                        <Box sx={tableActionSlotStyle}>
+                          <DeletePayment
+                            paymentId={payment.id}
+                            customerName={payment.customerName}
+                            amount={payment.amount}
+                            paymentDate={payment.paymentDate}
+                            trigger={
+                              <Tooltip title="Löschen" arrow>
+                                <IconButton
+                                  size="small"
+                                  sx={actionIconButtonStyle}
+                                >
+                                  <DeleteIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            }
+                          />
+                        </Box>
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={9} align="center">
+                    Keine Zahlungen gefunden
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Box>
+
+      {/* Edit */}
+      {selectedPayment && (
+        <EditPayment
+          payment={selectedPayment}
+          onClose={() => setSelectedPayment(null)}
+        />
+      )}
+
+      {/* Pagination */}
+      <Box sx={listPaginationStyle}>
+        <Pagination
+          count={totalPages}
+          page={page + 1}
+          onChange={handlePageChange}
+          color="primary"
+        />
+      </Box>
+    </Box>
+  );
 }
-

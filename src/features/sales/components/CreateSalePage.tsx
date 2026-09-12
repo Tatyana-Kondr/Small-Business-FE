@@ -31,7 +31,7 @@ import { handleApiError } from '../../../utils/handleApiError';
 import { showSuccessToast } from '../../../utils/toast';
 import { getShippings, selectShippings } from '../shippingsSlice';
 import { getTermsOfPayment, selectTermsOfPayment } from '../termOfPaymentSlice';
-import { actionIconButtonStyle, fixedCellWidth, saleTableCellStyle, saleTableCenterCellStyle, saleTableDeleteCellStyle, saleTableNameCellStyle, saleTableNameInputStyle, saleTableRightCellStyle, StyledTableHead, tableRowHoverStyle, tableStyle } from '../../../styles/tableStyles';
+import { actionIconButtonStyle, cellStyle, centerCellStyle, fixedCellWidth,  rightCellStyle,  saleTableNameCellStyle,  saleTableNameInputStyle, StyledTableHead, tableRowHoverStyle, tableStyle } from '../../../styles/tableStyles';
 import { formSectionStyle, saleDateFieldStyle } from '../../../styles/formStyles';
 import { formSaleSectionTitleStyle } from '../../../styles/typographyStyles';
 import { addButtonStyle, cancelButtonStyle, primaryButtonStyle } from '../../../styles/buttonStyles';
@@ -847,8 +847,8 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
                                 <TableBody>
                                     {newSale.salesItems.map((item, index) => (
                                         <TableRow key={index} sx={tableRowHoverStyle}>
-                                            <TableCell sx={{ ...saleTableCenterCellStyle, ...fixedCellWidth(45), borderLeft: `1px solid ${colors.border}`, }}>{item.position}</TableCell>
-                                            <TableCell sx={{ ...saleTableCellStyle, ...fixedCellWidth(110), }}>{item.productArticle}</TableCell>
+                                            <TableCell sx={{ ...centerCellStyle, ...fixedCellWidth(45), borderLeft: `1px solid ${colors.border}`, }}>{item.position}</TableCell>
+                                            <TableCell sx={{ ...cellStyle, ...fixedCellWidth(110), }}>{item.productArticle}</TableCell>
                                             <TableCell sx={{ ...saleTableNameCellStyle, width: "40%", verticalAlign: "middle", py: 1 }}>
                                                 <TextField
                                                     id={`product-name-${index}`}
@@ -865,7 +865,7 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
                                                 />
                                             </TableCell>
 
-                                            <TableCell sx={{ ...saleTableCellStyle, ...fixedCellWidth(75), }}>
+                                            <TableCell sx={{ ...cellStyle, ...fixedCellWidth(75), }}>
                                                 <CompactNumberCell
                                                     value={item.quantity}
                                                     min={0}
@@ -877,7 +877,7 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
                                                 />
                                             </TableCell>
 
-                                            <TableCell sx={{ ...saleTableCellStyle, ...fixedCellWidth(90), }}>
+                                            <TableCell sx={{ ...cellStyle, ...fixedCellWidth(90), }}>
                                                 <CompactNumberCell
                                                     value={item.unitPrice}
                                                     min={0}
@@ -892,7 +892,7 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
                                                 />
                                             </TableCell>
 
-                                            <TableCell sx={{ ...saleTableCellStyle, ...fixedCellWidth(75), }}>
+                                            <TableCell sx={{ ...cellStyle, ...fixedCellWidth(75), }}>
                                                 <CompactNumberCell
                                                     value={item.discount}
                                                     min={0}
@@ -908,7 +908,7 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
                                                 />
                                             </TableCell>
 
-                                            <TableCell sx={{ ...saleTableCellStyle, ...fixedCellWidth(75), }}>
+                                            <TableCell sx={{ ...cellStyle, ...fixedCellWidth(75), }}>
                                                 <CompactNumberCell
                                                     value={item.tax}
                                                     min={0}
@@ -923,13 +923,13 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
                                                     }
                                                 />
                                             </TableCell>
-                                            <TableCell sx={{ ...saleTableRightCellStyle, ...fixedCellWidth(90), }}>
+                                            <TableCell sx={{ ...rightCellStyle, ...fixedCellWidth(90), }}>
                                                 {item.totalPrice.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </TableCell>
-                                            <TableCell sx={{ ...saleTableRightCellStyle, ...fixedCellWidth(90), }}>
+                                            <TableCell sx={{ ...rightCellStyle, ...fixedCellWidth(90), }}>
                                                 {item.taxAmount.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </TableCell>
-                                            <TableCell sx={{ ...saleTableDeleteCellStyle, ...fixedCellWidth(40), }}>
+                                            <TableCell sx={{ ...rightCellStyle, ...fixedCellWidth(40), }}>
                                                 <Tooltip title="Löschen" arrow>
                                                     <IconButton
                                                         size="small"
@@ -1162,20 +1162,20 @@ export default function CreateSaleModal({ onClose, onSubmitSuccess }: CreateSale
                                                 handleAddProductToCart(product)
                                             }
                                         >
-                                            <TableCell sx={saleTableCellStyle}>
+                                            <TableCell sx={cellStyle}>
                                                 {product.name}
                                             </TableCell>
 
-                                            <TableCell sx={saleTableCellStyle}>
+                                            <TableCell sx={cellStyle}>
                                                 {product.article}
                                             </TableCell>
 
-                                            <TableCell sx={saleTableCellStyle}>
+                                            <TableCell sx={cellStyle}>
                                                 {product.vendorArticle ?? ""}
                                             </TableCell>
 
                                             <TableCell
-                                                sx={saleTableRightCellStyle}
+                                                sx={rightCellStyle}
                                             >
                                                 {Number(
                                                     product.sellingPrice ?? 0

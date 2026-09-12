@@ -108,7 +108,9 @@ export interface ProductsState {
   pickLastQuery: { searchTerm: string; categoryId: number | null } | null;
   totalPages: number;
   currentPage: number;
+  pageSize: number;
   currentSort: string,
+  productsVersion: number;
   loading: boolean;
   error: string | null;
 }

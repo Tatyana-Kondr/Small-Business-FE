@@ -1,8 +1,6 @@
 import {
   Box,
-  Button,
   Collapse,
-  debounce,
   FormControl,
   IconButton,
   InputLabel,
@@ -16,9 +14,7 @@ import {
   TableCell,
   TableContainer,
   TableRow,
-  TextField,
   Tooltip,
-  Typography,
 } from "@mui/material";
 import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
 import {
@@ -26,44 +22,85 @@ import {
   getPurchasesByFilter,
   searchPurchases,
   selectPurchases,
+  selectPurchasesVersion,
   selectTotalPages,
 } from "../purchasesSlice";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import React from "react";
-import { useNavigate } from "react-router-dom";;
+import { useNavigate } from "react-router-dom";
 import { PaymentStatuses } from "../../../constants/enums";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
-import PaymentsIcon from '@mui/icons-material/Payments';
+import PaymentsIcon from "@mui/icons-material/Payments";
 import CreatePayment from "../../payments/components/CreatePayment";
 import DeletePurchase from "./DeletePurchase";
 import { selectUser } from "../../auth/authSlice";
-import { getDocumentTypes, selectTypeOfDocuments } from "../typeOfDocumentSlice";
+import {
+  getDocumentTypes,
+  selectTypeOfDocuments,
+} from "../typeOfDocumentSlice";
 import { TypeOfDocument } from "../types";
 import SearchBox from "../../../components/ui/SearchBox";
-import { outlinedButtonStyle } from "../../../styles/buttonStyles";
-import { cellStyle, compactActionCellStyle, compactIconButtonStyle, compactTableCellStyle, compactTableRowStyle, fixedCellWidth, hoverExpandCellStyle, StyledSubTableHead, StyledTableHead, tableActionSlotStyle, tableActionsStyle, tableContainerStyle, tableStyle } from "../../../styles/tableStyles";
+import {
+  actionCellStyle,
+  actionIconButtonStyle,
+  cellStyle,
+  centerCellStyle,
+  fixedCellWidth,
+  hoverExpandCellStyle,
+  leftBorderCellStyle,
+  rightCellStyle,
+  StyledSubTableHead,
+  StyledTableHead,
+  tableActionSlotStyle,
+  tableActionsStyle,
+  tableContainerStyle,
+  tableRowHoverStyle,
+  tableStyle,
+} from "../../../styles/tableStyles";
 import HoverExpandText from "../../../components/ui/HoverExpandText";
 import { colors } from "../../../styles/colors";
 import { formatNumber } from "../../../utils/formatNumber";
 import SortableHeader from "../../../components/ui/SortableHeader";
-import { filterDateFieldsStyle, filterDateRangeStyle, filterDateRangeTitleStyle, filterOptionsStyle, filterPanelRowStyle, filterPanelStyle, pageToolbarStyle } from "../../../styles/formStyles";
-
+import {
+  filterOptionsStyle,
+  filterPanelRowStyle,
+  filterPanelStyle,
+  listPageStyle,
+  listPaginationStyle,
+  listTableAreaStyle,
+  pageToolbarStyle,
+} from "../../../styles/formStyles";
+import { getAdaptivePageSize } from "../../../utils/getAdaptivePageSize";
+import FilterToggleButton from "../../../components/ui/FilterToggleButton";
+import ClearFiltersButton from "../../../components/ui/ClearFiltersButton";
+import DateRangeFilter from "../../../components/ui/DateRangeFilter";
 
 export default function Purchases() {
   const dispatch = useAppDispatch();
   const purchases = useAppSelector(selectPurchases);
   const totalPages = useAppSelector(selectTotalPages);
+  const purchasesVersion = useAppSelector(selectPurchasesVersion);
   const currentUser = useAppSelector(selectUser);
   const documentTypes = useAppSelector(selectTypeOfDocuments);
   const isAdmin = currentUser?.role === "ADMIN";
   const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(getAdaptivePageSize);
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [filtersVisible, setFiltersVisible] = useState(false);
   const [openRows, setOpenRows] = useState<{ [key: string]: boolean }>({});
-  const [openPaymentDialogId, setOpenPaymentDialogId] = useState<number | null>(null);
-  const [selectedOperationType, setSelectedOperationType] = useState<string | null>(null);
-  const [sort, setSort] = useState<string[]>(["purchasingDate,DESC", "id,DESC"]);
+  const [openPaymentDialogId, setOpenPaymentDialogId] = useState<number | null>(
+    null,
+  );
+  const [selectedOperationType, setSelectedOperationType] = useState<
+    string | null
+  >(null);
+
+  const [sort, setSort] = useState<string[]>([
+    "purchasingDate,DESC",
+    "id,DESC",
+  ]);
 
   const [filters, setFilters] = useState({
     documentId: "",
@@ -76,37 +113,37 @@ export default function Purchases() {
     dispatch(getDocumentTypes());
   }, [dispatch]);
 
-  const debouncedSearch = useCallback(
-    debounce((searchTerm: string) => {
-      const hasFilters =
-        filters.documentId ||
-        filters.paymentStatus ||
-        filters.startDate ||
-        filters.endDate;
+  useEffect(() => {
+    const handleResize = () => {
+      const newPageSize = getAdaptivePageSize();
 
-      if (hasFilters) {
-        dispatch(
-          getPurchasesByFilter({
-            page,
-            size: 15,
-            ...convertFiltersToParams(filters),
-            searchQuery: searchTerm,
-            sort
-          })
-        );
-      } else {
-        dispatch(
-          searchPurchases({
-            page,
-            size: 15,
-            query: searchTerm,
-            sort
-          })
-        );
-      }
-    }, 500),
-    [page, dispatch, filters, sort]
-  );
+      setPageSize((prev) => {
+        if (prev === newPageSize) {
+          return prev;
+        }
+
+        setPage(0);
+
+        return newPageSize;
+      });
+    };
+
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 500);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [searchTerm]);
 
   useEffect(() => {
     const hasFilters =
@@ -116,30 +153,28 @@ export default function Purchases() {
       filters.documentId;
 
     if (hasFilters) {
-      console.log("FILTER PARAMS:", convertFiltersToParams(filters));
-
       dispatch(
         getPurchasesByFilter({
           page,
-          size: 15,
+          size: pageSize,
           ...convertFiltersToParams(filters),
-          searchQuery: searchTerm,
-          sort
-        })
+          searchQuery: debouncedSearchTerm,
+          sort,
+        }),
       );
-    } else if (searchTerm) {
+    } else if (debouncedSearchTerm) {
       dispatch(
         searchPurchases({
           page,
-          size: 15,
-          query: searchTerm,
-          sort
-        })
+          size: pageSize,
+          query: debouncedSearchTerm,
+          sort,
+        }),
       );
     } else {
-      dispatch(getPurchases({ page, size: 15, sort }));
+      dispatch(getPurchases({ page, size: pageSize, sort }));
     }
-  }, [dispatch, page, searchTerm, filters, sort]);
+  }, [dispatch, page, pageSize, debouncedSearchTerm, filters, sort, purchasesVersion,]);
 
   const handlePageChange = (_: any, value: number) => {
     setPage(value - 1);
@@ -166,34 +201,14 @@ export default function Purchases() {
   const navigate = useNavigate();
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const newSearchTerm = event.target.value;
-    setSearchTerm(newSearchTerm);
-    debouncedSearch(newSearchTerm);
+    setSearchTerm(event.target.value);
+    setPage(0);
   };
 
   const handleClearSearch = () => {
     setSearchTerm("");
+    setDebouncedSearchTerm("");
     setPage(0);
-
-    const hasFilters =
-      filters.startDate ||
-      filters.endDate ||
-      filters.paymentStatus ||
-      filters.documentId;
-
-    if (hasFilters) {
-      dispatch(
-        getPurchasesByFilter({
-          page: 0,
-          size: 15,
-          ...convertFiltersToParams(filters),
-          searchQuery: "",
-          sort
-        })
-      );
-    } else {
-      dispatch(getPurchases({ page: 0, size: 15, sort }));
-    }
   };
 
   const toggleRow = (id: string | number) => {
@@ -218,9 +233,8 @@ export default function Purchases() {
   };
 
   return (
-    <Box
-      sx={{ p: 0, m: 0, width: "100%", display: "flex", flexDirection: "column", alignItems: "stretch", }}>
-      {/* Верхняя панель */}
+    <Box sx={listPageStyle}>
+
       <Box sx={pageToolbarStyle}>
         <Box display="flex" gap={2}>
           <SearchBox
@@ -229,67 +243,47 @@ export default function Purchases() {
             onClear={handleClearSearch}
           />
 
-          <Button variant="outlined" sx={outlinedButtonStyle} onClick={() => setFiltersVisible((prev) => !prev)}>
-            {filtersVisible ? "Filter ausblenden" : "Filter anzeigen"}
-          </Button>
+          <FilterToggleButton
+            visible={filtersVisible}
+            onClick={() => setFiltersVisible((prev) => !prev)}
+          />
         </Box>
       </Box>
 
-      {/* Фильтры */}
+      {/* Filters */}
       <Collapse in={filtersVisible}>
         <Paper elevation={4} sx={filterPanelStyle}>
           <Box sx={filterPanelRowStyle}>
-            <Box sx={filterDateRangeStyle}>
-              <Typography variant="caption" sx={filterDateRangeTitleStyle}>
-                Zeitraum:
-              </Typography>
-
-              <Box sx={filterDateFieldsStyle}>
-                <TextField
-                  id="filter-start-date"
-                  label="Von"
-                  type="date"
-                  value={filters.startDate}
-                  onChange={(e) => handleFilterChange("startDate", e.target.value)}
-                  InputLabelProps={{ shrink: true }}
-                />
-
-                <TextField
-                  id="filter-end-date"
-                  label="Bis"
-                  type="date"
-                  value={filters.endDate}
-                  onChange={(e) => handleFilterChange("endDate", e.target.value)}
-                  InputLabelProps={{ shrink: true }}
-                />
-              </Box>
-            </Box>
+            <DateRangeFilter
+              startDate={filters.startDate}
+              endDate={filters.endDate}
+              onStartDateChange={(value) =>
+                handleFilterChange("startDate", value)
+              }
+              onEndDateChange={(value) => handleFilterChange("endDate", value)}
+            />
 
             <Box sx={filterOptionsStyle}>
               {/* Dokumenttyp */}
               <FormControl sx={{ minWidth: 180 }}>
-                <InputLabel id="document-type-label">
-                  Dokumenttyp
-                </InputLabel>
+                <InputLabel id="document-type-label">Dokumenttyp</InputLabel>
 
                 <Select
                   labelId="document-type-label"
                   id="document-type-select"
                   value={filters.documentId || ""}
-                  onChange={(e: SelectChangeEvent) => handleFilterChange("documentId", e.target.value)}
+                  onChange={(e: SelectChangeEvent) =>
+                    handleFilterChange("documentId", e.target.value)
+                  }
                   label="Dokumenttyp"
                 >
-                  <MenuItem value="">
-                    ALLE
-                  </MenuItem>
+                  <MenuItem value="">ALLE</MenuItem>
 
-                  {documentTypes.map(
-                    (doc: TypeOfDocument) => (
-                      <MenuItem key={doc.id} value={doc.id.toString()}>
-                        {doc.name}
-                      </MenuItem>
-                    )
-                  )}
+                  {documentTypes.map((doc: TypeOfDocument) => (
+                    <MenuItem key={doc.id} value={doc.id.toString()}>
+                      {doc.name}
+                    </MenuItem>
+                  ))}
                 </Select>
               </FormControl>
 
@@ -303,12 +297,12 @@ export default function Purchases() {
                   labelId="payment-status-label"
                   id="payment-status-select"
                   value={filters.paymentStatus}
-                  onChange={(e: SelectChangeEvent) => handleFilterChange("paymentStatus", e.target.value)}
+                  onChange={(e: SelectChangeEvent) =>
+                    handleFilterChange("paymentStatus", e.target.value)
+                  }
                   label="Zahlungsstatus"
                 >
-                  <MenuItem value="">
-                    ALLE
-                  </MenuItem>
+                  <MenuItem value="">ALLE</MenuItem>
 
                   {PaymentStatuses.map((status) => (
                     <MenuItem key={status} value={status}>
@@ -318,29 +312,23 @@ export default function Purchases() {
                 </Select>
               </FormControl>
 
-              <Button
-                onClick={handleClearFilters}
-                variant="outlined"
-                sx={outlinedButtonStyle}
-              >
-                Filter zurücksetzen
-              </Button>
+              <ClearFiltersButton onClick={handleClearFilters} />
             </Box>
           </Box>
         </Paper>
       </Collapse>
 
-      {/* Tabelle */}
-      <Box sx={{ width: "100%", maxWidth: "100%", overflowX: "auto", mb: 2, }}>
+      {/* Table */}
+      <Box sx={listTableAreaStyle}>
         <TableContainer
           component={Paper}
-          sx={{ ...tableContainerStyle, mt: 1, minHeight: 580, }}
+          sx={{ ...tableContainerStyle, mt: 1 }}
         >
           <Table sx={tableStyle}>
             <StyledTableHead>
               <TableRow>
                 {/* ID */}
-                <TableCell sx={fixedCellWidth(80)}>
+                <TableCell sx={fixedCellWidth(90)}>
                   <SortableHeader
                     title="DokNr"
                     field="id"
@@ -349,8 +337,8 @@ export default function Purchases() {
                   />
                 </TableCell>
 
-                {/* Lieferant */}
-                <TableCell sx={{ width: "28%" }}>
+                {/* Customer */}
+                <TableCell sx={{ minWidth: 300 }}>
                   <SortableHeader
                     title="Lieferant"
                     field="vendorName"
@@ -359,8 +347,8 @@ export default function Purchases() {
                   />
                 </TableCell>
 
-                {/* Datum */}
-                <TableCell sx={fixedCellWidth(110)}>
+                {/* Date */}
+                <TableCell sx={fixedCellWidth(130)}>
                   <SortableHeader
                     title="Datum"
                     field="purchasingDate"
@@ -369,8 +357,8 @@ export default function Purchases() {
                   />
                 </TableCell>
 
-                {/* Betrag */}
-                <TableCell sx={fixedCellWidth(120)}>
+                {/* Amount */}
+                <TableCell sx={fixedCellWidth(140)}>
                   <SortableHeader
                     title="Betrag"
                     field="total"
@@ -379,14 +367,12 @@ export default function Purchases() {
                   />
                 </TableCell>
 
-                <TableCell sx={fixedCellWidth(140)}>Dokument</TableCell>
-                <TableCell sx={fixedCellWidth(140)}>Dokument-Nr</TableCell>
-                <TableCell sx={fixedCellWidth(140)}>Zahlungsstatus</TableCell>
+                <TableCell sx={fixedCellWidth(150)}>Dokument</TableCell>
+                <TableCell sx={fixedCellWidth(150)}>Dokument-Nr</TableCell>
+                <TableCell sx={fixedCellWidth(150)}>Zahlungsstatus</TableCell>
 
                 {isAdmin && (
-                  <TableCell sx={fixedCellWidth(120)}>
-                    Aktionen
-                  </TableCell>
+                  <TableCell sx={fixedCellWidth(150)}>Aktionen</TableCell>
                 )}
               </TableRow>
             </StyledTableHead>
@@ -398,83 +384,115 @@ export default function Purchases() {
                     {/* Основная строка */}
                     <TableRow
                       onClick={() => toggleRow(purchase.id)}
-                      sx={compactTableRowStyle}
+                      sx={tableRowHoverStyle}
                     >
-                      <TableCell sx={{ ...compactTableCellStyle, ...fixedCellWidth(80), }}>
+                      <TableCell
+                        sx={{
+                          ...cellStyle,
+                          ...leftBorderCellStyle,
+                          ...fixedCellWidth(90),
+                        }}
+                      >
                         {purchase.id}
                       </TableCell>
 
-                      <TableCell sx={{  ...hoverExpandCellStyle, width: "28%", }}>
+                      <TableCell sx={{ ...hoverExpandCellStyle }}>
                         <HoverExpandText
-                          text={ purchase.vendorName ?? "" }
-                          maxWidth={300}
-                          hoverBgColor={ colors.tableHover }
+                          text={purchase.vendorName ?? ""}
+                          hoverBgColor={colors.tableHover}
                         />
                       </TableCell>
 
-                      <TableCell sx={{ ...compactTableCellStyle, ...fixedCellWidth(110), }}>
-                        {purchase.purchasingDate ? new Date(
-                            purchase.purchasingDate
-                          ).toLocaleDateString(
-                            "de-DE",
-                            {
+                      <TableCell
+                        sx={{
+                          ...cellStyle,
+                          ...fixedCellWidth(130),
+                        }}
+                      >
+                        {purchase.purchasingDate
+                          ? new Date(
+                              purchase.purchasingDate,
+                            ).toLocaleDateString("de-DE", {
                               day: "2-digit",
                               month: "2-digit",
                               year: "numeric",
-                            }
-                          )
+                            })
                           : ""}
                       </TableCell>
 
-                      <TableCell sx={{ ...compactTableCellStyle, ...fixedCellWidth(120), textAlign: "right", }}>
-                        {formatNumber(
-                          purchase.total
-                        )}{" "}
-                        €
+                      <TableCell
+                        sx={{
+                          ...rightCellStyle,
+                          ...fixedCellWidth(140),
+                        }}
+                      >
+                        {formatNumber(purchase.total)} €
                       </TableCell>
 
-                      <TableCell sx={{ ...compactTableCellStyle, ...fixedCellWidth(140), }}>
+                      <TableCell
+                        sx={{
+                          ...cellStyle,
+                          ...fixedCellWidth(150),
+                        }}
+                      >
                         {purchase.document?.name ?? ""}
                       </TableCell>
 
-                      <TableCell sx={{ ...compactTableCellStyle, ...fixedCellWidth(140), }}>
+                      <TableCell
+                        sx={{
+                          ...cellStyle,
+                          ...fixedCellWidth(150),
+                        }}
+                      >
                         {purchase.documentNumber}
                       </TableCell>
 
-                      <TableCell sx={{ ...compactTableCellStyle, ...fixedCellWidth(140), }}>
+                      <TableCell
+                        sx={{
+                          ...cellStyle,
+                          ...fixedCellWidth(150),
+                        }}
+                      >
                         {purchase.paymentStatus}
                       </TableCell>
 
-                      {/* Aktionen */}
+                      {/* Action */}
                       {isAdmin && (
-                        <TableCell sx={{ ...compactActionCellStyle, ...fixedCellWidth(120), }}>
+                        <TableCell
+                          sx={{
+                            ...actionCellStyle,
+                            ...fixedCellWidth(150),
+                          }}
+                        >
+                          {/* Edit */}
                           <Box sx={tableActionsStyle}>
                             <Box sx={tableActionSlotStyle}>
                               <Tooltip title="Bearbeiten" arrow>
                                 <IconButton
                                   size="small"
-                                  onClick={(e) => { e.stopPropagation();
-                                    navigate( `/purchases/${purchase.id}` );
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/purchases/${purchase.id}`);
                                   }}
-                                  sx={ compactIconButtonStyle }
+                                  sx={actionIconButtonStyle}
                                 >
                                   <EditIcon fontSize="small" />
                                 </IconButton>
                               </Tooltip>
                             </Box>
 
-                            {/* Löschen */}
+                            {/* Delete */}
                             <Box sx={tableActionSlotStyle}>
                               <DeletePurchase
-                                purchaseId={ purchase.id }
-                                vendorName={ purchase.vendorName }
-                                purchasingDate={ purchase.purchasingDate }
-                                onSuccessDelete={() => { }}
+                                purchaseId={purchase.id}
+                                vendorName={purchase.vendorName}
+                                purchasingDate={purchase.purchasingDate}
                                 trigger={
                                   <Tooltip title="Löschen" arrow>
                                     <IconButton
                                       size="small"
-                                      sx={ compactIconButtonStyle }>
+                                      sx={actionIconButtonStyle}
+                                    >
                                       <DeleteIcon fontSize="small" />
                                     </IconButton>
                                   </Tooltip>
@@ -482,32 +500,41 @@ export default function Purchases() {
                               />
                             </Box>
 
+                            {/* Pay */}
                             <Box sx={tableActionSlotStyle}>
                               {purchase.paymentStatus !== "BEZAHLT" && (
-                                  <Tooltip title="Bezahlen" arrow>
-                                    <IconButton
-                                      size="small"
-                                      onClick={(e) => { e.stopPropagation();
-                                        setOpenPaymentDialogId( purchase.id );
-                                        setSelectedOperationType( purchase.type );
-                                      }}
-                                      sx={ compactIconButtonStyle }
-                                    >
-                                      <PaymentsIcon fontSize="small" />
-                                    </IconButton>
-                                  </Tooltip>
-                                )}
+                                <Tooltip title="Bezahlen" arrow>
+                                  <IconButton
+                                    size="small"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setOpenPaymentDialogId(purchase.id);
+                                      setSelectedOperationType(purchase.type);
+                                    }}
+                                    sx={actionIconButtonStyle}
+                                  >
+                                    <PaymentsIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              )}
                             </Box>
                           </Box>
                         </TableCell>
                       )}
                     </TableRow>
 
-                    {/* Подтаблица */}
+                    {/* SubTable */}
                     {openRows[purchase.id] && (
                       <TableRow>
-                        <TableCell colSpan={isAdmin ? 8 : 7} sx={{ paddingBottom: 0, paddingTop: 0, }}>
-                          <Collapse in={openRows[purchase.id]} timeout="auto" unmountOnExit>
+                        <TableCell
+                          colSpan={isAdmin ? 8 : 7}
+                          sx={{ paddingBottom: 0, paddingTop: 0 }}
+                        >
+                          <Collapse
+                            in={openRows[purchase.id]}
+                            timeout="auto"
+                            unmountOnExit
+                          >
                             <Box margin={2}>
                               <Table size="small" sx={tableStyle}>
                                 <StyledSubTableHead>
@@ -516,7 +543,7 @@ export default function Purchases() {
                                       Artikel
                                     </TableCell>
 
-                                    <TableCell sx={{ width: "30%", }}>
+                                    <TableCell sx={{ width: "40%" }}>
                                       Artikelname
                                     </TableCell>
 
@@ -543,41 +570,49 @@ export default function Purchases() {
                                 </StyledSubTableHead>
 
                                 <TableBody>
-                                  {purchase.purchaseItems?.map(( item: any, index: number ) => (
-                                      <TableRow key={index}>
-                                        <TableCell sx={{ ...cellStyle, borderLeft: `1px solid ${colors.border}`, }}>
-                                          { item.productArticle }
+                                  {purchase.purchaseItems?.map(
+                                    (item: any, index: number) => (
+                                      <TableRow
+                                        key={index}
+                                        sx={tableRowHoverStyle}
+                                      >
+                                        <TableCell
+                                          sx={{
+                                            ...cellStyle,
+                                            ...leftBorderCellStyle,
+                                          }}
+                                        >
+                                          {item.productArticle}
                                         </TableCell>
 
-                                        <TableCell sx={{ ...cellStyle, width: "30%", }}>
+                                        <TableCell sx={hoverExpandCellStyle}>
                                           <HoverExpandText
-                                            text={ item.productName ?? ""}
-                                            maxWidth={320}
+                                            text={item.productName ?? ""}
                                             hoverBgColor={colors.tableHover}
                                           />
                                         </TableCell>
 
-                                        <TableCell sx={{ ...cellStyle, textAlign: "center", }}>
+                                        <TableCell sx={centerCellStyle}>
                                           {item.quantity}
                                         </TableCell>
 
-                                        <TableCell sx={{ ...cellStyle, textAlign: "right", }}>
-                                          {formatNumber(item.unitPrice)}{" "} €
+                                        <TableCell sx={rightCellStyle}>
+                                          {formatNumber(item.unitPrice)} €
                                         </TableCell>
 
-                                        <TableCell sx={{ ...cellStyle, textAlign: "right", }}>
-                                          {formatNumber(item.totalPrice)}{" "} €
+                                        <TableCell sx={rightCellStyle}>
+                                          {formatNumber(item.totalPrice)} €
                                         </TableCell>
 
-                                        <TableCell sx={{ ...cellStyle, textAlign: "right", }}>
-                                          {formatNumber(item.taxAmount)}{" "} €
+                                        <TableCell sx={rightCellStyle}>
+                                          {formatNumber(item.taxAmount)} €
                                         </TableCell>
 
-                                        <TableCell sx={{ ...cellStyle, textAlign: "right", }}>
-                                          {formatNumber(item.totalAmount)}{" "} €
+                                        <TableCell sx={rightCellStyle}>
+                                          {formatNumber(item.totalAmount)} €
                                         </TableCell>
                                       </TableRow>
-                                    )
+                                    ),
                                   )}
                                 </TableBody>
                               </Table>
@@ -590,10 +625,7 @@ export default function Purchases() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell
-                    colSpan={isAdmin ? 8 : 7}
-                    align="center"
-                  >
+                  <TableCell colSpan={isAdmin ? 8 : 7} align="center">
                     Keine Bestellungen gefunden
                   </TableCell>
                 </TableRow>
@@ -603,19 +635,19 @@ export default function Purchases() {
         </TableContainer>
       </Box>
 
-      {/* Zahlung */}
-      {openPaymentDialogId !== null &&
-        selectedOperationType && (
-          <CreatePayment
-            prefillType="purchase"
-            prefillId={openPaymentDialogId}
-            typeOfOperation={selectedOperationType}
-            onClose={() => { setOpenPaymentDialogId(null); setSelectedOperationType(null); }}
-          />
-        )}
+      {openPaymentDialogId !== null && selectedOperationType && (
+        <CreatePayment
+          prefillType="purchase"
+          prefillId={openPaymentDialogId}
+          typeOfOperation={selectedOperationType}
+          onClose={() => {
+            setOpenPaymentDialogId(null);
+            setSelectedOperationType(null);
+          }}
+        />
+      )}
 
-      {/* Пагинация */}
-      <Box display="flex" justifyContent="center" mt={2}>
+      <Box sx={listPaginationStyle}>
         <Pagination
           count={totalPages}
           page={page + 1}

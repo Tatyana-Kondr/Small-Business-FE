@@ -1,13 +1,24 @@
 import { createAppSlice } from "../../redux/createAppSlice";
-import { fetchAddSale, fetchDeleteSale, fetchSaleById, fetchSales, fetchSalesByFilter, fetchSearchSales, fetchUpdateSale, fetchUpdateSalePaymentStatus } from "./api";
+import {
+  fetchAddSale,
+  fetchDeleteSale,
+  fetchSaleById,
+  fetchSales,
+  fetchSalesByFilter,
+  fetchSearchSales,
+  fetchUpdateSale,
+  fetchUpdateSalePaymentStatus,
+} from "./api";
 import { NewSaleDto, SalesState } from "./types";
 
 const initialState: SalesState = {
   salesList: [],
   totalPages: 1,
   currentPage: 0,
+  pageSize: 15,
   sort: ["salesDate,DESC", "invoiceNumber,DESC"],
   selectedSale: undefined,
+  salesVersion: 0,
   loading: false,
   error: null,
 };
@@ -33,9 +44,13 @@ export const salesSlice = createAppSlice({
   name: "sales",
   initialState,
   reducers: (create) => ({
-
     getSales: create.asyncThunk(
-      async ({ page, size = 15, sort = ["salesDate,DESC", "invoiceNumber,DESC"], searchTerm = "" }: GetSalesParams) => {
+      async ({
+        page,
+        size = 15,
+        sort = ["salesDate,DESC", "invoiceNumber,DESC"],
+        searchTerm = "",
+      }: GetSalesParams) => {
         return await fetchSales(page, size, sort, searchTerm);
       },
       {
@@ -44,7 +59,11 @@ export const salesSlice = createAppSlice({
           state.salesList = content;
           state.totalPages = totalPages;
           state.currentPage = pageable.pageNumber;
-          state.sort = action.meta.arg.sort ?? ["salesDate,DESC", "invoiceNumber,DESC"];
+          state.pageSize = action.meta.arg.size ?? 15;
+          state.sort = action.meta.arg.sort ?? [
+            "salesDate,DESC",
+            "invoiceNumber,DESC",
+          ];
           state.loading = false;
           state.error = null;
         },
@@ -52,30 +71,25 @@ export const salesSlice = createAppSlice({
         rejected: (state, action) => {
           handleRejected(state, action, "Fehler beim Laden der Aufträge.");
         },
-      }
+      },
     ),
 
     addSale: create.asyncThunk(
-      async (newSale: NewSaleDto, { dispatch, getState }) => {
-        const addedSale = await fetchAddSale(newSale);
-        const state = getState() as { sales: SalesState };
-        await dispatch(
-          getSales({
-            page: state.sales.currentPage,
-            size: 15,
-            sort: state.sales.sort,
-          })
-        );
-        return addedSale;
+      async (newSale: NewSaleDto) => {
+        return await fetchAddSale(newSale);
       },
       {
         pending: handlePending,
+
         fulfilled: (state) => {
           state.loading = false;
+          state.error = null;
+          state.salesVersion += 1;
         },
+
         rejected: (state, action) =>
           handleRejected(state, action, "Fehler beim Hinzufügen des Auftrags."),
-      }
+      },
     ),
 
     getSaleById: create.asyncThunk(
@@ -91,11 +105,16 @@ export const salesSlice = createAppSlice({
         },
         rejected: (state, action) =>
           handleRejected(state, action, "Fehler beim Laden des Auftrags."),
-      }
+      },
     ),
 
     searchSales: create.asyncThunk(
-      async ({ query, page, size = 15, sort = ["salesDate,DESC", "invoiceNumber,DESC"] }: GetSalesParams & { query: string }) => {
+      async ({
+        query,
+        page,
+        size = 15,
+        sort = ["salesDate,DESC", "invoiceNumber,DESC"],
+      }: GetSalesParams & { query: string }) => {
         return await fetchSearchSales(query, page, size, sort);
       },
       {
@@ -103,14 +122,18 @@ export const salesSlice = createAppSlice({
           state.salesList = action.payload.content;
           state.totalPages = action.payload.totalPages;
           state.currentPage = action.payload.pageable.pageNumber;
-          state.sort = action.meta.arg.sort ?? ["salesDate,DESC", "invoiceNumber,DESC"];
+          state.pageSize = action.meta.arg.size ?? 15;
+          state.sort = action.meta.arg.sort ?? [
+            "salesDate,DESC",
+            "invoiceNumber,DESC",
+          ];
           state.loading = false;
           state.error = null;
         },
         pending: handlePending,
         rejected: (state, action) =>
           handleRejected(state, action, "Fehler beim Laden des Auftrags."),
-      }
+      },
     ),
 
     getSalesByFilter: create.asyncThunk(
@@ -157,61 +180,69 @@ export const salesSlice = createAppSlice({
           state.salesList = action.payload.content;
           state.totalPages = action.payload.totalPages;
           state.currentPage = action.payload.pageable.pageNumber;
-          state.sort = action.meta.arg.sort ?? ["salesDate,DESC", "invoiceNumber,DESC"];
+          state.pageSize = action.meta.arg.size ?? 15;
+          state.sort = action.meta.arg.sort ?? [
+            "salesDate,DESC",
+            "invoiceNumber,DESC",
+          ];
           state.loading = false;
           state.error = null;
         },
         pending: handlePending,
         rejected: (state, action) =>
-          handleRejected(state, action, "Fehler beim Laden der gefilterten Aufträge."),
-      }
+          handleRejected(
+            state,
+            action,
+            "Fehler beim Laden der gefilterten Aufträge.",
+          ),
+      },
     ),
 
     updateSale: create.asyncThunk(
-      async ({ id, updatedSale }: { id: number; updatedSale: NewSaleDto }, { dispatch, getState }) => {
-        const editedSale = await fetchUpdateSale(id, updatedSale);
-        const state = getState() as { sales: SalesState };
-        await dispatch(
-          getSales({
-            page: state.sales.currentPage,
-            size: 15,
-            sort: state.sales.sort,
-          })
-        );
-        return editedSale;
+      async ({ id, updatedSale }: { id: number; updatedSale: NewSaleDto }) => {
+        return await fetchUpdateSale(id, updatedSale);
       },
       {
-        fulfilled: (state) => {
-          state.loading = false;
-        },
         pending: handlePending,
+
+        fulfilled: (state, action) => {
+          state.loading = false;
+          state.error = null;
+
+          if (state.selectedSale?.id === action.payload.id) {
+            state.selectedSale = action.payload;
+          }
+
+          state.salesVersion += 1;
+        },
+
         rejected: (state, action) =>
           handleRejected(state, action, "Fehler beim Bearbeiten des Auftrags."),
-      }
+      },
     ),
 
     deleteSale: create.asyncThunk(
-      async (id: number, { dispatch, getState }) => {
+      async (id: number) => {
         await fetchDeleteSale(id);
-        const state = getState() as { sales: SalesState };
-        await dispatch(
-          getSales({
-            page: state.sales.currentPage,
-            size: 15,
-            sort: state.sales.sort,
-          })
-        );
         return id;
       },
       {
-        fulfilled: (state) => {
+        pending: handlePending,
+
+        fulfilled: (state, action) => {
           state.loading = false;
           state.error = null;
+
+          if (state.selectedSale?.id === action.payload) {
+            state.selectedSale = undefined;
+          }
+
+          state.salesVersion += 1;
         },
-        pending: handlePending,
+
         rejected: (state, action) =>
           handleRejected(state, action, "Fehler beim Löschen des Auftrags."),
-      }
+      },
     ),
 
     updateSalePaymentStatus: create.asyncThunk(
@@ -221,24 +252,30 @@ export const salesSlice = createAppSlice({
       {
         fulfilled: (state, action) => {
           const updatedSale = action.payload;
-          state.salesList = state.salesList.map(s =>
-            s.id === updatedSale.id ? updatedSale : s);
+          state.salesList = state.salesList.map((s) =>
+            s.id === updatedSale.id ? updatedSale : s,
+          );
           state.loading = false;
           state.error = null;
         },
         pending: handlePending,
         rejected: (state, action) =>
-          handleRejected(state, action, "Fehler beim Aktualisieren des Zahlungsstatus."),
-      }
+          handleRejected(
+            state,
+            action,
+            "Fehler beim Aktualisieren des Zahlungsstatus.",
+          ),
+      },
     ),
-
   }),
 
   selectors: {
     selectSales: (state: SalesState) => state.salesList,
     selectTotalPages: (state: SalesState) => state.totalPages,
     selectCurrentPage: (state: SalesState) => state.currentPage,
+    selectPageSize: (state: SalesState) => state.pageSize,
     selectSale: (state: SalesState) => state.selectedSale,
+    selectSalesVersion: (state: SalesState) => state.salesVersion,
     selectLoading: (state: SalesState) => state.loading,
     selectError: (state: SalesState) => state.error,
     selectSaleById: (state: SalesState, id: number) =>
@@ -246,13 +283,24 @@ export const salesSlice = createAppSlice({
   },
 });
 
-export const { getSales,
+export const {
+  getSales,
   addSale,
   getSaleById,
   searchSales,
   getSalesByFilter,
   updateSale,
   deleteSale,
-  updateSalePaymentStatus, } = salesSlice.actions;
-export const { selectSales, selectTotalPages, selectCurrentPage, selectSale, selectLoading, selectError, selectSaleById } =
-  salesSlice.selectors;
+  updateSalePaymentStatus,
+} = salesSlice.actions;
+export const {
+  selectSales,
+  selectTotalPages,
+  selectCurrentPage,
+  selectPageSize,
+  selectSale,
+  selectSalesVersion,
+  selectLoading,
+  selectError,
+  selectSaleById,
+} = salesSlice.selectors;

@@ -4,18 +4,20 @@ import { NewProductionDto, PaginatedResponse, Production } from "../types";
 export async function fetchProductions(
   page: number,
   size: number,
-  sort: string = "dateOfProduction,DESC",
-  searchTerm: string = ""
+  sort: string[] = ["dateOfProduction,DESC", "id,DESC"]
 ): Promise<PaginatedResponse<Production>> {
   const queryParams = new URLSearchParams();
+
   queryParams.append("page", page.toString());
   queryParams.append("size", size.toString());
-  queryParams.append("sort", sort);
-  if (searchTerm) queryParams.append("search", searchTerm);
+
+  sort.forEach((s) => {
+    queryParams.append("sort", s);
+  });
 
   return apiFetch<PaginatedResponse<Production>>(
     `/api/productions?${queryParams.toString()}`,
-    {auth: true},
+    { auth: true },
     "Fehler beim Laden der Herstellungen."
   );
 }
@@ -66,12 +68,12 @@ export async function fetchSearchProductions(
   query: string,
   page: number,
   size: number,
-  sort = "dateOfProduction,DESC",
+  sort: string[] = ["dateOfProduction,DESC", "id,DESC"]
 ): Promise<PaginatedResponse<Production>> {
   const queryParams = new URLSearchParams();
   queryParams.append("page", page.toString());
   queryParams.append("size", size.toString());
-  queryParams.append("sort", sort);
+  sort.forEach(s => queryParams.append("sort", s));
 
   return apiFetch<PaginatedResponse<Production>>(
     `/api/productions/search/${encodeURIComponent(query)}?${queryParams.toString()}`,
@@ -83,7 +85,7 @@ export async function fetchSearchProductions(
 export async function fetchProductionsByFilter(
   page: number,
   size: number,
-  sort = "dateOfProduction,DESC",
+  sort: string[] = ["dateOfProduction,DESC", "id,DESC"],
   filters?: {
     startDate?: string;
     endDate?: string;
@@ -93,7 +95,7 @@ export async function fetchProductionsByFilter(
   const queryParams = new URLSearchParams();
   queryParams.append("page", page.toString());
   queryParams.append("size", size.toString());
-  queryParams.append("sort", sort);
+  sort.forEach(s => queryParams.append("sort", s));
 
   if (filters) {
     if (filters.startDate) queryParams.append("startDate", filters.startDate);

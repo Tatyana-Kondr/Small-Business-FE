@@ -52,7 +52,9 @@ export interface ProductionsState {
     selectedProduction: Production | undefined;
     totalPages: number;
     currentPage: number;
-    sort: string,
+    pageSize: number;
+    sort: string[],
+    productionsVersion: number;
     loading: boolean;
     error: string | null;
 }

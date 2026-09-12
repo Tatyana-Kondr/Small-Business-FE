@@ -1,5 +1,12 @@
 import { useState } from "react";
-import { Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from "@mui/material";
+import {
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+} from "@mui/material";
 import { useAppDispatch } from "../../../redux/hooks";
 import { showSuccessToast } from "../../../utils/toast";
 import { handleApiError } from "../../../utils/handleApiError";
@@ -8,14 +15,12 @@ import { deleteProduction } from "../productionsSlice";
 interface DeleteProductionProps {
   productionId: number;
   dateOfProduction: string;
-  onSuccessDelete?: () => void;
   trigger?: React.ReactNode;
 }
 
 export default function DeleteProduction({
   productionId,
   dateOfProduction,
-  onSuccessDelete,
   trigger,
 }: DeleteProductionProps) {
   const dispatch = useAppDispatch();
@@ -29,15 +34,14 @@ export default function DeleteProduction({
     setLoading(true);
     try {
       await dispatch(deleteProduction(productionId)).unwrap();
-      showSuccessToast("Erfolg", `Die Hertellung wurde erfolgreich gelöscht.`);
+      showSuccessToast("Erfolg", `Die Herstellung wurde erfolgreich gelöscht.`);
       handleClose();
-      onSuccessDelete?.();
     } catch (error: any) {
-      handleApiError(error, "Fehler beim Löschen der Hertellung.");
+      handleApiError(error, "Fehler beim Löschen der Herstellung.");
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   return (
     <>
@@ -74,7 +78,7 @@ export default function DeleteProduction({
         </DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Wollen Sie die Hertellung Nr <strong>{productionId}</strong>  vom{" "}
+            Wollen Sie die Herstellung Nr. <strong>{productionId}</strong> vom{" "}
             <strong>
               {new Date(dateOfProduction).toLocaleDateString("de-DE", {
                 day: "2-digit",
@@ -84,7 +88,6 @@ export default function DeleteProduction({
             </strong>{" "}
             wirklich löschen?
           </DialogContentText>
-
         </DialogContent>
         <DialogActions>
           <Button onClick={handleClose} color="primary">

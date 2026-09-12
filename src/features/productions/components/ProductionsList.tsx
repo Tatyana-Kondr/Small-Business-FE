@@ -1,94 +1,118 @@
 import {
   Box,
-  Button,
   Collapse,
-  Container,
-  debounce,
   IconButton,
   Pagination,
   Paper,
-  styled,
   Table,
   TableBody,
   TableCell,
   TableContainer,
-  TableHead,
   TableRow,
-  TextField,
   Tooltip,
-  Typography,
 } from "@mui/material";
 import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { ClearIcon } from "@mui/x-date-pickers";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { selectUser } from "../../auth/authSlice";
-import { getProductions, getProductionsByFilter, searchProductions, selectProductions, selectTotalPages } from "../productionsSlice";
+import {
+  getProductions,
+  getProductionsByFilter,
+  searchProductions,
+  selectProductions,
+  selectProductionsVersion,
+  selectTotalPages,
+} from "../productionsSlice";
 import DeleteProduction from "./DeleteProduction";
-
-
-const StyledTableHead = styled(TableHead)({
-  backgroundColor: "#1a3d6d",
-  "& th": {
-    color: "white",
-    fontWeight: "bold",
-    borderRight: "1px solid #ddd",
-    textAlign: "center"
-  },
-});
-const StyledSubTableHead = styled(TableHead)({
-  backgroundColor: "#70ABBF",
-  "& th": {
-    color: "white",
-    fontWeight: "bold",
-    borderRight: "1px solid #ddd",
-    textAlign: "center"
-  },
-});
+import {
+  listPageStyle,
+  listPaginationStyle,
+  listTableAreaStyle,
+  pageToolbarStyle,
+} from "../../../styles/formStyles";
+import SearchBox from "../../../components/ui/SearchBox";
+import { colors } from "../../../styles/colors";
+import {
+  actionCellStyle,
+  actionIconButtonStyle,
+  cellStyle,
+  centerCellStyle,
+  fixedCellWidth,
+  hoverExpandCellStyle,
+  leftBorderCellStyle,
+  rightCellStyle,
+  StyledSubTableHead,
+  StyledTableHead,
+  tableActionSlotStyle,
+  tableActionsStyle,
+  tableContainerStyle,
+  tableRowHoverStyle,
+  tableStyle,
+} from "../../../styles/tableStyles";
+import SortableHeader from "../../../components/ui/SortableHeader";
+import HoverExpandText from "../../../components/ui/HoverExpandText";
+import { formatNumber } from "../../../utils/formatNumber";
+import { getAdaptivePageSize } from "../../../utils/getAdaptivePageSize";
+import ClearFiltersButton from "../../../components/ui/ClearFiltersButton";
+import DateRangeFilter from "../../../components/ui/DateRangeFilter";
 
 export default function ProductionsList() {
   const dispatch = useAppDispatch();
   const productions = useAppSelector(selectProductions);
   const totalPages = useAppSelector(selectTotalPages);
+  const productionsVersion = useAppSelector(selectProductionsVersion);
   const currentUser = useAppSelector(selectUser);
   const isAdmin = currentUser?.role === "ADMIN";
   const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(getAdaptivePageSize);
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [openRows, setOpenRows] = useState<{ [key: string]: boolean }>({});
+
+  const [sort, setSort] = useState<string[]>([
+    "dateOfProduction,DESC",
+    "id,DESC",
+  ]);
 
   const [filters, setFilters] = useState({
     startDate: "",
     endDate: "",
   });
 
-   const debouncedSearch = useCallback(
-    debounce((searchTerm: string) => {
-      const hasFilters = filters.startDate || filters.endDate;
+  useEffect(() => {
+    const handleResize = () => {
+      const newPageSize = getAdaptivePageSize();
 
-      if (hasFilters) {
-        dispatch(
-          getProductionsByFilter({
-            page,
-            size: 15,
-            ...convertFiltersToParams(filters),
-            searchQuery: searchTerm,
-          })
-        );
-      } else {
-        dispatch(
-          searchProductions({
-            page,
-            size: 15,
-            query: searchTerm,
-          })
-        );
-      }
-    }, 500),
-    [page, dispatch, filters]
-  );
+      setPageSize((prev) => {
+        if (prev === newPageSize) {
+          return prev;
+        }
+
+        setPage(0);
+
+        return newPageSize;
+      });
+    };
+
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 500);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [searchTerm]);
 
   useEffect(() => {
     const hasFilters = filters.startDate || filters.endDate;
@@ -97,23 +121,33 @@ export default function ProductionsList() {
       dispatch(
         getProductionsByFilter({
           page,
-          size: 15,
+          size: pageSize,
           ...convertFiltersToParams(filters),
-          searchQuery: searchTerm,
-        })
+          searchQuery: debouncedSearchTerm,
+          sort,
+        }),
       );
-    } else if (searchTerm) {
+    } else if (debouncedSearchTerm) {
       dispatch(
         searchProductions({
           page,
-          size: 15,
-          query: searchTerm,
-        })
+          size: pageSize,
+          query: debouncedSearchTerm,
+          sort,
+        }),
       );
     } else {
-      dispatch(getProductions({ page, size: 15 }));
+      dispatch(getProductions({ page, size: pageSize, sort }));
     }
-  }, [dispatch, page, searchTerm, filters]);
+  }, [
+    dispatch,
+    page,
+    pageSize,
+    debouncedSearchTerm,
+    filters,
+    sort,
+    productionsVersion,
+  ]);
 
   const handlePageChange = (_: any, value: number) => {
     setPage(value - 1);
@@ -130,29 +164,14 @@ export default function ProductionsList() {
   const navigate = useNavigate();
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const newSearchTerm = event.target.value;
-    setSearchTerm(newSearchTerm);
-    debouncedSearch(newSearchTerm);
+    setSearchTerm(event.target.value);
+    setPage(0);
   };
 
   const handleClearSearch = () => {
     setSearchTerm("");
+    setDebouncedSearchTerm("");
     setPage(0);
-
-    const hasFilters = filters.startDate || filters.endDate;
-
-    if (hasFilters) {
-      dispatch(
-        getProductionsByFilter({
-          page: 0,
-          size: 15,
-          ...convertFiltersToParams(filters),
-          searchQuery: "",
-        })
-      );
-    } else {
-      dispatch(getProductions({ page: 0, size: 15 }));
-    }
   };
 
   const handleClearFilters = () => {
@@ -170,97 +189,103 @@ export default function ProductionsList() {
     }));
   };
 
+  const handleSort = (field: string, direction: "ASC" | "DESC") => {
+    const newSort = [`${field},${direction}`];
+
+    if (field !== "dateOfProduction") {
+      newSort.push("dateOfProduction,DESC");
+    }
+    if (field !== "id") {
+      newSort.push("id,DESC");
+    }
+
+    setSort(newSort);
+    setPage(0);
+  };
+
   return (
-    <Container>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-        <Typography
-          variant="h6"
+    <Box sx={listPageStyle}>
+      <Box sx={{ ...pageToolbarStyle, mt: 1 }}>
+        <Box
           sx={{
-            textAlign: "left",
-            fontWeight: "bold",
-            textDecoration: "underline",
-            color: "#0277bd",
+            display: "flex",
+            alignItems: "center",
+            gap: 2,
+            flexWrap: "wrap",
           }}
         >
-          HERSTELLUNGEN
-        </Typography>
-      </Box>
-
-      {/* Верхняя панель */}
-      <Box
-        display="flex"
-        justifyContent="space-between"
-        alignItems="center"
-        mb={2}
-        sx={{
-          position: "sticky",
-          top: 0,
-          zIndex: 1000,
-          padding: "10px 0",
-        }}
-      >
-        {/* Поиск */}
-        <Box display="flex" gap={1}>
-          <TextField
-            id="search-input"
-            label="Suche"
-            variant="outlined"
-            size="small"
+          <SearchBox
             value={searchTerm}
             onChange={handleSearchChange}
-            sx={{ width: 400, backgroundColor: "white" }}
+            onClear={handleClearSearch}
           />
-          <IconButton aria-label="Suche zurücksetzen" onClick={handleClearSearch}>
-            <ClearIcon />
-          </IconButton>
+
+          <DateRangeFilter
+            startDate={filters.startDate}
+            endDate={filters.endDate}
+            onStartDateChange={(value) =>
+              handleFilterChange("startDate", value)
+            }
+            onEndDateChange={(value) => handleFilterChange("endDate", value)}
+          />
+
+          <ClearFiltersButton onClick={handleClearFilters} />
         </Box>
       </Box>
 
-      {/* Фильтры всегда видны */}
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-        <Box display="flex" flexWrap="wrap" gap={2} mb={2}>
-          {/* Дата от */}
-          <TextField
-            id="filter-start-date"
-            label="Von"
-            type="date"
-            size="small"
-            value={filters.startDate}
-            onChange={(e) => handleFilterChange("startDate", e.target.value)}
-            InputLabelProps={{ shrink: true }}
-            aria-label="Startdatum"
-          />
-
-          {/* Дата до */}
-          <TextField
-            id="filter-end-date"
-            label="Bis"
-            type="date"
-            size="small"
-            value={filters.endDate}
-            onChange={(e) => handleFilterChange("endDate", e.target.value)}
-            InputLabelProps={{ shrink: true }}
-            aria-label="Enddatum"
-          />
-          <Button onClick={handleClearFilters} variant="outlined" sx={{ "&:hover": { borderColor: "#00acc1" } }}>
-            Filter zurücksetzen
-          </Button>
-        </Box>
-
-      </Box>
-
-      {/* Таблица */}
-      <Box sx={{ minHeight: "580px" }}>
-        <TableContainer component={Paper}>
-          <Table>
+      {/* Table */}
+      <Box sx={listTableAreaStyle}>
+        <TableContainer
+          component={Paper}
+          sx={{ ...tableContainerStyle, mt: 1 }}
+        >
+          <Table sx={tableStyle}>
             <StyledTableHead>
               <TableRow>
-                <TableCell>ID</TableCell>
-                <TableCell>Datum</TableCell>
-                <TableCell>Artikel</TableCell>
-                <TableCell>Productname</TableCell>
-                <TableCell>Betrag</TableCell>
-                {isAdmin && <TableCell>Aktionen</TableCell>}
+                <TableCell sx={fixedCellWidth(90)}>
+                  <SortableHeader
+                    title="DokNr"
+                    field="id"
+                    activeSort={sort}
+                    onSort={handleSort}
+                  />
+                </TableCell>
+
+                <TableCell sx={fixedCellWidth(130)}>
+                  <SortableHeader
+                    title="Datum"
+                    field="dateOfProduction"
+                    activeSort={sort}
+                    onSort={handleSort}
+                  />
+                </TableCell>
+                <TableCell sx={fixedCellWidth(150)}>
+                  <SortableHeader
+                    title="Artikel"
+                    field="productArticle"
+                    activeSort={sort}
+                    onSort={handleSort}
+                  />
+                </TableCell>
+                <TableCell sx={{ width: "40%" }}>
+                  <SortableHeader
+                    title="Produktname"
+                    field="productName"
+                    activeSort={sort}
+                    onSort={handleSort}
+                  />
+                </TableCell>
+                <TableCell sx={fixedCellWidth(150)}>
+                  <SortableHeader
+                    title="Betrag"
+                    field="amount"
+                    activeSort={sort}
+                    onSort={handleSort}
+                  />
+                </TableCell>
+                {isAdmin && (
+                  <TableCell sx={fixedCellWidth(150)}>Aktionen</TableCell>
+                )}
               </TableRow>
             </StyledTableHead>
 
@@ -269,110 +294,173 @@ export default function ProductionsList() {
                 productions.map((production) => (
                   <React.Fragment key={production.id}>
                     <TableRow
-                      hover
                       onClick={() => toggleRow(production.id)}
-                      sx={{ cursor: "pointer" }}
+                      sx={tableRowHoverStyle}
                     >
-                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>
+                      <TableCell
+                        sx={{
+                          ...leftBorderCellStyle,
+                          ...cellStyle,
+                          ...fixedCellWidth(90),
+                        }}
+                      >
                         {production.id}
                       </TableCell>
-                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>
+
+                      <TableCell
+                        sx={{
+                          ...cellStyle,
+                          ...fixedCellWidth(130),
+                        }}
+                      >
                         {production.dateOfProduction
-                          ? new Date(production.dateOfProduction).toLocaleDateString("de-DE", {
-                            day: "2-digit",
-                            month: "2-digit",
-                            year: "numeric",
-                          })
+                          ? new Date(
+                              production.dateOfProduction,
+                            ).toLocaleDateString("de-DE", {
+                              day: "2-digit",
+                              month: "2-digit",
+                              year: "numeric",
+                            })
                           : ""}
                       </TableCell>
-                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>
-                        {production.productArticle} 
+
+                      <TableCell
+                        sx={{
+                          ...cellStyle,
+                          ...fixedCellWidth(150),
+                        }}
+                      >
+                        {production.productArticle}
                       </TableCell>
-                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>
-                        {production.productName}
+
+                      <TableCell sx={hoverExpandCellStyle}>
+                        <HoverExpandText
+                          text={production.productName ?? ""}
+                          hoverBgColor={colors.tableHover}
+                        />
                       </TableCell>
-                      <TableCell align="right" sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>
+
+                      <TableCell
+                        sx={{
+                          ...rightCellStyle,
+                          ...fixedCellWidth(150),
+                        }}
+                      >
                         {production.amount} €
                       </TableCell>
                       {isAdmin && (
-                        <TableCell sx={{ padding: "2px 12px" }}>
-                          <Box display="flex" sx={{ padding: "2px 12px" }} gap={1}>
-                            <Tooltip title="Bearbeiten" arrow>
-                              <IconButton
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigate(`/productions/${production.id}`);
-                                }}
-                                sx={{
-                                  p: 0.5,
-                                  transition: "transform 0.2s ease-in-out",
-                                  "&:hover": {
-                                    color: "#bdbdbd",
-                                    transform: "scale(1.2)",
-                                    backgroundColor: "transparent",
-                                  },
-                                }}
-                              >
-                                <EditIcon />
-                              </IconButton>
-                            </Tooltip>
-                            <DeleteProduction
-                              productionId={production.id}
-                              dateOfProduction={production.dateOfProduction}
-                              onSuccessDelete={() => { }}
-                              trigger={
-                                <Tooltip title="Löschen" arrow>
-                                  <IconButton
-                                    sx={{
-                                      p: 0.5,
-                                      transition: "transform 0.2s ease-in-out",
-                                      "&:hover": {
-                                        color: "#bdbdbd",
-                                        transform: "scale(1.2)",
-                                        backgroundColor: "transparent",
-                                      },
-                                    }}
-                                  >
-                                    <DeleteIcon />
-                                  </IconButton>
-                                </Tooltip>
-                              }
-                            />
+                        <TableCell
+                          sx={{
+                            ...actionCellStyle,
+                            ...fixedCellWidth(150),
+                          }}
+                        >
+                          <Box sx={tableActionsStyle}>
+                            <Box sx={tableActionSlotStyle}>
+                              <Tooltip title="Bearbeiten" arrow>
+                                <IconButton
+                                  size="small"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/productions/${production.id}`);
+                                  }}
+                                  sx={actionIconButtonStyle}
+                                >
+                                  <EditIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            </Box>
+                            <Box sx={tableActionSlotStyle}>
+                              <DeleteProduction
+                                productionId={production.id}
+                                dateOfProduction={production.dateOfProduction}
+                                trigger={
+                                  <Tooltip title="Löschen" arrow>
+                                    <IconButton sx={actionIconButtonStyle}>
+                                      <DeleteIcon />
+                                    </IconButton>
+                                  </Tooltip>
+                                }
+                              />
+                            </Box>
                           </Box>
                         </TableCell>
                       )}
                     </TableRow>
 
-                    {/* Подтаблица */}
+                    {/* SubTable */}
                     {openRows[production.id] && (
                       <TableRow>
-                        <TableCell colSpan={7} sx={{ paddingBottom: 0, paddingTop: 0 }}>
-                          <Collapse in={openRows[production.id]} timeout="auto" unmountOnExit>
+                        <TableCell
+                          colSpan={isAdmin ? 6 : 5}
+                          sx={{ paddingBottom: 0, paddingTop: 0 }}
+                        >
+                          <Collapse
+                            in={openRows[production.id]}
+                            timeout="auto"
+                            unmountOnExit
+                          >
                             <Box margin={2}>
-                              <Table size="small" sx={{ backgroundColor: "#f5f5f5", borderRadius: 1 }}>
+                              <Table size="small" sx={tableStyle}>
                                 <StyledSubTableHead>
                                   <TableRow>
-                                    <TableCell>Artikel</TableCell>
-                                    <TableCell>Artikelname</TableCell>
-                                    <TableCell>Menge</TableCell>
-                                    <TableCell>Einzelpreis</TableCell>
-                                    <TableCell>Gesamt</TableCell>
+                                    <TableCell sx={fixedCellWidth(150)}>
+                                      Artikel
+                                    </TableCell>
+
+                                    <TableCell sx={{ width: "40%" }}>
+                                      Artikelname
+                                    </TableCell>
+
+                                    <TableCell sx={fixedCellWidth(90)}>
+                                      Menge
+                                    </TableCell>
+
+                                    <TableCell sx={fixedCellWidth(110)}>
+                                      Einzelpreis
+                                    </TableCell>
+                                    <TableCell sx={fixedCellWidth(150)}>
+                                      Gesamt
+                                    </TableCell>
                                   </TableRow>
                                 </StyledSubTableHead>
                                 <TableBody>
-                                  {production.productionItems?.map((item: any, index: number) => (
-                                    <TableRow key={index}>
-                                      <TableCell sx={{ borderLeft: "1px solid #ddd", borderRight: "1px solid #ddd", padding: "6px 12px" }}>
-                                        {item.productArticle ?? "—"}
-                                      </TableCell>
-                                      <TableCell sx={{ borderRight: "1px solid #ddd", padding: "6px 12px" }}>
-                                        {item.productName ?? "—"}
-                                      </TableCell>
-                                      <TableCell>{item.quantity}</TableCell>
-                                      <TableCell>{item.unitPrice} €</TableCell>
-                                      <TableCell>{item.totalPrice} €</TableCell>
-                                    </TableRow>
-                                  ))}
+                                  {production.productionItems?.map(
+                                    (item: any, index: number) => (
+                                      <TableRow
+                                        key={index}
+                                        sx={tableRowHoverStyle}
+                                      >
+                                        <TableCell
+                                          sx={{
+                                            ...cellStyle,
+                                            ...leftBorderCellStyle,
+                                          }}
+                                        >
+                                          {item.productArticle ?? "—"}
+                                        </TableCell>
+
+                                        <TableCell sx={hoverExpandCellStyle}>
+                                          <HoverExpandText
+                                            text={item.productName ?? "_"}
+                                            hoverBgColor={colors.tableHover}
+                                          />
+                                        </TableCell>
+
+                                        <TableCell sx={centerCellStyle}>
+                                          {item.quantity}
+                                        </TableCell>
+
+                                        <TableCell sx={rightCellStyle}>
+                                          {formatNumber(item.unitPrice)} €
+                                        </TableCell>
+
+                                        <TableCell sx={rightCellStyle}>
+                                          {formatNumber(item.totalPrice)} €
+                                        </TableCell>
+                                      </TableRow>
+                                    ),
+                                  )}
                                 </TableBody>
                               </Table>
                             </Box>
@@ -384,7 +472,7 @@ export default function ProductionsList() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={isAdmin ? 8 : 7} align="center">
+                  <TableCell colSpan={isAdmin ? 6 : 5} align="center">
                     Keine Herstellungen gefunden
                   </TableCell>
                 </TableRow>
@@ -395,7 +483,7 @@ export default function ProductionsList() {
       </Box>
 
       {/* Пагинация */}
-      <Box display="flex" justifyContent="center" mt={2}>
+      <Box sx={listPaginationStyle}>
         <Pagination
           count={totalPages}
           page={page + 1}
@@ -403,10 +491,9 @@ export default function ProductionsList() {
           color="primary"
         />
       </Box>
-    </Container>
+    </Box>
   );
 }
-
 const convertFiltersToParams = (filters: any) => {
   return {
     startDate: filters.startDate || undefined,

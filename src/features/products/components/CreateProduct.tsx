@@ -1,23 +1,51 @@
 import React, { useState, useEffect } from "react";
-import { Box, TextField, Button, FormControl, InputLabel, Select, MenuItem, SelectChangeEvent, Dialog, FormHelperText, CircularProgress } from "@mui/material";
+import {
+  Box,
+  TextField,
+  Button,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  SelectChangeEvent,
+  Dialog,
+  FormHelperText,
+  CircularProgress,
+} from "@mui/material";
 import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
 import { NewProductDto } from "../types";
 import { handleApiError } from "../../../utils/handleApiError";
 import { showSuccessToast } from "../../../utils/toast";
 import { getUnits, selectUnits } from "../unitsOfMeasurementSlice";
-import { getProductCategories, selectProductCategories } from "../productCategoriesSlice";
-import { cancelButtonStyle, primaryButtonStyle } from "../../../styles/buttonStyles";
-import { backendErrorsToFormErrors, clearFieldError, FormErrors, hasErrors, isBackendValidationErrors, validateRequiredFields } from "../../../utils/validation/validation";
+import {
+  getProductCategories,
+  selectProductCategories,
+} from "../productCategoriesSlice";
+import {
+  cancelButtonStyle,
+  primaryButtonStyle,
+} from "../../../styles/buttonStyles";
+import {
+  backendErrorsToFormErrors,
+  clearFieldError,
+  FormErrors,
+  hasErrors,
+  isBackendValidationErrors,
+  validateRequiredFields,
+} from "../../../utils/validation/validation";
 import { HttpError } from "../../../utils/handleFetchError";
-import { fetchAddProduct } from "../api";
-import { formActionsRightStyle, formBoxStyle, formGridStyle } from "../../../styles/formStyles";
+import {
+  formActionsRightStyle,
+  formBoxStyle,
+  formGridStyle,
+} from "../../../styles/formStyles";
 import PageTitle from "../../../components/PageTitle";
-
+import { fetchAddProduct } from "../api";
+import { invalidateProducts } from "../productsSlice";
 
 type CreateProductProps = {
   onClose: () => void;
 };
-
 
 export default function CreateProduct({ onClose }: CreateProductProps) {
   const dispatch = useAppDispatch();
@@ -26,7 +54,9 @@ export default function CreateProduct({ onClose }: CreateProductProps) {
 
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<FormErrors<NewProductDto>>({});
-  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(
+    null,
+  );
 
   const [newProduct, setNewProduct] = useState<NewProductDto>({
     name: "",
@@ -106,36 +136,46 @@ export default function CreateProduct({ onClose }: CreateProductProps) {
 
   const calculateSellingPrice = (
     purchasingPrice: number,
-    markupPercentage: number
+    markupPercentage: number,
   ) => {
     return +(purchasingPrice * (1 + markupPercentage / 100)).toFixed(2);
   };
 
   const calculateMarkupPercentage = (
     purchasingPrice: number,
-    sellingPrice: number
+    sellingPrice: number,
   ) => {
     if (purchasingPrice === 0) return 0;
-    return +(((sellingPrice / purchasingPrice - 1) * 100).toFixed(2));
+    return +((sellingPrice / purchasingPrice - 1) * 100).toFixed(2);
   };
 
-  const handlePurchasingPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePurchasingPriceChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const purchasingPrice = parseFloat(e.target.value) || 0;
 
     setNewProduct((prev) => ({
       ...prev,
       purchasingPrice,
-      sellingPrice: calculateSellingPrice(purchasingPrice, prev.markupPercentage),
+      sellingPrice: calculateSellingPrice(
+        purchasingPrice,
+        prev.markupPercentage,
+      ),
     }));
   };
 
-  const handleMarkupPercentageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMarkupPercentageChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const markupPercentage = parseFloat(e.target.value) || 0;
 
     setNewProduct((prev) => ({
       ...prev,
       markupPercentage,
-      sellingPrice: calculateSellingPrice(prev.purchasingPrice, markupPercentage),
+      sellingPrice: calculateSellingPrice(
+        prev.purchasingPrice,
+        markupPercentage,
+      ),
     }));
   };
 
@@ -145,7 +185,10 @@ export default function CreateProduct({ onClose }: CreateProductProps) {
     setNewProduct((prev) => ({
       ...prev,
       sellingPrice,
-      markupPercentage: calculateMarkupPercentage(prev.purchasingPrice, sellingPrice),
+      markupPercentage: calculateMarkupPercentage(
+        prev.purchasingPrice,
+        sellingPrice,
+      ),
     }));
   };
 
@@ -177,21 +220,18 @@ export default function CreateProduct({ onClose }: CreateProductProps) {
 
       const createdProduct = await fetchAddProduct(dtoToSend);
 
+      dispatch(invalidateProducts());
+
       showSuccessToast(
         "Erfolg",
-        `${createdProduct.name} wurde erfolgreich erstellt.`
+        `${createdProduct.name} wurde erfolgreich erstellt.`,
       );
 
       resetForm();
       onClose();
     } catch (error) {
-      if (
-        error instanceof HttpError &&
-        isBackendValidationErrors(error.data)
-      ) {
-        setErrors(
-          backendErrorsToFormErrors<NewProductDto>(error.data.errors)
-        );
+      if (error instanceof HttpError && isBackendValidationErrors(error.data)) {
+        setErrors(backendErrorsToFormErrors<NewProductDto>(error.data.errors));
         return;
       }
 

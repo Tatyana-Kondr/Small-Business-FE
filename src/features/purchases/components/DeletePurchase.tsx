@@ -1,5 +1,12 @@
 import { useState } from "react";
-import { Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from "@mui/material";
+import {
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+} from "@mui/material";
 import { useAppDispatch } from "../../../redux/hooks";
 import { showSuccessToast } from "../../../utils/toast";
 import { handleApiError } from "../../../utils/handleApiError";
@@ -9,7 +16,6 @@ interface DeletePurchaseProps {
   purchaseId: number;
   vendorName: string;
   purchasingDate: string;
-  onSuccessDelete?: () => void;
   trigger?: React.ReactNode;
 }
 
@@ -17,7 +23,6 @@ export default function DeletePurchase({
   purchaseId,
   vendorName,
   purchasingDate,
-  onSuccessDelete,
   trigger,
 }: DeletePurchaseProps) {
   const dispatch = useAppDispatch();
@@ -29,17 +34,25 @@ export default function DeletePurchase({
 
   const handleDelete = async () => {
     setLoading(true);
+
     try {
       await dispatch(deletePurchase(purchaseId)).unwrap();
-      showSuccessToast("Erfolg", `Die Bestellung wurde erfolgreich gelöscht.`);
+
+      showSuccessToast(
+        "Erfolg",
+        "Die Bestellung wurde erfolgreich gelöscht.",
+      );
+
       handleClose();
-      onSuccessDelete?.();
     } catch (error: any) {
-      handleApiError(error, "Fehler beim Löschen der Bestellung.");
+      handleApiError(
+        error,
+        "Fehler beim Löschen der Bestellung.",
+      );
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   return (
     <>
@@ -49,7 +62,10 @@ export default function DeletePurchase({
             e.stopPropagation();
             handleOpen();
           }}
-          style={{ cursor: "pointer", display: "inline-flex" }}
+          style={{
+            cursor: "pointer",
+            display: "inline-flex",
+          }}
         >
           {trigger}
         </span>
@@ -71,12 +87,19 @@ export default function DeletePurchase({
       )}
 
       <Dialog open={open} onClose={handleClose}>
-        <DialogTitle sx={{ color: "error.main", fontWeight: "bold" }}>
+        <DialogTitle
+          sx={{
+            color: "error.main",
+            fontWeight: "bold",
+          }}
+        >
           ⚠️ WARNUNG!
         </DialogTitle>
+
         <DialogContent>
           <DialogContentText>
-            Wollen Sie die Bestellung Nr <strong>{purchaseId}</strong> von <strong>{vendorName}</strong> vom{" "}
+            Wollen Sie die Bestellung Nr. <strong>{purchaseId}</strong> von{" "}
+            <strong>{vendorName}</strong> vom{" "}
             <strong>
               {new Date(purchasingDate).toLocaleDateString("de-DE", {
                 day: "2-digit",
@@ -86,13 +109,18 @@ export default function DeletePurchase({
             </strong>{" "}
             wirklich löschen?
           </DialogContentText>
-
         </DialogContent>
+
         <DialogActions>
-          <Button onClick={handleClose} color="primary">
+          <Button onClick={handleClose}>
             Abbrechen
           </Button>
-          <Button onClick={handleDelete} color="error" disabled={loading}>
+
+          <Button
+            onClick={handleDelete}
+            color="error"
+            disabled={loading}
+          >
             {loading ? "Löschung..." : "Löschen"}
           </Button>
         </DialogActions>

@@ -1,29 +1,81 @@
-import { Box, Button, Collapse, debounce, FormControl, IconButton, InputLabel, MenuItem, Pagination, Paper, Select, SelectChangeEvent, Table, TableBody, TableCell, TableContainer, TableRow, TextField, Tooltip, Typography } from "@mui/material";
+import {
+  Box,
+  Collapse,
+  FormControl,
+  IconButton,
+  InputLabel,
+  MenuItem,
+  Pagination,
+  Paper,
+  Select,
+  SelectChangeEvent,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableRow,
+  Tooltip,
+  Typography,
+} from "@mui/material";
 import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
-import { getSales, getSalesByFilter, searchSales, selectSales, selectTotalPages } from "../salesSlice";
-import { useCallback, useEffect, useState } from "react";
+import {
+  getSales,
+  getSalesByFilter,
+  searchSales,
+  selectSales,
+  selectSalesVersion,
+  selectTotalPages,
+} from "../salesSlice";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { PaymentStatuses } from "../../../constants/enums";
 import React from "react";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
-import PaymentsIcon from '@mui/icons-material/Payments';
+import PaymentsIcon from "@mui/icons-material/Payments";
 import CreatePayment from "../../payments/components/CreatePayment";
 import DeleteSale from "./DeleteSale";
 import { selectUser } from "../../auth/authSlice";
 import axios from "axios";
 import { ACCESS_TOKEN_KEY } from "../../../utils/token";
 import { showErrorToast } from "../../../utils/toast";
-import EllipsisTooltip from "../../../components/ui/EllipsisTooltip";
 import HoverExpandText from "../../../components/ui/HoverExpandText";
-import { cellStyle, compactActionCellStyle, compactIconButtonStyle, compactTableCellStyle, compactTableRowStyle, fixedCellWidth, hoverExpandCellStyle, pdfActionsStyle, pdfTextButtonStyle, StyledSubTableHead, StyledTableHead, tableActionSlotStyle, tableActionsStyle, tableContainerStyle, tableStyle } from "../../../styles/tableStyles";
-import { outlinedButtonStyle } from "../../../styles/buttonStyles";
+import {
+  actionCellStyle,
+  actionIconButtonStyle,
+  cellStyle,
+  centerCellStyle,
+  fixedCellWidth,
+  hoverExpandCellStyle,
+  leftBorderCellStyle,
+  pdfActionsStyle,
+  pdfTextButtonStyle,
+  rightCellStyle,
+  StyledSubTableHead,
+  StyledTableHead,
+  tableActionSlotStyle,
+  tableActionsStyle,
+  tableContainerStyle,
+  tableRowHoverStyle,
+  tableStyle,
+} from "../../../styles/tableStyles";
 import { colors } from "../../../styles/colors";
 import SearchBox from "../../../components/ui/SearchBox";
-import { filterDateFieldsStyle, filterDateRangeStyle, filterDateRangeTitleStyle, filterOptionsStyle, filterPanelRowStyle, filterPanelStyle, pageToolbarStyle } from "../../../styles/formStyles";
+import {
+  filterOptionsStyle,
+  filterPanelRowStyle,
+  filterPanelStyle,
+  listPageStyle,
+  listPaginationStyle,
+  listTableAreaStyle,
+  pageToolbarStyle,
+} from "../../../styles/formStyles";
 import SortableHeader from "../../../components/ui/SortableHeader";
 import { formatNumber } from "../../../utils/formatNumber";
-
+import { getAdaptivePageSize } from "../../../utils/getAdaptivePageSize";
+import ClearFiltersButton from "../../../components/ui/ClearFiltersButton";
+import FilterToggleButton from "../../../components/ui/FilterToggleButton";
+import DateRangeFilter from "../../../components/ui/DateRangeFilter";
 
 export default function Sales() {
   const dispatch = useAppDispatch();
@@ -31,13 +83,23 @@ export default function Sales() {
   const currentUser = useAppSelector(selectUser);
   const isAdmin = currentUser?.role === "ADMIN";
   const totalPages = useAppSelector(selectTotalPages);
+  const salesVersion = useAppSelector(selectSalesVersion);
   const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(getAdaptivePageSize);
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [filtersVisible, setFiltersVisible] = useState(false);
   const [openRows, setOpenRows] = useState<{ [key: string]: boolean }>({});
-  const [openPaymentDialogId, setOpenPaymentDialogId] = useState<number | null>(null);
-  const [selectedOperationType, setSelectedOperationType] = useState<string | null>(null);
-  const [sort, setSort] = useState<string[]>(["salesDate,DESC", "invoiceNumber,DESC"]);
+  const [openPaymentDialogId, setOpenPaymentDialogId] = useState<number | null>(
+    null,
+  );
+  const [selectedOperationType, setSelectedOperationType] = useState<
+    string | null
+  >(null);
+  const [sort, setSort] = useState<string[]>([
+    "salesDate,DESC",
+    "invoiceNumber,DESC",
+  ]);
 
   const [filters, setFilters] = useState({
     invoiceNumber: "",
@@ -46,37 +108,37 @@ export default function Sales() {
     endDate: "",
   });
 
-  const debouncedSearch = useCallback(
-    debounce((searchTerm: string) => {
-      const hasFilters =
-        filters.invoiceNumber ||
-        filters.paymentStatus ||
-        filters.startDate ||
-        filters.endDate;
+  useEffect(() => {
+    const handleResize = () => {
+      const newPageSize = getAdaptivePageSize();
 
-      if (hasFilters) {
-        dispatch(
-          getSalesByFilter({
-            page,
-            size: 15,
-            ...convertFiltersToParams(filters),
-            searchQuery: searchTerm,
-            sort
-          })
-        );
-      } else {
-        dispatch(
-          searchSales({
-            page,
-            size: 15,
-            query: searchTerm,
-            sort
-          })
-        );
-      }
-    }, 500),
-    [page, dispatch, filters, sort]
-  );
+      setPageSize((prev) => {
+        if (prev === newPageSize) {
+          return prev;
+        }
+
+        setPage(0);
+
+        return newPageSize;
+      });
+    };
+
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 500);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [searchTerm]);
 
   useEffect(() => {
     const hasFilters =
@@ -89,25 +151,31 @@ export default function Sales() {
       dispatch(
         getSalesByFilter({
           page,
-          size: 15,
+          size: pageSize,
           ...convertFiltersToParams(filters),
-          searchQuery: searchTerm,
-          sort
-        })
+          searchQuery: debouncedSearchTerm,
+          sort,
+        }),
       );
-    } else if (searchTerm) {
+    } else if (debouncedSearchTerm) {
       dispatch(
         searchSales({
           page,
-          size: 15,
-          query: searchTerm,
-          sort
-        })
+          size: pageSize,
+          query: debouncedSearchTerm,
+          sort,
+        }),
       );
     } else {
-      dispatch(getSales({ page, size: 15, sort }));
+      dispatch(
+        getSales({
+          page,
+          size: pageSize,
+          sort,
+        }),
+      );
     }
-  }, [dispatch, page, searchTerm, filters, sort]);
+  }, [dispatch, page, pageSize, debouncedSearchTerm, filters, sort, salesVersion,]);
 
   const handlePageChange = (_: any, value: number) => {
     setPage(value - 1);
@@ -134,34 +202,14 @@ export default function Sales() {
   const navigate = useNavigate();
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const newSearchTerm = event.target.value;
-    setSearchTerm(newSearchTerm);
-    debouncedSearch(newSearchTerm);
+    setSearchTerm(event.target.value);
+    setPage(0);
   };
 
   const handleClearSearch = () => {
     setSearchTerm("");
+    setDebouncedSearchTerm("");
     setPage(0);
-
-    const hasFilters =
-      filters.startDate ||
-      filters.endDate ||
-      filters.paymentStatus ||
-      filters.invoiceNumber;
-
-    if (hasFilters) {
-      dispatch(
-        getSalesByFilter({
-          page: 0,
-          size: 15,
-          ...convertFiltersToParams(filters),
-          searchQuery: "",
-          sort
-        })
-      );
-    } else {
-      dispatch(getSales({ page: 0, size: 15, sort }));
-    }
   };
 
   const toggleRow = (id: string | number) => {
@@ -176,7 +224,9 @@ export default function Sales() {
 
     const token = localStorage.getItem(ACCESS_TOKEN_KEY);
     if (!token) {
-      alert("Fehlender Authentifizierungstoken. Bitte melden Sie sich erneut an.");
+      alert(
+        "Fehlender Authentifizierungstoken. Bitte melden Sie sich erneut an.",
+      );
       return;
     }
 
@@ -184,7 +234,6 @@ export default function Sales() {
     const url = `${import.meta.env.VITE_API_URL}/api/sales/invoices/${year}/${sale.invoiceNumber}.pdf`;
 
     try {
-      // axios с указанием типа Blob
       const res = await axios.get<Blob>(url, {
         headers: { Authorization: `Bearer ${token}` },
         responseType: "blob",
@@ -194,41 +243,34 @@ export default function Sales() {
       if (res.status === 404) {
         showErrorToast(
           "Rechnung nicht gefunden",
-          "Die Rechnung ist nicht im Ordner vorhanden."
+          "Die Rechnung ist nicht im Ordner vorhanden.",
         );
         return;
       }
 
       if (res.status !== 200) {
-        showErrorToast(
-          "Fehler beim Laden",
-          `Serverfehler (${res.status}).`
-        );
+        showErrorToast("Fehler beim Laden", `Serverfehler (${res.status}).`);
         return;
       }
 
-      // создаем объект Blob
       const pdfBlob = new Blob([res.data], { type: "application/pdf" });
       const pdfUrl = URL.createObjectURL(pdfBlob);
 
-      // открываем в новой вкладке
       window.open(pdfUrl, "_blank");
     } catch (err) {
       console.error("Fehler beim Laden der Rechnung:", err);
-      showErrorToast(
-        "Fehler",
-        "Die Rechnung konnte nicht geladen werden."
-      );
+      showErrorToast("Fehler", "Die Rechnung konnte nicht geladen werden.");
     }
   };
 
-  //  Открытие Lieferschein (Delivery Bill PDF)
   const openDeliveryBill = async (e: React.MouseEvent, sale: any) => {
     e.stopPropagation();
 
     const token = localStorage.getItem(ACCESS_TOKEN_KEY);
     if (!token) {
-      alert("Fehlender Authentifizierungstoken. Bitte melden Sie sich erneut an.");
+      alert(
+        "Fehlender Authentifizierungstoken. Bitte melden Sie sich erneut an.",
+      );
       return;
     }
 
@@ -245,16 +287,13 @@ export default function Sales() {
       if (res.status === 404) {
         showErrorToast(
           "Lieferschein nicht gefunden",
-          "Der Lieferschein ist nicht im Ordner vorhanden."
+          "Der Lieferschein ist nicht im Ordner vorhanden.",
         );
         return;
       }
 
       if (res.status !== 200) {
-        showErrorToast(
-          "Fehler beim Laden",
-          `Serverfehler (${res.status}).`
-        );
+        showErrorToast("Fehler beim Laden", `Serverfehler (${res.status}).`);
         return;
       }
 
@@ -263,19 +302,13 @@ export default function Sales() {
       window.open(pdfUrl, "_blank");
     } catch (err) {
       console.error("Fehler beim Laden des Lieferscheins:", err);
-      showErrorToast(
-        "Fehler",
-        "Der Lieferschein konnte nicht geladen werden."
-      );
+      showErrorToast("Fehler", "Der Lieferschein konnte nicht geladen werden.");
     }
   };
 
   const handleSort = (field: string, direction: "ASC" | "DESC") => {
-    // Основная сортировка — выбранное поле
     const newSort = [`${field},${direction}`];
 
-    // Если сортируем не по salesDate или invoiceNumber →
-    // сохраняем их как вторичную сортировку
     if (field !== "salesDate") {
       newSort.push("salesDate,DESC");
     }
@@ -287,11 +320,8 @@ export default function Sales() {
     setPage(0);
   };
 
-
   return (
-    <Box sx={{ p: 0, m: 0, width: "100%", display: "flex", flexDirection: "column", alignItems: "stretch", }}>
-
-      {/* Верхняя панель */}
+    <Box sx={listPageStyle}>
       <Box sx={pageToolbarStyle}>
         <Box display="flex" gap={2}>
           <SearchBox
@@ -300,56 +330,38 @@ export default function Sales() {
             onClear={handleClearSearch}
           />
 
-          <Button
-            variant="outlined"
-            sx={outlinedButtonStyle}
+          <FilterToggleButton
+            visible={filtersVisible}
             onClick={() => setFiltersVisible((prev) => !prev)}
-          >
-            {filtersVisible ? "Filter ausblenden" : "Filter anzeigen"}
-          </Button>
+          />
         </Box>
       </Box>
 
-
-      {/* Фильтры */}
+      {/* Filters */}
       <Collapse in={filtersVisible}>
         <Paper elevation={4} sx={filterPanelStyle}>
           <Box sx={filterPanelRowStyle}>
-            <Box sx={filterDateRangeStyle}>
-              <Typography variant="caption" sx={filterDateRangeTitleStyle}>
-                Zeitraum:
-              </Typography>
-
-              <Box sx={filterDateFieldsStyle}>
-                <TextField
-                  id="filter-start-date"
-                  label="Von"
-                  type="date"
-                  value={filters.startDate}
-                  onChange={(e) => handleFilterChange("startDate", e.target.value)}
-                  InputLabelProps={{ shrink: true }}
-                />
-
-                <TextField
-                  id="filter-end-date"
-                  label="Bis"
-                  type="date"
-                  value={filters.endDate}
-                  onChange={(e) => handleFilterChange("endDate", e.target.value)}
-                  InputLabelProps={{ shrink: true }}
-                />
-              </Box>
-            </Box>
+            <DateRangeFilter
+              startDate={filters.startDate}
+              endDate={filters.endDate}
+              onStartDateChange={(value) =>
+                handleFilterChange("startDate", value)
+              }
+              onEndDateChange={(value) => handleFilterChange("endDate", value)}
+            />
 
             <Box sx={filterOptionsStyle}>
-              {/* PaymentStatus */}
               <FormControl size="small" sx={{ minWidth: 180 }}>
-                <InputLabel id="payment-status-label">Zahlungsstatus</InputLabel>
+                <InputLabel id="payment-status-label">
+                  Zahlungsstatus
+                </InputLabel>
                 <Select
                   labelId="payment-status-label"
                   id="payment-status-select"
                   value={filters.paymentStatus}
-                  onChange={(e: SelectChangeEvent) => handleFilterChange("paymentStatus", e.target.value)}
+                  onChange={(e: SelectChangeEvent) =>
+                    handleFilterChange("paymentStatus", e.target.value)
+                  }
                   label="Zahlungsstatus"
                   aria-label="Zahlungsstatus"
                 >
@@ -362,21 +374,22 @@ export default function Sales() {
                 </Select>
               </FormControl>
 
-              <Button onClick={handleClearFilters} variant="outlined" sx={outlinedButtonStyle}>
-                Filter zurücksetzen
-              </Button>
+              <ClearFiltersButton onClick={handleClearFilters} />
             </Box>
           </Box>
         </Paper>
       </Collapse>
 
-      {/* Таблица */}
-      <Box sx={{ width: "100%", maxWidth: "100%", overflowX: "auto", mb: 2, }}>
-        <TableContainer component={Paper} sx={{ ...tableContainerStyle, mt: 1, minHeight: 580, }}>
+      {/* Table  */}
+      <Box sx={listTableAreaStyle}>
+        <TableContainer
+          component={Paper}
+          sx={{ ...tableContainerStyle, mt: 1 }}
+        >
           <Table sx={tableStyle}>
             <StyledTableHead>
               <TableRow>
-                <TableCell sx={fixedCellWidth(80)}>
+                <TableCell sx={fixedCellWidth(90)}>
                   <SortableHeader
                     title="DokNr"
                     field="id"
@@ -385,7 +398,7 @@ export default function Sales() {
                   />
                 </TableCell>
 
-                <TableCell sx={{ width: "28%" }}>
+                <TableCell sx={{ minWidth: 280 }}>
                   <SortableHeader
                     title="Kunde"
                     field="customerName"
@@ -394,7 +407,7 @@ export default function Sales() {
                   />
                 </TableCell>
 
-                <TableCell sx={fixedCellWidth(110)}>
+                <TableCell sx={fixedCellWidth(130)}>
                   <SortableHeader
                     title="Datum"
                     field="salesDate"
@@ -403,7 +416,7 @@ export default function Sales() {
                   />
                 </TableCell>
 
-                <TableCell sx={fixedCellWidth(120)}>
+                <TableCell sx={fixedCellWidth(140)}>
                   <SortableHeader
                     title="Betrag"
                     field="totalAmount"
@@ -412,7 +425,7 @@ export default function Sales() {
                   />
                 </TableCell>
 
-                <TableCell sx={fixedCellWidth(140)}>
+                <TableCell sx={fixedCellWidth(160)}>
                   <SortableHeader
                     title="Rechnung-Nr"
                     field="invoiceNumber"
@@ -421,58 +434,99 @@ export default function Sales() {
                   />
                 </TableCell>
 
-                <TableCell sx={fixedCellWidth(140)}>
-                  Zahlungsstatus
-                </TableCell>
+                <TableCell sx={fixedCellWidth(150)}>Zahlungsstatus</TableCell>
 
-                <TableCell sx={fixedCellWidth(80)}>
-                  PDF
-                </TableCell>
+                <TableCell sx={fixedCellWidth(100)}>PDF</TableCell>
 
-                <TableCell sx={fixedCellWidth(120)}>
-                  Aktionen
-                </TableCell>
+                <TableCell sx={fixedCellWidth(150)}>Aktionen</TableCell>
               </TableRow>
             </StyledTableHead>
 
             <TableBody>
-              {sales.length > 0 ? (sales.map((sale) => (
+              {sales.length > 0 ? (
+                sales.map((sale) => (
                   <React.Fragment key={sale.id}>
                     <TableRow
                       onClick={() => toggleRow(sale.id)}
-                      sx={compactTableRowStyle}
+                      sx={tableRowHoverStyle}
                     >
-                      <TableCell sx={{ ...compactTableCellStyle, ...fixedCellWidth(80), }}>
+                      <TableCell
+                        sx={{
+                          ...cellStyle,
+                          ...leftBorderCellStyle,
+                          ...fixedCellWidth(90),
+                        }}
+                      >
                         {sale.id}
                       </TableCell>
 
-                      <TableCell sx={{ ...hoverExpandCellStyle, width: "28%", }}>
-                        <HoverExpandText text={sale.customerName ?? ""}  maxWidth={300} hoverBgColor={colors.tableHover} />
+                      <TableCell sx={{ ...hoverExpandCellStyle }}>
+                        <HoverExpandText
+                          text={sale.customerName ?? ""}
+                          hoverBgColor={colors.tableHover}
+                        />
                       </TableCell>
 
-                      <TableCell sx={{ ...compactTableCellStyle, ...fixedCellWidth(110), }}>
-                        {sale.salesDate ? new Date(sale.salesDate).toLocaleDateString( "de-DE", { day: "2-digit", month: "2-digit", year: "numeric", } ) : ""}
+                      <TableCell
+                        sx={{
+                          ...cellStyle,
+                          ...fixedCellWidth(130),
+                        }}
+                      >
+                        {sale.salesDate
+                          ? new Date(sale.salesDate).toLocaleDateString(
+                              "de-DE",
+                              {
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "numeric",
+                              },
+                            )
+                          : ""}
                       </TableCell>
 
-                      <TableCell sx={{ ...compactTableCellStyle, ...fixedCellWidth(120), textAlign: "right", }}>
+                      <TableCell
+                        sx={{
+                          ...rightCellStyle,
+                          ...fixedCellWidth(140),
+                        }}
+                      >
                         {formatNumber(sale.totalAmount)} €
                       </TableCell>
 
-                      <TableCell sx={{ ...compactTableCellStyle,  ...fixedCellWidth(140), }}>
+                      <TableCell
+                        sx={{
+                          ...centerCellStyle,
+                          ...fixedCellWidth(160),
+                        }}
+                      >
                         {sale.invoiceNumber}
                       </TableCell>
 
-                      <TableCell sx={{ ...compactTableCellStyle, ...fixedCellWidth(140), }}>
+                      <TableCell
+                        sx={{
+                          ...centerCellStyle,
+                          ...fixedCellWidth(150),
+                        }}
+                      >
                         {sale.paymentStatus}
                       </TableCell>
-                      <TableCell sx={{ ...compactActionCellStyle, ...fixedCellWidth(80), }}>
+                      <TableCell
+                        sx={{
+                          ...actionCellStyle,
+                          ...fixedCellWidth(100),
+                        }}
+                      >
                         <Box sx={pdfActionsStyle}>
                           <Tooltip title="Rechnung" arrow>
                             <IconButton
                               onClick={(e) => openInvoice(e, sale)}
-                              sx={compactIconButtonStyle}
+                              sx={actionIconButtonStyle}
                             >
-                              <Typography variant="button" sx={pdfTextButtonStyle}>
+                              <Typography
+                                variant="button"
+                                sx={pdfTextButtonStyle}
+                              >
                                 RE
                               </Typography>
                             </IconButton>
@@ -481,9 +535,12 @@ export default function Sales() {
                           <Tooltip title="Lieferschein" arrow>
                             <IconButton
                               onClick={(e) => openDeliveryBill(e, sale)}
-                              sx={compactIconButtonStyle}
+                              sx={actionIconButtonStyle}
                             >
-                              <Typography variant="button" sx={pdfTextButtonStyle}>
+                              <Typography
+                                variant="button"
+                                sx={pdfTextButtonStyle}
+                              >
                                 LF
                               </Typography>
                             </IconButton>
@@ -493,8 +550,8 @@ export default function Sales() {
 
                       <TableCell
                         sx={{
-                          ...compactActionCellStyle,
-                          ...fixedCellWidth(120),
+                          ...actionCellStyle,
+                          ...fixedCellWidth(150),
                         }}
                       >
                         <Box sx={tableActionsStyle}>
@@ -502,8 +559,11 @@ export default function Sales() {
                             <Tooltip title="Bearbeiten" arrow>
                               <IconButton
                                 size="small"
-                                onClick={(e) => { e.stopPropagation(); navigate(`/sales/${sale.id}`); }}
-                                sx={compactIconButtonStyle}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/sales/${sale.id}`);
+                                }}
+                                sx={actionIconButtonStyle}
                               >
                                 <EditIcon fontSize="small" />
                               </IconButton>
@@ -516,10 +576,9 @@ export default function Sales() {
                                 saleId={sale.id}
                                 customerName={sale.customerName}
                                 salesDate={sale.salesDate}
-                                onSuccessDelete={() => { }}
                                 trigger={
                                   <Tooltip title="Löschen" arrow>
-                                    <IconButton sx={compactIconButtonStyle}>
+                                    <IconButton sx={actionIconButtonStyle}>
                                       <DeleteIcon />
                                     </IconButton>
                                   </Tooltip>
@@ -535,9 +594,11 @@ export default function Sales() {
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setOpenPaymentDialogId(sale.id);
-                                    setSelectedOperationType(sale.typeOfOperation);
+                                    setSelectedOperationType(
+                                      sale.typeOfOperation,
+                                    );
                                   }}
-                                  sx={compactIconButtonStyle}
+                                  sx={actionIconButtonStyle}
                                 >
                                   <PaymentsIcon />
                                 </IconButton>
@@ -548,72 +609,111 @@ export default function Sales() {
                       </TableCell>
                     </TableRow>
 
-                    {/* Подтаблица */}
-                    {
-                      openRows[sale.id] && (
-                        <TableRow>
-                          <TableCell colSpan={8} sx={{ paddingBottom: 0, paddingTop: 0 }}>
-                            <Collapse in={openRows[sale.id]} timeout="auto" unmountOnExit>
-                              <Box margin={2}>
-                                <Table size="small" sx={{ ...tableStyle, }}>
-                                  <StyledSubTableHead>
-                                    <TableRow>
-                                      <TableCell sx={fixedCellWidth(120)}>
-                                        Artikel
-                                      </TableCell>
+                    {/* SubTable */}
+                    {openRows[sale.id] && (
+                      <TableRow>
+                        <TableCell
+                          colSpan={8}
+                          sx={{ paddingBottom: 0, paddingTop: 0 }}
+                        >
+                          <Collapse
+                            in={openRows[sale.id]}
+                            timeout="auto"
+                            unmountOnExit
+                          >
+                            <Box margin={2}>
+                              <Table size="small" sx={tableStyle}>
+                                <StyledSubTableHead>
+                                  <TableRow>
+                                    <TableCell sx={fixedCellWidth(120)}>
+                                      Artikel
+                                    </TableCell>
 
-                                      <TableCell sx={{ width: "30%" }}>
-                                        Artikelname
-                                      </TableCell>
+                                    <TableCell sx={{ width: "40%" }}>
+                                      Artikelname
+                                    </TableCell>
 
-                                      <TableCell sx={fixedCellWidth(80)}>
-                                        Menge
-                                      </TableCell>
+                                    <TableCell sx={fixedCellWidth(80)}>
+                                      Menge
+                                    </TableCell>
 
-                                      <TableCell sx={fixedCellWidth(100)}>
-                                        Einzelpreis
-                                      </TableCell>
+                                    <TableCell sx={fixedCellWidth(100)}>
+                                      Einzelpreis
+                                    </TableCell>
 
-                                      <TableCell sx={fixedCellWidth(80)}>
-                                        Rabatt
-                                      </TableCell>
+                                    <TableCell sx={fixedCellWidth(80)}>
+                                      Rabatt
+                                    </TableCell>
 
-                                      <TableCell sx={fixedCellWidth(100)}>
-                                        Netto
-                                      </TableCell>
+                                    <TableCell sx={fixedCellWidth(100)}>
+                                      Netto
+                                    </TableCell>
 
-                                      <TableCell sx={fixedCellWidth(100)}>
-                                        MWSt
-                                      </TableCell>
+                                    <TableCell sx={fixedCellWidth(100)}>
+                                      MWSt
+                                    </TableCell>
 
-                                      <TableCell sx={fixedCellWidth(110)}>
-                                        Gesamt
-                                      </TableCell>
-                                    </TableRow>
-                                  </StyledSubTableHead>
-                                  <TableBody>
-                                    {sale.saleItems?.map((item: any, index: number) => (
-                                      <TableRow key={index}>
-                                        <TableCell sx={{ ...cellStyle, borderLeft: "1px solid #ddd", }}>{item.productArticle}</TableCell>
-                                        <TableCell sx={{ ...cellStyle, width: 320 }}>
-                                          <EllipsisTooltip text={item.productName ?? ""} placement="right-start" />
+                                    <TableCell sx={fixedCellWidth(110)}>
+                                      Gesamt
+                                    </TableCell>
+                                  </TableRow>
+                                </StyledSubTableHead>
+                                <TableBody>
+                                  {sale.saleItems?.map(
+                                    (item: any, index: number) => (
+                                      <TableRow
+                                        key={index}
+                                        sx={tableRowHoverStyle}
+                                      >
+                                        <TableCell
+                                          sx={{
+                                            ...cellStyle,
+                                            ...leftBorderCellStyle,
+                                          }}
+                                        >
+                                          {item.productArticle}
                                         </TableCell>
-                                        <TableCell sx={{ ...cellStyle, }}>{item.quantity}</TableCell>
-                                        <TableCell sx={{ ...cellStyle, }}>{item.unitPrice} €</TableCell>
-                                        <TableCell sx={{ ...cellStyle, }}>{item.discount} %</TableCell>
-                                        <TableCell sx={{ ...cellStyle, }}>{item.totalPrice} €</TableCell>
-                                        <TableCell sx={{ ...cellStyle, }}>{item.taxAmount} €</TableCell>
-                                        <TableCell sx={{ ...cellStyle, }}>{item.totalAmount} €</TableCell>
+
+                                        <TableCell sx={hoverExpandCellStyle}>
+                                          <HoverExpandText
+                                            text={item.productName ?? ""}
+                                            hoverBgColor={colors.tableHover}
+                                          />
+                                        </TableCell>
+
+                                        <TableCell sx={centerCellStyle}>
+                                          {item.quantity}
+                                        </TableCell>
+
+                                        <TableCell sx={rightCellStyle}>
+                                          {item.unitPrice} €
+                                        </TableCell>
+
+                                        <TableCell sx={centerCellStyle}>
+                                          {item.discount} %
+                                        </TableCell>
+
+                                        <TableCell sx={rightCellStyle}>
+                                          {item.totalPrice} €
+                                        </TableCell>
+
+                                        <TableCell sx={rightCellStyle}>
+                                          {item.taxAmount} €
+                                        </TableCell>
+
+                                        <TableCell sx={rightCellStyle}>
+                                          {item.totalAmount} €
+                                        </TableCell>
                                       </TableRow>
-                                    ))}
-                                  </TableBody>
-                                </Table>
-                              </Box>
-                            </Collapse>
-                          </TableCell>
-                        </TableRow>
-                      )
-                    }
+                                    ),
+                                  )}
+                                </TableBody>
+                              </Table>
+                            </Box>
+                          </Collapse>
+                        </TableCell>
+                      </TableRow>
+                    )}
                   </React.Fragment>
                 ))
               ) : (
@@ -628,19 +728,19 @@ export default function Sales() {
         </TableContainer>
       </Box>
 
-      {
-        openPaymentDialogId !== null && selectedOperationType && (
-          <CreatePayment
-            prefillType="sale"
-            prefillId={openPaymentDialogId}
-            typeOfOperation={selectedOperationType}
-            onClose={() => { setOpenPaymentDialogId(null); setSelectedOperationType(null); }}
-          />
-        )
-      }
+      {openPaymentDialogId !== null && selectedOperationType && (
+        <CreatePayment
+          prefillType="sale"
+          prefillId={openPaymentDialogId}
+          typeOfOperation={selectedOperationType}
+          onClose={() => {
+            setOpenPaymentDialogId(null);
+            setSelectedOperationType(null);
+          }}
+        />
+      )}
 
-      {/* Пагинация */}
-      <Box display="flex" justifyContent="center" mt={2}>
+      <Box sx={listPaginationStyle}>
         <Pagination
           count={totalPages}
           page={page + 1}

@@ -1,6 +1,5 @@
 import { createAppSlice } from "../../redux/createAppSlice";
 import {
-  fetchAddProduct,
   fetchAllProducts,
   fetchAllProductsByCategory,
   fetchDeleteProduct,
@@ -10,7 +9,11 @@ import {
   fetchProducts,
   fetchProductsByCategory,
 } from "./api";
-import { NewProductDto, ProductPickDto, ProductsState, UpdateProductDto } from "./types";
+import {
+  ProductPickDto,
+  ProductsState,
+  UpdateProductDto,
+} from "./types";
 
 const initialState: ProductsState = {
   productsPaged: [],
@@ -21,8 +24,10 @@ const initialState: ProductsState = {
   pickLastQuery: null,
   totalPages: 1,
   currentPage: 0,
+  pageSize: 15,
   currentSort: "name",
   selectedProduct: undefined,
+  productsVersion: 0,
   loading: false,
   error: null,
 };
@@ -31,10 +36,22 @@ export const productsSlice = createAppSlice({
   name: "products",
   initialState,
   reducers: (create) => ({
+    invalidateProducts: create.reducer((state) => {
+      state.productsVersion += 1;
+    }),
+
     getProducts: create.asyncThunk(
-      async (
-        { page, size = 15, sort = "name", searchTerm = "" }: { page: number; size?: number; sort?: string; searchTerm?: string }
-      ) => {
+      async ({
+        page,
+        size = 15,
+        sort = "name",
+        searchTerm = "",
+      }: {
+        page: number;
+        size?: number;
+        sort?: string;
+        searchTerm?: string;
+      }) => {
         const response = await fetchProducts(page, size, sort, searchTerm);
         return response;
       },
@@ -49,19 +66,19 @@ export const productsSlice = createAppSlice({
           state.productsPaged = response.content;
           state.totalPages = response.totalPages;
           state.currentPage = response.pageable.pageNumber;
+          state.pageSize = action.meta.arg.size ?? 15;
           state.currentSort = action.meta.arg.sort ?? "name";
         },
         rejected: (state, action) => {
           state.loading = false;
-          state.error = action.error.message || "Fehler beim Laden der Produkte.";
+          state.error =
+            action.error.message || "Fehler beim Laden der Produkte.";
         },
-      }
+      },
     ),
 
     getAllProducts: create.asyncThunk(
-      async (
-        { searchTerm = "" }: { searchTerm?: string }
-      ) => {
+      async ({ searchTerm = "" }: { searchTerm?: string }) => {
         const response = await fetchAllProducts(searchTerm);
         return response;
       },
@@ -76,9 +93,10 @@ export const productsSlice = createAppSlice({
         },
         rejected: (state, action) => {
           state.loading = false;
-          state.error = action.error.message || "Fehler beim Laden der Produkte.";
+          state.error =
+            action.error.message || "Fehler beim Laden der Produkte.";
         },
-      }
+      },
     ),
 
     getPickProducts: create.asyncThunk<
@@ -104,9 +122,10 @@ export const productsSlice = createAppSlice({
         rejected: (state, action) => {
           state.pickLoading = false;
           state.pickProducts = [];
-          state.pickError = action.error.message || "Fehler beim Laden der Produkt-Auswahl.";
+          state.pickError =
+            action.error.message || "Fehler beim Laden der Produkt-Auswahl.";
         },
-      }
+      },
     ),
 
     getProductsByCategory: create.asyncThunk(
@@ -123,7 +142,13 @@ export const productsSlice = createAppSlice({
         sort?: string;
         searchTerm?: string;
       }) => {
-        return await fetchProductsByCategory(categoryId, page, size, sort, searchTerm);
+        return await fetchProductsByCategory(
+          categoryId,
+          page,
+          size,
+          sort,
+          searchTerm,
+        );
       },
       {
         pending: (state) => {
@@ -136,13 +161,15 @@ export const productsSlice = createAppSlice({
           state.productsPaged = response.content;
           state.totalPages = response.totalPages;
           state.currentPage = response.pageable.pageNumber;
+          state.pageSize = action.meta.arg.size ?? 15;
           state.currentSort = action.meta.arg.sort ?? "name";
         },
         rejected: (state, action) => {
           state.loading = false;
-          state.error = action.error.message || "Fehler beim Laden der Produkte.";
+          state.error =
+            action.error.message || "Fehler beim Laden der Produkte.";
         },
-      }
+      },
     ),
 
     getAllProductsByCategory: create.asyncThunk(
@@ -166,94 +193,44 @@ export const productsSlice = createAppSlice({
         },
         rejected: (state, action) => {
           state.loading = false;
-          state.error = action.error.message || "Fehler beim Laden der Produkte.";
+          state.error =
+            action.error.message || "Fehler beim Laden der Produkte.";
         },
-      }
-    ),
-
-    addProduct: create.asyncThunk(
-      async (newProductDto: NewProductDto, { dispatch, getState }) => {
-        const addedProduct = await fetchAddProduct(newProductDto);
-
-        const state = getState() as { products: ProductsState };
-        await dispatch(
-          getProducts({
-            page: state.products.currentPage,
-            size: 15,
-            sort: state.products.currentSort,
-          })
-        );
-
-        return addedProduct;
       },
-      {
-        pending: (state) => {
-          state.loading = true;
-          state.error = null;
-        },
-        fulfilled: (state) => {
-          state.loading = false;
-          // productsList обновится через getProducts, здесь не нужно пушить
-        },
-        rejected: (state, action) => {
-          state.loading = false;
-          state.error = action.error.message || "Fehler beim Hinzufügen des Produkts.";
-        },
-      }
     ),
 
     editProduct: create.asyncThunk(
-      async (
-        {
-          id,
-          updateProductDto,
-        }: {
-          id: number;
-          updateProductDto: UpdateProductDto;
-        },
-        { dispatch, getState }
-      ) => {
-        const editedProduct = await fetchEditProduct({ id, updateProductDto });
-
-        const state = getState() as { products: ProductsState };
-        await dispatch(
-          getProducts({
-            page: state.products.currentPage,
-            size: 15,
-            sort: state.products.currentSort,
-          })
-        );
-
-        return editedProduct;
+      async ({
+        id,
+        updateProductDto,
+      }: {
+        id: number;
+        updateProductDto: UpdateProductDto;
+      }) => {
+        return await fetchEditProduct({ id, updateProductDto });
       },
       {
         pending: (state) => {
           state.loading = true;
           state.error = null;
         },
-        fulfilled: (state) => {
+        fulfilled: (state, action) => {
           state.loading = false;
+          // Если редактируется открытая карточка — сразу обновим selectedProduct
+          state.selectedProduct = action.payload;
+          state.productsVersion += 1;
         },
         rejected: (state, action) => {
           state.loading = false;
-          state.error = action.error.message || "Fehler beim Bearbeiten des Produkts.";
+          state.error =
+            action.error.message || "Fehler beim Bearbeiten des Produkts.";
         },
-      }
+      },
     ),
 
     deleteProduct: create.asyncThunk(
-      async (id: number, { dispatch, getState }) => {
+      async (id: number) => {
         await fetchDeleteProduct(id);
-
-        const state = getState() as { products: ProductsState };
-        await dispatch(
-          getProducts({
-            page: state.products.currentPage,
-            size: 15,
-            sort: state.products.currentSort,
-          })
-        );
-
         return id;
       },
       {
@@ -261,14 +238,19 @@ export const productsSlice = createAppSlice({
           state.loading = true;
           state.error = null;
         },
-        fulfilled: (state) => {
+        fulfilled: (state, action) => {
           state.loading = false;
+          if (state.selectedProduct?.id === action.payload) {
+            state.selectedProduct = undefined;
+          }
+          state.productsVersion += 1;
         },
         rejected: (state, action) => {
           state.loading = false;
-          state.error = action.error.message || "Fehler beim Löschen des Produkts.";
+          state.error =
+            action.error.message || "Fehler beim Löschen des Produkts.";
         },
-      }
+      },
     ),
 
     getProduct: create.asyncThunk(
@@ -284,9 +266,10 @@ export const productsSlice = createAppSlice({
         },
         rejected: (state, action) => {
           state.loading = false;
-          state.error = action.error.message || "Fehler beim Laden der Produkt.";
+          state.error =
+            action.error.message || "Fehler beim Laden des Produkts.";
         },
-      }
+      },
     ),
   }),
 
@@ -295,10 +278,12 @@ export const productsSlice = createAppSlice({
     selectProductsAll: (state) => state.productsAll,
     selectTotalPages: (state: ProductsState) => state.totalPages,
     selectCurrentPage: (state: ProductsState) => state.currentPage,
+    selectPageSize: (state: ProductsState) => state.pageSize,
     selectProduct: (state: ProductsState) => state.selectedProduct,
     selectLoading: (state: ProductsState) => state.loading,
     selectError: (state: ProductsState) => state.error,
     selectPickProducts: (state) => state.pickProducts,
+    selectProductsVersion: (state: ProductsState) => state.productsVersion,
     selectPickLoading: (state: ProductsState) => state.pickLoading,
     selectPickError: (state: ProductsState) => state.pickError,
     selectPickLastQuery: (state: ProductsState) => state.pickLastQuery,
@@ -306,11 +291,11 @@ export const productsSlice = createAppSlice({
 });
 
 export const {
+  invalidateProducts,
   getProducts,
   getAllProducts,
   getProductsByCategory,
   getAllProductsByCategory,
-  addProduct,
   editProduct,
   getProduct,
   deleteProduct,
@@ -322,7 +307,9 @@ export const {
   selectProductsAll,
   selectTotalPages,
   selectCurrentPage,
+  selectPageSize,
   selectProduct,
+  selectProductsVersion,
   selectLoading,
   selectError,
   selectPickProducts,

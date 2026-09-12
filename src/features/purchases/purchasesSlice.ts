@@ -1,14 +1,24 @@
-import { createAppSlice } from "../../redux/createAppSlice"
-import { fetchAddPurchase, fetchDeletePurchase, fetchPurchaseById, fetchPurchases, fetchPurchasesByFilter, fetchSearchPurchases, fetchUpdatePurchase, fetchUpdatePurchasePaymentStatus, } from "./api";
+import { createAppSlice } from "../../redux/createAppSlice";
+import {
+  fetchAddPurchase,
+  fetchDeletePurchase,
+  fetchPurchaseById,
+  fetchPurchases,
+  fetchPurchasesByFilter,
+  fetchSearchPurchases,
+  fetchUpdatePurchase,
+  fetchUpdatePurchasePaymentStatus,
+} from "./api";
 import { NewPurchaseDto, PurchasesState } from "./types";
-
 
 const initialState: PurchasesState = {
   purchasesList: [],
   totalPages: 1,
   currentPage: 0,
+  pageSize: 15,
   selectedPurchase: undefined,
   sort: ["purchasingDate,DESC", "id,DESC"],
+  purchasesVersion: 0,
   loading: false,
   error: null,
 };
@@ -25,7 +35,11 @@ const handlePending = (state: PurchasesState) => {
   state.error = null;
 };
 
-const handleRejected = (state: PurchasesState, action: any, message: string) => {
+const handleRejected = (
+  state: PurchasesState,
+  action: any,
+  message: string,
+) => {
   state.error = action.error?.message ?? message;
   state.loading = false;
 };
@@ -34,9 +48,13 @@ export const purchasesSlice = createAppSlice({
   name: "purchases",
   initialState,
   reducers: (create) => ({
-
     getPurchases: create.asyncThunk(
-      async ({ page, size = 15, sort = ["purchasingDate,DESC", "id,DESC"], searchTerm = "" }: GetPurchasesParams) => {
+      async ({
+        page,
+        size = 15,
+        sort = ["purchasingDate,DESC", "id,DESC"],
+        searchTerm = "",
+      }: GetPurchasesParams) => {
         return await fetchPurchases(page, size, sort, searchTerm);
       },
       {
@@ -45,7 +63,11 @@ export const purchasesSlice = createAppSlice({
           state.purchasesList = content;
           state.totalPages = totalPages;
           state.currentPage = pageable.pageNumber;
-          state.sort = action.meta.arg.sort ?? ["purchasingDate,DESC", "id,DESC"];
+          state.pageSize = action.meta.arg.size ?? 15;
+          state.sort = action.meta.arg.sort ?? [
+            "purchasingDate,DESC",
+            "id,DESC",
+          ];
           state.loading = false;
           state.error = null;
         },
@@ -53,32 +75,30 @@ export const purchasesSlice = createAppSlice({
         rejected: (state, action) => {
           handleRejected(state, action, "Fehler beim Laden der Bestellungen.");
         },
-      }
+      },
     ),
 
     addPurchase: create.asyncThunk(
-      async (newPurchase: NewPurchaseDto, { dispatch, getState }) => {
-        const addedPurchase = await fetchAddPurchase(newPurchase);
-        const state = getState() as { purchases: PurchasesState };
-        await dispatch(
-          getPurchases({
-            page: state.purchases.currentPage,
-            size: 15,
-            sort: state.purchases.sort,
-          })
-        );
-        return addedPurchase;
+      async (newPurchase: NewPurchaseDto) => {
+        return await fetchAddPurchase(newPurchase);
       },
       {
         pending: handlePending,
+
         fulfilled: (state) => {
           state.loading = false;
+          state.error = null;
+          state.purchasesVersion += 1;
         },
-        rejected: (state, action) =>
-          handleRejected(state, action, "Fehler beim Hinzufügen der Bestellung."),
-      }
-    ),
 
+        rejected: (state, action) =>
+          handleRejected(
+            state,
+            action,
+            "Fehler beim Hinzufügen der Bestellung.",
+          ),
+      },
+    ),
 
     getPurchaseById: create.asyncThunk(
       async (id: number) => await fetchPurchaseById(id),
@@ -91,11 +111,16 @@ export const purchasesSlice = createAppSlice({
         },
         rejected: (state, action) =>
           handleRejected(state, action, "Fehler beim Laden der Bestellung."),
-      }
+      },
     ),
 
     searchPurchases: create.asyncThunk(
-      async ({ query, page, size = 15, sort = ["purchasingDate,DESC", "id,DESC"] }: GetPurchasesParams & { query: string }) => {
+      async ({
+        query,
+        page,
+        size = 15,
+        sort = ["purchasingDate,DESC", "id,DESC"],
+      }: GetPurchasesParams & { query: string }) => {
         return await fetchSearchPurchases(query, page, size, sort);
       },
       {
@@ -103,14 +128,18 @@ export const purchasesSlice = createAppSlice({
           state.purchasesList = action.payload.content;
           state.totalPages = action.payload.totalPages;
           state.currentPage = action.payload.pageable.pageNumber;
-          state.sort = action.meta.arg.sort ?? ["purchasingDate,DESC", "id,DESC"];
+          state.pageSize = action.meta.arg.size ?? 15;
+          state.sort = action.meta.arg.sort ?? [
+            "purchasingDate,DESC",
+            "id,DESC",
+          ];
           state.loading = false;
           state.error = null;
         },
         pending: handlePending,
         rejected: (state, action) =>
           handleRejected(state, action, "Fehler beim Laden der Bestellungen."),
-      }
+      },
     ),
 
     getPurchasesByFilter: create.asyncThunk(
@@ -160,63 +189,84 @@ export const purchasesSlice = createAppSlice({
           state.purchasesList = action.payload.content;
           state.totalPages = action.payload.totalPages;
           state.currentPage = action.payload.pageable.pageNumber;
-          state.sort = action.meta.arg.sort ?? ["purchasingDate,DESC", "id,DESC"];
+          state.pageSize = action.meta.arg.size ?? 15;
+          state.sort = action.meta.arg.sort ?? [
+            "purchasingDate,DESC",
+            "id,DESC",
+          ];
           state.loading = false;
           state.error = null;
         },
         pending: handlePending,
         rejected: (state, action) =>
-          handleRejected(state, action, "Fehler beim Laden der gefilterten Bestellungen."),
-      }
+          handleRejected(
+            state,
+            action,
+            "Fehler beim Laden der gefilterten Bestellungen.",
+          ),
+      },
     ),
 
     updatePurchase: create.asyncThunk(
-      async ({ id, updatedPurchase }: { id: number; updatedPurchase: NewPurchaseDto }, { dispatch, getState }) => {
-        const editedPurchase = await fetchUpdatePurchase(id, updatedPurchase);
-        const state = getState() as { purchases: PurchasesState };
-        await dispatch(
-          getPurchases({
-            page: state.purchases.currentPage,
-            size: 15,
-            sort: state.purchases.sort,
-          })
-        );
+  async ({
+    id,
+    updatedPurchase,
+  }: {
+    id: number;
+    updatedPurchase: NewPurchaseDto;
+  }) => {
+    return await fetchUpdatePurchase(id, updatedPurchase);
+  },
+  {
+    pending: handlePending,
 
-        return editedPurchase;
-      },
-      {
-        fulfilled: (state) => {
-          state.loading = false;
-        },
-        pending: handlePending,
-        rejected: (state, action) =>
-          handleRejected(state, action, "Fehler beim Bearbeiten der Bestellung."),
+    fulfilled: (state, action) => {
+      state.loading = false;
+      state.error = null;
+
+      if (state.selectedPurchase?.id === action.payload.id) {
+        state.selectedPurchase = action.payload;
       }
-    ),
+
+      state.purchasesVersion += 1;
+    },
+
+    rejected: (state, action) =>
+      handleRejected(
+        state,
+        action,
+        "Fehler beim Bearbeiten der Bestellung.",
+      ),
+  },
+),
 
     deletePurchase: create.asyncThunk(
-      async (id: number, { dispatch, getState }) => {
-        await fetchDeletePurchase(id);
-        const state = getState() as { purchases: PurchasesState };
-        await dispatch(
-          getPurchases({
-            page: state.purchases.currentPage,
-            size: 15,
-            sort: state.purchases.sort,
-          })
-        );
-        return id;
-      },
-      {
-        fulfilled: (state) => {
-          state.loading = false;
-          state.error = null;
-        },
-        pending: handlePending,
-        rejected: (state, action) =>
-          handleRejected(state, action, "Fehler beim Löschen der Bestellung."),
+  async (id: number) => {
+    await fetchDeletePurchase(id);
+    return id;
+  },
+  {
+    pending: handlePending,
+
+    fulfilled: (state, action) => {
+      state.loading = false;
+      state.error = null;
+
+      if (state.selectedPurchase?.id === action.payload) {
+        state.selectedPurchase = undefined;
       }
-    ),
+
+      state.purchasesVersion += 1;
+    },
+
+    rejected: (state, action) =>
+      handleRejected(
+        state,
+        action,
+        "Fehler beim Löschen der Bestellung.",
+      ),
+  },
+),
 
     updatePurchasePaymentStatus: create.asyncThunk(
       async (id: number) => {
@@ -225,24 +275,30 @@ export const purchasesSlice = createAppSlice({
       {
         fulfilled: (state, action) => {
           const updatedPurchase = action.payload;
-          state.purchasesList = state.purchasesList.map(p =>
-            p.id === updatedPurchase.id ? updatedPurchase : p);
+          state.purchasesList = state.purchasesList.map((p) =>
+            p.id === updatedPurchase.id ? updatedPurchase : p,
+          );
           state.loading = false;
           state.error = null;
         },
         pending: handlePending,
         rejected: (state, action) =>
-          handleRejected(state, action, "Fehler beim Aktualisieren des Zahlungsstatus."),
-      }
+          handleRejected(
+            state,
+            action,
+            "Fehler beim Aktualisieren des Zahlungsstatus.",
+          ),
+      },
     ),
-
   }),
 
   selectors: {
     selectPurchases: (state: PurchasesState) => state.purchasesList,
     selectTotalPages: (state: PurchasesState) => state.totalPages,
     selectCurrentPage: (state: PurchasesState) => state.currentPage,
+    selectPageSize: (state: PurchasesState) => state.pageSize,
     selectPurchase: (state: PurchasesState) => state.selectedPurchase,
+    selectPurchasesVersion: (state: PurchasesState) => state.purchasesVersion,
     selectLoading: (state: PurchasesState) => state.loading,
     selectError: (state: PurchasesState) => state.error,
     selectPurchaseById: (state: PurchasesState, id: number) =>
@@ -250,13 +306,24 @@ export const purchasesSlice = createAppSlice({
   },
 });
 
-export const { getPurchases,
+export const {
+  getPurchases,
   addPurchase,
   getPurchaseById,
   searchPurchases,
   getPurchasesByFilter,
   updatePurchase,
   deletePurchase,
-  updatePurchasePaymentStatus, } = purchasesSlice.actions;
-export const { selectPurchases, selectTotalPages, selectCurrentPage, selectPurchase, selectLoading, selectError, selectPurchaseById } =
-  purchasesSlice.selectors;
+  updatePurchasePaymentStatus,
+} = purchasesSlice.actions;
+export const {
+  selectPurchases,
+  selectTotalPages,
+  selectCurrentPage,
+  selectPageSize,
+  selectPurchase,
+  selectPurchasesVersion,
+  selectLoading,
+  selectError,
+  selectPurchaseById,
+} = purchasesSlice.selectors;

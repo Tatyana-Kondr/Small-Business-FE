@@ -77,7 +77,9 @@ export interface PurchasesState {
     selectedPurchase: Purchase | undefined;
     totalPages: number;
     currentPage: number;
+    pageSize: number;
     sort: string[],
+    purchasesVersion: number;
     loading: boolean;
     error: string | null;
 }
