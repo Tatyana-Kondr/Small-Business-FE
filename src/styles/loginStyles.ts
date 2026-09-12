@@ -1,11 +1,20 @@
 import { SxProps, Theme } from "@mui/material";
 import { colors } from "./colors";
 
+export const loginPageStyle: SxProps<Theme> = {
+  minHeight: "100vh",
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "flex-start",
+  pt: 12,
+  boxSizing: "border-box",
+  bgcolor: colors.background,
+};
+
 export const loginCardStyle: SxProps<Theme> = {
   width: 430,
   maxWidth: "90%",
   mx: "auto",
-  mt: 5,
   p: 3,
   bgcolor: colors.white,
   boxShadow: 3,

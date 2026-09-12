@@ -1,15 +1,7 @@
 import { useState } from "react";
-import {
-  AppBar,
-  Box,
-  Button,
-  Divider,
-  MenuItem,
-  Toolbar,
-} from "@mui/material";
+import { AppBar, Box, Button, Divider, IconButton, MenuItem, Toolbar, Tooltip } from "@mui/material";
 import { useLocation, useNavigate } from "react-router-dom";
 
-import ExitToAppIcon from "@mui/icons-material/ExitToApp";
 import KeyboardDoubleArrowLeftOutlinedIcon from "@mui/icons-material/KeyboardDoubleArrowLeftOutlined";
 
 import { useAppDispatch, useAppSelector } from "../redux/hooks";
@@ -95,15 +87,15 @@ const headerMenus: HeaderMenu[] = [
     ],
   },
   {
-  label: "Berichte",
-  adminOnly: true,
-  items: [
-    {
-      label: "Umsatzbericht",
-      to: "/reports/sales",
-    },
-  ],
-},
+    label: "Berichte",
+    adminOnly: true,
+    items: [
+      {
+        label: "Umsatzbericht",
+        to: "/reports/sales",
+      },
+    ],
+  },
   {
     label: "Kontakte",
     items: [
@@ -143,7 +135,7 @@ export default function HeaderApp() {
   });
 
   const activeMenu = visibleMenus.find(
-    (menu) => menu.label === activeMenuLabel
+    (menu) => menu.label === activeMenuLabel,
   );
 
   const isMenuActive = (menu: HeaderMenu) => {
@@ -151,7 +143,11 @@ export default function HeaderApp() {
       return true;
     }
 
-    if (menu.to && menu.to !== "/" && location.pathname.startsWith(menu.to + "/")) {
+    if (
+      menu.to &&
+      menu.to !== "/" &&
+      location.pathname.startsWith(menu.to + "/")
+    ) {
       return true;
     }
 
@@ -202,7 +198,7 @@ export default function HeaderApp() {
       openModal({
         name: modalConfig.name,
         props: { ...baseProps, ...modalConfig.props },
-      })
+      }),
     );
 
     setActiveMenuLabel(null);
@@ -236,7 +232,10 @@ export default function HeaderApp() {
   };
 
   return (
-    <AppBar position="fixed" sx={{ backgroundColor: colors.white, boxShadow: 2 }}>
+    <AppBar
+      position="fixed"
+      sx={{ backgroundColor: colors.white, boxShadow: 2 }}
+    >
       <Toolbar
         sx={{
           minHeight: 64,
@@ -283,9 +282,11 @@ export default function HeaderApp() {
                     setActiveMenuLabel(menu.label);
 
                     const parentLeft =
-                      e.currentTarget.parentElement?.getBoundingClientRect().left ?? 0;
+                      e.currentTarget.parentElement?.getBoundingClientRect()
+                        .left ?? 0;
 
-                    const itemLeft = e.currentTarget.getBoundingClientRect().left;
+                    const itemLeft =
+                      e.currentTarget.getBoundingClientRect().left;
 
                     setSubmenuLeft(itemLeft - parentLeft);
                   } else {
@@ -312,23 +313,10 @@ export default function HeaderApp() {
                     backgroundColor: isActive ? menuBgColor : "transparent",
                     fontWeight: 700,
                     textTransform: "uppercase",
-
-                    "&:hover": {
-                      backgroundColor: menuBgColor,
-                      color: "white",
-                    },
-
-                    "&:focus": {
-                      outline: "none",
-                    },
-
-                    "&.Mui-focusVisible": {
-                      outline: "none",
-                    },
-
-                    "&:active": {
-                      boxShadow: "none",
-                    },
+                    "&:hover": { backgroundColor: menuBgColor, color: "white", },
+                    "&:focus": { outline: "none", },
+                    "&.Mui-focusVisible": { outline: "none", },
+                    "&:active": { boxShadow: "none", },
                   }}
                 >
                   {menu.label}
@@ -343,17 +331,11 @@ export default function HeaderApp() {
                 position: "absolute",
                 top: 64,
                 left: submenuLeft,
-
                 backgroundColor: menuBgColor,
-
                 boxShadow: 4,
-
                 opacity: 1,
                 transform: "translateY(0)",
-
-                transition:
-                  "opacity .2s ease, transform .2s ease",
-
+                transition: "opacity .2s ease, transform .2s ease",
                 zIndex: 2000,
               }}
             >
@@ -398,37 +380,30 @@ export default function HeaderApp() {
           )}
         </Box>
 
-        <Button
-          onClick={handleGoBack}
-          sx={{
-            fontSize: 12,
-            minWidth: 50,
-            minHeight: 40,
-            color: headerTextColor,
-            fontWeight: 700,
-            display: "flex",
-            alignItems: "center",
-            gap: 0.5,
-
-            "&:hover": {
-              backgroundColor: "transparent",
-              color: menuBgColor,
-            },
-          }}
-        >
-          <KeyboardDoubleArrowLeftOutlinedIcon fontSize="large" />
-          ZURÜCK
-        </Button>
+        <Tooltip title="zurück" arrow>
+          <IconButton
+            onClick={handleGoBack}
+            sx={{
+              color: headerTextColor,
+              width: 50,
+              height: 40,
+              "&:hover": {
+                backgroundColor: "transparent",
+                color: menuBgColor,
+              },
+            }}
+          >
+            <KeyboardDoubleArrowLeftOutlinedIcon fontSize="large" />
+          </IconButton>
+        </Tooltip>
 
         <Button
           variant="contained"
           color="error"
           onClick={handleLogout}
-          startIcon={<ExitToAppIcon fontSize="small" />}
           sx={{
             borderRadius: "4px",
             backgroundColor: colors.danger,
-
             "&:hover": {
               fontWeight: "bold",
               backgroundColor: "red",

@@ -35,11 +35,7 @@ export default function SortableHeader({
         {title}
       </Box>
 
-      <SortIcons
-        field={field}
-        activeSort={activeSort}
-        onSort={onSort}
-      />
+      <SortIcons field={field} activeSort={activeSort} onSort={onSort} />
     </Box>
   );
 }

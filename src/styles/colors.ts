@@ -4,6 +4,8 @@ export const colors = {
   primaryDark: "#1a3d6d",
 
   white: "#ffffff",
+  background: "#f5f5f5",
+  
   tableHover: "#f5f5f5",
   iconGrey: "#bdbdbd",
   grey: "#888",

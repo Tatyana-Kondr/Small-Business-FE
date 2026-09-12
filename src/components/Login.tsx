@@ -13,6 +13,7 @@ import {
   loginButtonStyle,
   loginCardStyle,
   loginFieldStyle,
+  loginPageStyle,
   loginTitleStyle,
 } from "../styles/loginStyles";
 
@@ -48,48 +49,55 @@ const LoginForm: React.FC = () => {
   }
 
   return (
-    <Box component="form" onSubmit={handleSubmit} sx={loginCardStyle}>
-      <Typography variant="h5" sx={loginTitleStyle} align="center" gutterBottom>
-        SIGN IN
-      </Typography>
+    <Box sx={loginPageStyle}>
+      <Box component="form" onSubmit={handleSubmit} sx={loginCardStyle}>
+        <Typography
+          variant="h5"
+          sx={loginTitleStyle}
+          align="center"
+          gutterBottom
+        >
+          SIGN IN
+        </Typography>
 
-      <TextField
-        label="Username"
-        name="username"
-        type="text"
-        fullWidth
-        margin="normal"
-        value={form.username}
-        onChange={handleChange}
-        sx={loginFieldStyle}
-      />
+        <TextField
+          label="Username"
+          name="username"
+          type="text"
+          fullWidth
+          margin="normal"
+          value={form.username}
+          onChange={handleChange}
+          sx={loginFieldStyle}
+        />
 
-      <TextField
-        label="Passwort"
-        name="password"
-        type="password"
-        fullWidth
-        margin="normal"
-        value={form.password}
-        onChange={handleChange}
-        sx={loginFieldStyle}
-      />
+        <TextField
+          label="Passwort"
+          name="password"
+          type="password"
+          fullWidth
+          margin="normal"
+          value={form.password}
+          onChange={handleChange}
+          sx={loginFieldStyle}
+        />
 
-      {loginError && (
-        <Alert severity="error" sx={{ mt: 2 }}>
-          {errorMap[loginError] || loginError}
-        </Alert>
-      )}
+        {loginError && (
+          <Alert severity="error" sx={{ mt: 2 }}>
+            {errorMap[loginError] || loginError}
+          </Alert>
+        )}
 
-      <Button
-        type="submit"
-        variant="contained"
-        sx={loginButtonStyle}
-        fullWidth
-        disabled={status === "loading"}
-      >
-        Login
-      </Button>
+        <Button
+          type="submit"
+          variant="contained"
+          sx={loginButtonStyle}
+          fullWidth
+          disabled={status === "loading"}
+        >
+          Login
+        </Button>
+      </Box>
     </Box>
   );
 };

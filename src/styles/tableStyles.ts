@@ -1,36 +1,47 @@
 import { styled } from "@mui/material/styles";
 import { TableHead } from "@mui/material";
-import { colors } from "./colors";
 import { SxProps, Theme } from "@mui/material";
 import { SystemStyleObject } from "@mui/system";
+import { colors } from "./colors";
 
-//контейнер для таблицы
-export const tableContainerStyle: AppSx = {
+type AppSx = SystemStyleObject<Theme>;
+
+const TABLE_ROW_HEIGHT = 32;
+const TABLE_CELL_PADDING = "2px 8px";
+
+// =========================
+// TABLE
+// =========================
+
+export const tableContainerStyle: AppSx = { 
+  width: "100%",
   borderRadius: 0,
   boxShadow: "none",
-  width: "100%",
 
   "&.MuiPaper-root": {
     borderRadius: 0,
   },
 };
 
-//таблица
-export const tableStyle: AppSx = {
-  tableLayout: "fixed",
+export const tableStyle: AppSx = {//
   width: "100%",
+  tableLayout: "fixed",
 };
 
-//Заголовок таблицы
+// =========================
+// TABLE HEAD
+// =========================
+
 export const StyledTableHead = styled(TableHead)({
   "& th": {
+    height: 44,
+    padding: "6px 8px",
     backgroundColor: colors.primaryDark,
     color: colors.white,
     fontWeight: "bold",
-    borderRight: `1px solid ${colors.border}`,
     textAlign: "center",
-    padding: "6px 8px",
-    height: 44,
+    borderRight: `1px solid ${colors.border}`,
+    verticalAlign: "middle",
   },
 
   "& .MuiTableCell-stickyHeader": {
@@ -39,27 +50,32 @@ export const StyledTableHead = styled(TableHead)({
   },
 });
 
-//Подзаголовок таблицы
 export const StyledSubTableHead = styled(TableHead)({
-  backgroundColor: colors.accent,
-
   "& th": {
+    backgroundColor: colors.accent,
     color: colors.white,
     fontWeight: "bold",
-    borderRight: `1px solid ${colors.border}`,
     textAlign: "center",
+    borderRight: `1px solid ${colors.border}`,
+    verticalAlign: "middle",
   },
 });
 
-//Ячейка таблицы
-type AppSx = SystemStyleObject<Theme>;
+// =========================
+// CELLS
+// =========================
 
 export const cellStyle: AppSx = {
+  height: TABLE_ROW_HEIGHT,
+  padding: TABLE_CELL_PADDING,
+  lineHeight: 1.2,
+  verticalAlign: "middle",
+
   whiteSpace: "nowrap",
   overflow: "hidden",
   textOverflow: "ellipsis",
+
   borderRight: `1px solid ${colors.border}`,
-  padding: "2px 8px",
 };
 
 export const fixedCellWidth = (width: number): AppSx => ({
@@ -78,52 +94,58 @@ export const leftBorderCellStyle: AppSx = {
   borderLeft: `1px solid ${colors.border}`,
 };
 
-export const productPhotoCellStyle: AppSx = {
-  ...fixedCellWidth(50),
-  ...leftBorderCellStyle,
-
-  borderRight: `1px solid ${colors.border}`,
-  textAlign: "center",
-  overflow: "hidden",
-  whiteSpace: "nowrap",
-  padding: "2px 8px",
-};
-
-export const compactTableCellStyle: AppSx = {
+export const centerCellStyle: AppSx = {
   ...cellStyle,
-  padding: "2px 8px",
-  height: 34,
-  lineHeight: 1.2,
-  verticalAlign: "middle",
-};
-
-export const compactActionCellStyle: AppSx = {
-  ...compactTableCellStyle,
-  padding: "0 2px",
   textAlign: "center",
 };
 
-//строка
-export const tableRowHoverStyle = {
+export const rightCellStyle: AppSx = {
+  ...cellStyle,
+  textAlign: "right",
+};
+
+// =========================
+// ROWS
+// =========================
+
+export const tableRowHoverStyle: AppSx = {
   cursor: "pointer",
   transition: "background-color 0.2s ease",
 
+  "& td": {
+    height: TABLE_ROW_HEIGHT,
+    verticalAlign: "middle",
+  },
+
   "&:hover": {
     backgroundColor: `${colors.tableHover} !important`,
-    transform: "translateY(-1px)",
   },
 };
 
-export const compactTableRowStyle: AppSx = {
-  ...tableRowHoverStyle,
+// =========================
+// PRODUCT PHOTO
+// =========================
 
-  "& td": {
-    height: 34,
-  },
+export const productPhotoCellStyle: AppSx = {
+  ...cellStyle,
+  ...fixedCellWidth(40),
+  ...leftBorderCellStyle,
+
+  textAlign: "center",
+  padding: "2px 4px",
+};
+
+// =========================
+// ACTIONS
+// =========================
+
+export const actionCellStyle: AppSx = {
+  ...centerCellStyle,
+  padding: "0 2px",
 };
 
 export const actionIconButtonStyle: AppSx = {
-  p: 0.5,
+  p: 0.25,
   transition:
     "transform 0.2s ease-in-out, color 0.2s ease-in-out, background-color 0.2s ease-in-out",
 
@@ -134,11 +156,6 @@ export const actionIconButtonStyle: AppSx = {
   },
 };
 
-export const compactIconButtonStyle: AppSx = {
-  ...actionIconButtonStyle,
-  p: 0.25,
-};
-
 export const pdfTextButtonStyle: SxProps<Theme> = {
   fontWeight: "bold",
   transition: "transform 0.2s ease-in-out",
@@ -147,44 +164,6 @@ export const pdfTextButtonStyle: SxProps<Theme> = {
     color: colors.iconGrey,
     transform: "scale(1.2)",
     backgroundColor: "transparent",
-  },
-};
-
-export const actionBoxStyle: SxProps<Theme> = {
-  padding: "2px 12px",
-};
-
-// Поля внутри таблиц Auftrag / Bestellung
-
-export const saleTableTextInputStyle: AppSx = {
-  "& .MuiInputBase-root": {
-    border: "none",
-    backgroundColor: "transparent",
-    p: 0,
-  },
-
-  "& .MuiInputBase-input": {
-    fontSize: "0.875rem",
-    p: 0,
-  },
-};
-
-export const saleTableNameInputStyle: AppSx = {
-  "& .MuiInputBase-root": {
-    alignItems: "flex-start",
-    p: 0,
-    backgroundColor: "transparent",
-  },
-
-  "& .MuiInputBase-inputMultiline": {
-    p: 0,
-    lineHeight: 1.35,
-    fontSize: "0.875rem",
-    overflow: "hidden !important",
-    resize: "none",
-  },
-  "& textarea": {
-    overflow: "hidden !important",
   },
 };
 
@@ -213,31 +192,54 @@ export const tableActionSlotStyle: AppSx = {
   alignItems: "center",
 };
 
-export const saleTableCellStyle: AppSx = {
-  borderRight: `1px solid ${colors.border}`,
-  padding: "6px 6px",
-  verticalAlign: "middle",
+// =========================
+// INPUTS INSIDE TABLES
+// =========================
+
+export const saleTableTextInputStyle: AppSx = {
+  "& .MuiInputBase-root": {
+    border: "none",
+    backgroundColor: "transparent",
+    p: 0,
+  },
+
+  "& .MuiInputBase-input": {
+    fontSize: "0.875rem",
+    p: 0,
+  },
 };
 
-export const saleTableCenterCellStyle: AppSx = {
-  ...saleTableCellStyle,
-  textAlign: "center",
+export const saleTableNameInputStyle: AppSx = {
+  "& .MuiInputBase-root": {
+    alignItems: "flex-start",
+    p: 0,
+    backgroundColor: "transparent",
+  },
+
+  "& .MuiInputBase-inputMultiline": {
+    p: 0,
+    lineHeight: 1.35,
+    fontSize: "0.875rem",
+    overflow: "hidden !important",
+    resize: "none",
+  },
+
+  "& textarea": {
+    overflow: "hidden !important",
+  },
 };
 
-export const saleTableRightCellStyle: AppSx = {
-  ...saleTableCellStyle,
-  textAlign: "right",
+export const saleTableNameCellStyle: AppSx = { 
+  ...cellStyle, 
+  verticalAlign: "top", 
+  py: 0.75, 
 };
 
-export const saleTableNameCellStyle: AppSx = {
-  ...saleTableCellStyle,
-  verticalAlign: "top",
-  py: 0.75,
-};
+// =========================
+// CATEGORY CELL
+// =========================
 
-export const saleTableDeleteCellStyle: AppSx = {
-  ...saleTableCellStyle,
-  textAlign: "center",
-  p: 0,
+export const categoryCellWidthStyle: AppSx = {
+  width: "15%",
+  minWidth: 150,
 };
-

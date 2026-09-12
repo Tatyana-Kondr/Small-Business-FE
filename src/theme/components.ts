@@ -113,10 +113,10 @@ export const appComponents: Components<Omit<Theme, "components">> = {
     MuiTooltip: {
         styleOverrides: {
             tooltip: {
-                backgroundColor: colors.primaryDark,
+                backgroundColor: colors.grey,
                 color: colors.white,
-                fontSize: "0.9rem",
-                padding: "8px 12px",
+                fontSize: "0.8rem",
+                padding: "4px 8px",
             },
 
             arrow: {

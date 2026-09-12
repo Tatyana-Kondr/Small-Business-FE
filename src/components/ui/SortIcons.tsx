@@ -24,11 +24,11 @@ export default function SortIcons({
           cursor: "pointer",
           color:
             activeSort[0] === `${field},ASC`
-              ? colors.primaryBlue
+              ? colors.accent
               : "#bdbdbd",
 
           "&:hover": {
-            color: colors.primaryBlue,
+            color: colors.accent,
           },
         }}
       />
@@ -40,11 +40,11 @@ export default function SortIcons({
           cursor: "pointer",
           color:
             activeSort[0] === `${field},DESC`
-              ? colors.primaryBlue
+              ? colors.accent
               : "#bdbdbd",
 
           "&:hover": {
-            color: colors.primaryBlue,
+            color: colors.accent,
           },
         }}
       />

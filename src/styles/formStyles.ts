@@ -4,6 +4,34 @@ import { colors } from "./colors";
 
 type AppSx = SystemStyleObject<Theme>;
 
+export const pageContentStyle: SxProps<Theme> = {
+  width: "100%",
+  maxWidth: "100%",
+  boxSizing: "border-box",
+
+  px: {
+    xs: 1,
+    sm: 2,
+    md: 2,
+  },
+
+  py: 2,
+};
+
+export const listPageStyle: SxProps<Theme> = {
+  p: 0,
+  m: 0,
+  width: "100%",
+  height: "calc(100vh - 96px)",
+  minHeight: 0,
+
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "stretch",
+
+  overflow: "hidden",
+};
+
 export const formBoxStyle: SxProps<Theme> = {
   bgcolor: "#fafafa",
   borderRadius: 2,
@@ -41,12 +69,6 @@ export const pageToolbarStyle: SxProps<Theme> = {
   zIndex: 1000,
 
   mb: 2,
-
-  pl: 0,
-  pr: {
-    xs: 1,
-    sm: 2,
-  },
 };
 
 export const formSectionStyle: SxProps<Theme> = {
@@ -148,4 +170,19 @@ export const filterOptionsStyle: AppSx = {
     height: 40,
     minHeight: 40,
   },
+};
+
+export const listTableAreaStyle: SxProps<Theme> = {
+  width: "100%",
+  maxWidth: "100%",
+  flex: 1,
+  minHeight: 0,
+  overflowX: "auto",
+};
+
+export const listPaginationStyle: SxProps<Theme> = {
+  display: "flex",
+  justifyContent: "center",
+  flexShrink: 0,
+  pb: 1,
 };
