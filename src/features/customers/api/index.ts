@@ -1,13 +1,44 @@
 import { apiFetch } from "../../../utils/apiFetch";
 import { Customer, CustomerPick, NewCustomerDto, PaginatedResponse } from "../types"
 
-export async function fetchCustomers(page: number, size: number, sort = "name"): Promise<PaginatedResponse<Customer>> {
-  return apiFetch<PaginatedResponse<Customer>>
-    (`/api/customers?page=${page}&size=${size}&sort=${sort}`,
-      { auth: true },
-      "Fehler beim Laden der Lieferanten."
-    );
+export async function fetchCustomers(
+  page: number,
+  size: number,
+  sort: string = "name"
+): Promise<PaginatedResponse<Customer>> {
+  const queryParams = new URLSearchParams();
+
+  queryParams.append("page", page.toString());
+  queryParams.append("size", size.toString());
+  queryParams.append("sort", sort);
+
+  return apiFetch<PaginatedResponse<Customer>>(
+    `/api/customers?${queryParams.toString()}`,
+    { auth: true },
+    "Fehler beim Laden der Lieferanten."
+  );
 }
+
+export async function fetchSearchCustomers(
+  page: number,
+  size: number,
+  query: string,
+  sort: string = "name"
+): Promise<PaginatedResponse<Customer>> {
+  const queryParams = new URLSearchParams();
+
+  queryParams.append("page", page.toString());
+  queryParams.append("size", size.toString());
+  queryParams.append("query", query);
+  queryParams.append("sort", sort);
+
+  return apiFetch<PaginatedResponse<Customer>>(
+    `/api/customers/search?${queryParams.toString()}`,
+    { auth: true },
+    "Fehler bei der Suche nach Lieferanten."
+  );
+}
+
 export async function fetchCustomersList(): Promise<CustomerPick[]> {
   return apiFetch<CustomerPick[]>
     (`/api/customers/pick`,
@@ -16,10 +47,41 @@ export async function fetchCustomersList(): Promise<CustomerPick[]> {
     );
 }
 
-export async function fetchCustomerswithCustomerNumber(page: number, size: number, sort = "name"): Promise<PaginatedResponse<Customer>> {
-  return apiFetch<PaginatedResponse<Customer>>(`/api/customers/customer-number?page=${page}&size=${size}&sort=${sort}`,
+export async function fetchCustomersWithCustomerNumber(
+  page: number,
+  size: number,
+  sort: string = "name"
+): Promise<PaginatedResponse<Customer>> {
+  const queryParams = new URLSearchParams();
+
+  queryParams.append("page", page.toString());
+  queryParams.append("size", size.toString());
+  queryParams.append("sort", sort);
+
+  return apiFetch<PaginatedResponse<Customer>>(
+    `/api/customers/customer-number?${queryParams.toString()}`,
     { auth: true },
     "Fehler beim Laden der Kunden."
+  );
+}
+
+export async function fetchSearchCustomersWithCustomerNumber(
+  page: number,
+  size: number,
+  query: string,
+  sort: string = "name"
+): Promise<PaginatedResponse<Customer>> {
+  const queryParams = new URLSearchParams();
+
+  queryParams.append("page", page.toString());
+  queryParams.append("size", size.toString());
+  queryParams.append("query", query);
+  queryParams.append("sort", sort);
+
+  return apiFetch<PaginatedResponse<Customer>>(
+    `/api/customers/customer-number/search?${queryParams.toString()}`,
+    { auth: true },
+    "Fehler bei der Suche nach Kunden."
   );
 }
 
@@ -35,7 +97,6 @@ export async function fetchAddCustomer(newCustomerDto: NewCustomerDto): Promise<
   return apiFetch<Customer>(`/api/customers`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    credentials: "include",
     body: JSON.stringify(newCustomerDto),
     auth: true,
   },
@@ -56,7 +117,6 @@ export async function fetchEditCustomer(id: number, newCustomerDto: NewCustomerD
     `/api/customers/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json",},
-    credentials: "include",
     body: JSON.stringify(newCustomerDto),
     auth: true,
   },
@@ -67,7 +127,10 @@ export async function fetchEditCustomer(id: number, newCustomerDto: NewCustomerD
 export async function fetchDeleteCustomer(id: number): Promise<void> {
   return apiFetch<void>(
     `/api/customers/${id}`,
-    { method: "DELETE", auth: true },
-    `Error deleting customer ${id}`
+    {
+      method: "DELETE",
+      auth: true,
+    },
+    `Fehler beim Löschen des Kunden mit der ID ${id}.`
   );
 }

@@ -1,150 +1,303 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState } from "react";
 import {
-    Container, Typography, Table, TableBody, TableCell,
-    TableContainer, TableHead, TableRow, Paper, Box, Pagination,
-    IconButton,
-    Tooltip,
-} from "@mui/material"
-import { useAppDispatch, useAppSelector } from "../../../redux/hooks"
-import { styled } from "@mui/material/styles"
-import { getCustomersWithCustomerNumber, selectCurrentPage, selectCustomersWithCustomerNumber, selectTotalPages } from "../customersSlice"
-import { useNavigate } from "react-router-dom";
+  Box,
+  IconButton,
+  Pagination,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableRow,
+  Tooltip,
+} from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
+import { useNavigate } from "react-router-dom";
+
+import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
+
+import {
+  getCustomersWithCustomerNumber,
+  selectCustomersWithCustomerNumber,
+  selectCustomersVersion,
+  selectTotalPages,
+  searchCustomersWithCustomerNumber,
+} from "../customersSlice";
+
 import DeleteCustomer from "./DeleteCustomer";
+import HoverExpandText from "../../../components/ui/HoverExpandText";
 
-// Стили для заголовков таблицы
-const StyledTableHead = styled(TableHead)({
-    backgroundColor: "#1a3d6d",
-    "& th": {
-        color: "white",
-        fontWeight: "bold",
-        borderRight: "1px solid #ddd",
-    },
-});
+import {
+  listPageStyle,
+  listPaginationStyle,
+  listTableAreaStyle,
+  pageToolbarStyle,
+} from "../../../styles/formStyles";
 
-// Стили для строки таблицы с эффектом наведения
-const StyledTableRow = styled(TableRow)({
-    "&:hover": {
-        backgroundColor: "#f5f5f5", // Подсветка строки при наведении
-        cursor: "pointer",
-    },
-});
+import {
+  actionCellStyle,
+  actionIconButtonStyle,
+  cellStyle,
+  centerCellStyle,
+  fixedCellWidth,
+  hoverExpandCellStyle,
+  leftBorderCellStyle,
+  StyledTableHead,
+  tableContainerStyle,
+  tableRowHoverStyle,
+  tableStyle,
+} from "../../../styles/tableStyles";
 
+import { colors } from "../../../styles/colors";
+import { getAdaptivePageSize } from "../../../utils/getAdaptivePageSize";
+import SearchBox from "../../../components/ui/SearchBox";
+import PageTitle from "../../../components/PageTitle";
 
 export default function CustomersWithNumber() {
-    const dispatch = useAppDispatch()
-    const customers = useAppSelector(selectCustomersWithCustomerNumber)
-    const totalPages = useAppSelector(selectTotalPages); // Получаем количество страниц
-    const currentPage = useAppSelector(selectCurrentPage); // Получаем текущую страницу
-    const [page, setPage] = useState(currentPage); // Состояние для текущей страницы
-    const [pageSize] = useState(15); // Количество элементов на странице
-    const navigate = useNavigate(); // Для навигации по роутам
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
 
-    useEffect(() => {
-        dispatch(getCustomersWithCustomerNumber({ page, size: pageSize }))
-    }, [dispatch, page, pageSize])
+  const customers = useAppSelector(selectCustomersWithCustomerNumber);
+  const totalPages = useAppSelector(selectTotalPages);
+  const customersVersion = useAppSelector(selectCustomersVersion);
 
-    const handleRowDoubleClick = (customerId: number) => {
-        navigate(`/kunde/${customerId}`);
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(getAdaptivePageSize);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
+
+  useEffect(() => {
+    const handleResize = () => {
+      const newPageSize = getAdaptivePageSize();
+
+      setPageSize((prev) => {
+        if (prev === newPageSize) {
+          return prev;
+        }
+
+        setPage(0);
+        return newPageSize;
+      });
     };
 
-    const handlePaginationChange = (_: unknown, newPage: number) => {
-        setPage(newPage - 1); // Обновляем страницу
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
     };
+  }, []);
 
-    return (
-        <Container>
-            {/* Верхняя панель */}
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                <Typography variant="h6" sx={{ textAlign: "left", fontWeight: "bold", textDecoration: 'underline', color: "#0277bd" }}>KUNDEN</Typography>
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm.trim());
+      setPage(0);
+    }, 500);
 
-            </Box>
-            {/* Таблица */}
-            <Box sx={{ height: "100%" }}>
-                <TableContainer component={Paper}>
-                    <Table>
-                        <StyledTableHead>
-                            <TableRow>
-                                <TableCell style={{ display: "none" }}>ID</TableCell>
-                                <TableCell>Name</TableCell>
-                                <TableCell>KundenNr</TableCell>
-                                <TableCell>Adresse</TableCell>
-                                <TableCell>Telefon</TableCell>
-                                <TableCell>E-Mail</TableCell>
-                                <TableCell>Webseite</TableCell>
-                                <TableCell></TableCell>
-                            </TableRow>
-                        </StyledTableHead>
-                        <TableBody>
-                            {customers.length > 0 ? (
-                                customers.map((customer) => (
-                                    <StyledTableRow
-                                        key={customer.id}
-                                        onDoubleClick={() => handleRowDoubleClick(customer.id)}
-                                    >
-                                        <TableCell style={{ display: "none", padding: "6px 12px" }}>{customer.id}</TableCell>
-                                        <TableCell sx={{ width: "500px", padding: "6px 12px", borderRight: "1px solid #ddd" }}>
-                                            {customer.name}
-                                        </TableCell>
-                                        <TableCell sx={{ padding: "6px 12px", borderRight: "1px solid #ddd" }}>{customer.customerNumber}</TableCell>
-                                        <TableCell sx={{ width: "800px", padding: "6px 12px", borderRight: "1px solid #ddd" }}>
-                                            {customer.address
-                                                ? `${customer.address.country}, ${customer.address.postalCode} ${customer.address.city} ${customer.address.street} ${customer.address.building}`
-                                                : ""}
-                                        </TableCell>
-                                        <TableCell sx={{ padding: "6px 12px", borderRight: "1px solid #ddd" }}>{customer.phone}</TableCell>
-                                        <TableCell sx={{ padding: "6px 12px", borderRight: "1px solid #ddd" }}>{customer.email}</TableCell>
-                                        <TableCell sx={{ padding: "6px 12px", borderRight: "1px solid #ddd" }}>{customer.website}</TableCell>
-                                        <TableCell sx={{ padding: "0 12px" }}>
-                                            <Tooltip title="Löschen" arrow placement="right-start">
-                                                <DeleteCustomer
-                                                    customerId={customer.id}
-                                                    customerName={customer.name}
-                                                    onSuccessDelete={() => {
-                                                    }}
-                                                    trigger={
-                                                        <IconButton
-                                                            sx={{
-                                                                margin: 0,
-                                                                padding: 0,
-                                                                fontSize: "small",
-                                                                transition: "transform 0.2s ease-in-out",
-                                                                "&:hover": {
-                                                                    color: "#bdbdbd",
-                                                                    transform: "scale(1.2)",
-                                                                    backgroundColor: "transparent",
-                                                                },
-                                                            }}
-                                                        >
-                                                            <DeleteIcon />
-                                                        </IconButton>
-                                                    }
-                                                />
-                                            </Tooltip>
-                                        </TableCell>
-                                    </StyledTableRow>
-                                ))
-                            ) : (
-                                <TableRow>
-                                    <TableCell colSpan={11} align="center">
-                                        Keine Kunden gefunden
-                                    </TableCell>
-                                </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
-            </Box>
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
-            {/* Пагинация */}
-            <Box display="flex" justifyContent="center" mt={2}>
-                <Pagination
-                    count={totalPages} // Количество страниц зависит от totalPages из состояния
-                    page={page + 1} // Пагинация начинается с 1
-                    onChange={handlePaginationChange} // Обработчик изменения страницы
-                    color="primary"
-                />
-            </Box>
-        </Container>
-    );
+  useEffect(() => {
+    if (debouncedSearchTerm) {
+      dispatch(
+        searchCustomersWithCustomerNumber({
+          page,
+          size: pageSize,
+          query: debouncedSearchTerm,
+          sort: "name",
+        }),
+      );
+    } else {
+      dispatch(
+        getCustomersWithCustomerNumber({
+          page,
+          size: pageSize,
+          sort: "name",
+        }),
+      );
+    }
+  }, [dispatch, page, pageSize, debouncedSearchTerm, customersVersion]);
+  const handleRowDoubleClick = (customerId: number) => {
+    navigate(`/kunde/${customerId}`);
+  };
+
+  const handlePaginationChange = (_: unknown, newPage: number) => {
+    setPage(newPage - 1);
+  };
+
+  return (
+    <Box sx={listPageStyle}>
+      <Box sx={{ ...pageToolbarStyle, mt: 1 }}>
+        <PageTitle>KUNDEN</PageTitle>
+        <SearchBox
+          value={searchTerm}
+          onChange={(event) => {
+            setSearchTerm(event.target.value);
+          }}
+          onClear={() => {
+            setSearchTerm("");
+            setPage(0);
+          }}
+          label="Kunde suchen"
+        />
+      </Box>
+
+      {/* Таблица */}
+      <Box sx={listTableAreaStyle}>
+        <TableContainer
+          component={Paper}
+          sx={{
+            ...tableContainerStyle,
+            mt: 1,
+          }}
+        >
+          <Table sx={tableStyle}>
+            <StyledTableHead>
+              <TableRow>
+                <TableCell sx={{ minWidth: 250 }}>Name</TableCell>
+
+                <TableCell sx={fixedCellWidth(120)}>KundenNr</TableCell>
+
+                <TableCell sx={{ minWidth: 350 }}>Adresse</TableCell>
+
+                <TableCell sx={fixedCellWidth(160)}>Telefon</TableCell>
+
+                <TableCell sx={fixedCellWidth(220)}>E-Mail</TableCell>
+
+                <TableCell sx={fixedCellWidth(200)}>Webseite</TableCell>
+
+                <TableCell sx={fixedCellWidth(50)} />
+              </TableRow>
+            </StyledTableHead>
+
+            <TableBody>
+              {customers.length > 0 ? (
+                customers.map((customer) => {
+                  const address = customer.address
+                    ? [
+                        customer.address.country,
+                        customer.address.postalCode,
+                        customer.address.city,
+                        customer.address.street,
+                        customer.address.building,
+                      ]
+                        .filter(Boolean)
+                        .join(" ")
+                    : "";
+
+                  return (
+                    <TableRow
+                      key={customer.id}
+                      sx={tableRowHoverStyle}
+                      onDoubleClick={() => handleRowDoubleClick(customer.id)}
+                    >
+                      {/* Name */}
+                      <TableCell
+                        sx={{
+                          ...leftBorderCellStyle,
+                          ...hoverExpandCellStyle,
+                        }}
+                      >
+                        <HoverExpandText
+                          text={customer.name}
+                          hoverBgColor={colors.tableHover}
+                        />
+                      </TableCell>
+
+                      {/* KundenNr */}
+                      <TableCell
+                        sx={{
+                          ...centerCellStyle,
+                          ...fixedCellWidth(120),
+                        }}
+                      >
+                        {customer.customerNumber ?? ""}
+                      </TableCell>
+
+                      {/* Adresse */}
+                      <TableCell sx={hoverExpandCellStyle}>
+                        <HoverExpandText
+                          text={address}
+                          hoverBgColor={colors.tableHover}
+                        />
+                      </TableCell>
+
+                      {/* Telefon */}
+                      <TableCell
+                        sx={{
+                          ...cellStyle,
+                          ...fixedCellWidth(160),
+                        }}
+                      >
+                        {customer.phone ?? ""}
+                      </TableCell>
+
+                      {/* E-Mail */}
+                      <TableCell
+                        sx={{
+                          ...cellStyle,
+                          ...fixedCellWidth(220),
+                        }}
+                      >
+                        {customer.email ?? ""}
+                      </TableCell>
+
+                      {/* Webseite */}
+                      <TableCell
+                        sx={{
+                          ...cellStyle,
+                          ...fixedCellWidth(200),
+                        }}
+                      >
+                        {customer.website ?? ""}
+                      </TableCell>
+
+                      {/* Aktionen */}
+                      <TableCell
+                        sx={{
+                          ...actionCellStyle,
+                          ...fixedCellWidth(50),
+                        }}
+                      >
+                        <DeleteCustomer
+                          customerId={customer.id}
+                          customerName={customer.name}
+                          trigger={
+                            <Tooltip title="Löschen" arrow>
+                              <IconButton
+                                size="small"
+                                onClick={(event) => event.stopPropagation()}
+                                sx={actionIconButtonStyle}
+                              >
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          }
+                        />
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={7} align="center">
+                    Keine Kunden gefunden
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Box>
+
+      {/* Пагинация */}
+      <Box sx={listPaginationStyle}>
+        <Pagination
+          count={totalPages}
+          page={page + 1}
+          onChange={handlePaginationChange}
+          color="primary"
+        />
+      </Box>
+    </Box>
+  );
 }

@@ -39,7 +39,9 @@ export interface CustomersState {
   selectedCustomer: Customer | undefined;
   totalPages: number;
   currentPage: number;
-  currentSort: string,
+  pageSize: number;
+  currentSort: string;
+  customersVersion: number;
   loading: boolean;
   loadingList: boolean;
   loadingPick: boolean;
