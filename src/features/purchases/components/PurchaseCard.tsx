@@ -58,13 +58,13 @@ import {
   primaryButtonStyle,
 } from "../../../styles/buttonStyles";
 import {
+  actionCellStyle,
+  cellStyle,
+  centerCellStyle,
   fixedCellWidth,
-  saleTableCellStyle,
-  saleTableCenterCellStyle,
-  saleTableDeleteCellStyle,
+  rightCellStyle,
   saleTableNameCellStyle,
   saleTableNameInputStyle,
-  saleTableRightCellStyle,
   StyledTableHead,
   tableRowHoverStyle,
 } from "../../../styles/tableStyles";
@@ -791,7 +791,7 @@ const handleDeleteDocument = async (
                     <TableRow key={index} sx={tableRowHoverStyle}>
                       <TableCell
                         sx={{
-                          ...saleTableCenterCellStyle,
+                          ...centerCellStyle,
                           ...fixedCellWidth(45),
                           borderLeft: `1px solid ${colors.border}`,
                         }}
@@ -832,7 +832,7 @@ const handleDeleteDocument = async (
 
                       <TableCell
                         sx={{
-                          ...saleTableCellStyle,
+                          ...cellStyle,
                           ...fixedCellWidth(80),
                         }}
                       >
@@ -849,7 +849,7 @@ const handleDeleteDocument = async (
 
                       <TableCell
                         sx={{
-                          ...saleTableCellStyle,
+                          ...cellStyle,
                           ...fixedCellWidth(95),
                         }}
                       >
@@ -865,7 +865,7 @@ const handleDeleteDocument = async (
 
                       <TableCell
                         sx={{
-                          ...saleTableCellStyle,
+                          ...cellStyle,
                           ...fixedCellWidth(75),
                         }}
                       >
@@ -882,7 +882,7 @@ const handleDeleteDocument = async (
 
                       <TableCell
                         sx={{
-                          ...saleTableRightCellStyle,
+                          ...rightCellStyle,
                           ...fixedCellWidth(95),
                         }}
                       >
@@ -894,7 +894,7 @@ const handleDeleteDocument = async (
 
                       <TableCell
                         sx={{
-                          ...saleTableRightCellStyle,
+                          ...rightCellStyle,
                           ...fixedCellWidth(95),
                         }}
                       >
@@ -906,7 +906,7 @@ const handleDeleteDocument = async (
 
                       <TableCell
                         sx={{
-                          ...saleTableDeleteCellStyle,
+                          ...actionCellStyle,
                           ...fixedCellWidth(40),
                         }}
                       >
@@ -1093,19 +1093,19 @@ const handleDeleteDocument = async (
                         sx={tableRowHoverStyle}
                         onDoubleClick={() => handleAddProductToCart(product)}
                       >
-                        <TableCell sx={saleTableCellStyle}>
+                        <TableCell sx={cellStyle}>
                           {product.name}
                         </TableCell>
 
-                        <TableCell sx={saleTableCellStyle}>
+                        <TableCell sx={cellStyle}>
                           {product.article}
                         </TableCell>
 
-                        <TableCell sx={saleTableCellStyle}>
+                        <TableCell sx={cellStyle}>
                           {product.vendorArticle ?? ""}
                         </TableCell>
 
-                        <TableCell sx={saleTableRightCellStyle}>
+                        <TableCell sx={rightCellStyle}>
                           {product.purchasingPrice.toLocaleString("de-DE", {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2,

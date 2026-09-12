@@ -48,7 +48,7 @@ import { HttpError } from '../../../utils/handleFetchError';
 import { formSectionStyle, saleDateFieldStyle } from '../../../styles/formStyles';
 import { cancelButtonStyle, primaryButtonStyle } from '../../../styles/buttonStyles';
 import { formSaleSectionTitleStyle } from '../../../styles/typographyStyles';
-import { fixedCellWidth, saleTableCellStyle, saleTableCenterCellStyle, saleTableDeleteCellStyle, saleTableNameCellStyle, saleTableNameInputStyle, saleTableRightCellStyle, StyledTableHead, tableRowHoverStyle } from '../../../styles/tableStyles';
+import { actionCellStyle, cellStyle, centerCellStyle, fixedCellWidth, rightCellStyle, saleTableNameCellStyle, saleTableNameInputStyle, StyledTableHead, tableRowHoverStyle } from '../../../styles/tableStyles';
 import { colors } from '../../../styles/colors';
 import { formatNumber } from '../../../utils/formatNumber';
 
@@ -961,8 +961,8 @@ export default function SaleCard() {
                 <TableBody>
                   {sale.salesItems.map((item, index) => (
                     <TableRow key={index} sx={tableRowHoverStyle}>
-                      <TableCell sx={{ ...saleTableCenterCellStyle, ...fixedCellWidth(45), borderLeft: `1px solid ${colors.border}`, }}>{index + 1}</TableCell>
-                      <TableCell sx={{ ...saleTableCellStyle, ...fixedCellWidth(110), }}>
+                      <TableCell sx={{ ...centerCellStyle, ...fixedCellWidth(45), borderLeft: `1px solid ${colors.border}`, }}>{index + 1}</TableCell>
+                      <TableCell sx={{ ...cellStyle, ...fixedCellWidth(110), }}>
                         <TextField
                           variant="standard"
                           value={item.productArticle}
@@ -984,7 +984,7 @@ export default function SaleCard() {
                           sx={saleTableNameInputStyle}
                         />
                       </TableCell>
-                      <TableCell sx={{ ...saleTableCellStyle, ...fixedCellWidth(75), }}>
+                      <TableCell sx={{ ...cellStyle, ...fixedCellWidth(75), }}>
                         <CompactNumberCell
                           value={item.quantity}
                           disabled={isPaid}
@@ -996,7 +996,7 @@ export default function SaleCard() {
                           }
                         />
                       </TableCell>
-                      <TableCell sx={{ ...saleTableCellStyle, ...fixedCellWidth(90), }}>
+                      <TableCell sx={{ ...cellStyle, ...fixedCellWidth(90), }}>
                         <CompactNumberCell
                           value={item.unitPrice}
                           disabled={isPaid}
@@ -1011,7 +1011,7 @@ export default function SaleCard() {
                           }
                         />
                       </TableCell>
-                      <TableCell sx={{ ...saleTableCellStyle, ...fixedCellWidth(75), }}>
+                      <TableCell sx={{ ...cellStyle, ...fixedCellWidth(75), }}>
                         <CompactNumberCell
                           value={item.discount}
                           disabled={isPaid}
@@ -1027,7 +1027,7 @@ export default function SaleCard() {
                           }
                         />
                       </TableCell>
-                      <TableCell sx={{ ...saleTableCellStyle, ...fixedCellWidth(75), }}>
+                      <TableCell sx={{ ...cellStyle, ...fixedCellWidth(75), }}>
                         <CompactNumberCell
                           value={item.tax}
                           disabled={isPaid}
@@ -1043,13 +1043,13 @@ export default function SaleCard() {
                           }
                         />
                       </TableCell>
-                      <TableCell sx={{ ...saleTableRightCellStyle, ...fixedCellWidth(90), }}>
+                      <TableCell sx={{ ...rightCellStyle, ...fixedCellWidth(90), }}>
                         {item.totalPrice.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </TableCell>
-                      <TableCell sx={{ ...saleTableRightCellStyle, ...fixedCellWidth(90), }}>
+                      <TableCell sx={{ ...rightCellStyle, ...fixedCellWidth(90), }}>
                         {item.taxAmount.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </TableCell>
-                      <TableCell sx={{ ...saleTableDeleteCellStyle, ...fixedCellWidth(40), }}>
+                      <TableCell sx={{ ...actionCellStyle, ...fixedCellWidth(40), }}>
                         <Tooltip title="Löschen" arrow>
                           <IconButton
                             size="small"
@@ -1230,10 +1230,10 @@ export default function SaleCard() {
                     <TableBody>
                       {pickProducts.map(p => (
                         <TableRow key={p.id} sx={tableRowHoverStyle} onDoubleClick={() => handleAddProductToCart(p)}>
-                          <TableCell sx={saleTableCellStyle}>{p.name}</TableCell>
-                          <TableCell sx={saleTableCellStyle}>{p.article}</TableCell>
-                          <TableCell sx={saleTableCellStyle}>{p.vendorArticle ?? ''}</TableCell>
-                          <TableCell sx={saleTableRightCellStyle}>
+                          <TableCell sx={cellStyle}>{p.name}</TableCell>
+                          <TableCell sx={cellStyle}>{p.article}</TableCell>
+                          <TableCell sx={cellStyle}>{p.vendorArticle ?? ''}</TableCell>
+                          <TableCell sx={rightCellStyle}>
                             {formatNumber(p.sellingPrice ?? 0)}
                           </TableCell>
                         </TableRow>

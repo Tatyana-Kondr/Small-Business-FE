@@ -37,8 +37,8 @@ export const productionsSlice = createAppSlice({
   reducers: (create) => ({
 
     getProductions: create.asyncThunk(
-      async ({ page, size = 15, sort = ["dateOfProduction,DESC", "id,DESC"], searchTerm = "" }: GetProductionsParams) => {
-        return await fetchProductions(page, size, sort, searchTerm);
+      async ({ page, size = 15, sort = ["dateOfProduction,DESC", "id,DESC"] }: GetProductionsParams) => {
+        return await fetchProductions(page, size, sort);
       },
       {
         fulfilled: (state, action) => {
