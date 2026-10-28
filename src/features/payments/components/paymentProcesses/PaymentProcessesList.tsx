@@ -1,115 +1,172 @@
-import { Box, Paper, styled, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography, Button, Container } from "@mui/material";
-import { useAppDispatch, useAppSelector } from "../../../../redux/hooks";
+import {
+  Box,
+  Button,
+  Container,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableRow,
+} from "@mui/material";
+
 import { useEffect, useState } from "react";
-import { getPaymentProcesses, selectPaymentProcesses } from "../../paymentProcessesSlice";
+
+import { useAppDispatch, useAppSelector } from "../../../../redux/hooks";
+
+import {
+  getPaymentProcesses,
+  selectPaymentProcesses,
+} from "../../paymentProcessesSlice";
+
 import { PaymentProcess } from "../../types";
+
 import DeletePaymentProcess from "./DeletePaymentProcess";
 import { CreatePaymentProcess } from "./CreatePaymentProcess";
 import EditPaymentProcess from "./EditPaymentProcess";
 
+import PageTitle from "../../../../components/PageTitle";
 
-const StyledTableHead = styled(TableHead)(({
-    backgroundColor: "#1a3d6d",
-    "& th": {
-        color: "white",
-        fontWeight: "bold",
-        borderRight: "1px solid #ddd",
-        textAlign: "center"
-    },
-}));
-const StyledTableRow = styled(TableRow)({
-    backgroundColor: "#ffffff",
-    "&:hover": {
-        backgroundColor: "#f5f5f5", // Подсветка строки при наведении
-        cursor: "pointer",
-    },
-});
+import { compactPageToolbarStyle } from "../../../../styles/formStyles";
+import {
+  cellStyle,
+  centerCellStyle,
+  compactTableContainerStyle,
+  compactTableStyle,
+  fixedCellWidth,
+  leftBorderCellStyle,
+  StyledTableHead,
+  tableRowHoverStyle,
+} from "../../../../styles/tableStyles";
+
+import {
+  outlinedButtonStyle,
+  primaryButtonStyle,
+} from "../../../../styles/buttonStyles";
 
 export default function PaymentProcessesList() {
-    const dispatch = useAppDispatch();
-    const paymentProcesses = useAppSelector(selectPaymentProcesses);
-    const [selectedPaymentProcess, setSelectedPaymentProcess] = useState<PaymentProcess | null>(null);
-    const [openModal, setOpenModal] = useState(false);
-    const [editOpen, setEditOpen] = useState(false);
+  const dispatch = useAppDispatch();
 
+  const paymentProcesses = useAppSelector(selectPaymentProcesses);
 
+  const [selectedPaymentProcess, setSelectedPaymentProcess] =
+    useState<PaymentProcess | null>(null);
+  const [openModal, setOpenModal] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
-    useEffect(() => {
-        dispatch(getPaymentProcesses());
-    }, [dispatch]);
+  useEffect(() => {
+    dispatch(getPaymentProcesses());
+  }, [dispatch]);
 
-    const handleEdit = (process: PaymentProcess) => {
-        setSelectedPaymentProcess(process);
-        setEditOpen(true);
-    };
+  const handleEdit = (process: PaymentProcess) => {
+    setSelectedPaymentProcess(process);
+    setEditOpen(true);
+  };
 
-    return (
-       <Container>
+  const tableWidth = 700;
 
-            {/* Верхняя панель */}
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                <Typography  sx={{ textAlign:"left", fontWeight: "bold", textDecoration: 'underline', color: "#0277bd"}}>ZALUNGSVORGÄNGE</Typography>
-                
-                
-                <Button variant="contained" color="primary" onClick={() => setOpenModal(true)}>
-                    Neuen Vogang anlegen
-                </Button>
-            </Box>
+  return (
+    <Container>
+      <Box sx={compactPageToolbarStyle(tableWidth)}>
+        <PageTitle>ZAHLUNGSVORGÄNGE</PageTitle>
 
-            {/* Таблица */}
-            <TableContainer component={Paper} sx={{ boxShadow: "none" }}>
-                <Table>
-                    <StyledTableHead>
-                        <TableRow>
-                            <TableCell>ID</TableCell>
-                            <TableCell>Name</TableCell>
-                            <TableCell></TableCell>
-                        </TableRow>
-                    </StyledTableHead>
-                    <TableBody>
-                        {paymentProcesses.length > 0 ? (
-                            paymentProcesses.map((process) => (
-                                <StyledTableRow key={process.id}>
-                                    <TableCell style={{ padding: "6px 12px", borderRight: "1px solid #ddd", borderLeft: "1px solid #ddd" }}>{process.id}</TableCell>
-                                    <TableCell sx={{ width: "400px", padding: "6px 12px", borderRight: "1px solid #ddd" }}>{process.processName}</TableCell>
-                                    <TableCell sx={{ width: "200px", padding: "6px", borderRight: "1px solid #ddd" }}>
-                                        <Box display="flex" justifyContent="space-between" gap={1}>
-                                            <Button
-                                                variant="outlined"
-                                                color="primary"
-                                                size="small"
-                                                onClick={() => handleEdit(process)}
-                                                sx={{ minWidth: "100px", "&:hover": { borderColor: "#00acc1" } }}
-                                            >
-                                                Bearbeiten
-                                            </Button>
+        <Button
+          variant="contained"
+          onClick={() => setOpenModal(true)}
+          sx={primaryButtonStyle}
+        >
+          Neuen Vorgang anlegen
+        </Button>
+      </Box>
 
-                                            <Box sx={{ minWidth: "80px" }}>
-                                                <DeletePaymentProcess
-                                                    processId={process.id}
-                                                    processName={process.processName}
-                                                />
-                                            </Box>
-                                        </Box>
-                                    </TableCell>
+      <TableContainer
+        component={Paper}
+        sx={compactTableContainerStyle(tableWidth)}
+      >
+        <Table sx={compactTableStyle(tableWidth)}>
+          <StyledTableHead>
+            <TableRow>
+              <TableCell sx={fixedCellWidth(80)}>ID</TableCell>
 
-                                </StyledTableRow>
-                            ))
-                        ) : (
-                            <TableRow>
-                                <TableCell colSpan={4} align="center">Keine Zahlungsvorgänge vorhanden</TableCell>
-                            </TableRow>
-                        )}
-                    </TableBody>
-                </Table>
-            </TableContainer>
-            <CreatePaymentProcess open={openModal} onClose={() => setOpenModal(false)} />
+              <TableCell>Name</TableCell>
 
-            <EditPaymentProcess
-                open={editOpen}
-                onClose={() => setEditOpen(false)}
-                process={selectedPaymentProcess}
-            />
-        </Container>
-    );
+              <TableCell sx={fixedCellWidth(250)}>Aktionen</TableCell>
+            </TableRow>
+          </StyledTableHead>
+
+          <TableBody>
+            {paymentProcesses.length > 0 ? (
+              paymentProcesses.map((process) => (
+                <TableRow key={process.id} sx={tableRowHoverStyle}>
+                  <TableCell
+                    sx={{
+                      ...centerCellStyle,
+                      ...leftBorderCellStyle,
+                      ...fixedCellWidth(80),
+                    }}
+                  >
+                    {process.id}
+                  </TableCell>
+
+                  <TableCell sx={cellStyle}>{process.processName}</TableCell>
+
+                  <TableCell
+                    sx={{
+                      ...cellStyle,
+                      ...fixedCellWidth(250),
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        gap: 1,
+                      }}
+                    >
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() => handleEdit(process)}
+                        sx={{
+                          ...outlinedButtonStyle,
+                          minWidth: 110,
+                        }}
+                      >
+                        Bearbeiten
+                      </Button>
+
+                      <Box>
+                        <DeletePaymentProcess
+                          processId={process.id}
+                          processName={process.processName}
+                        />
+                      </Box>
+                    </Box>
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={3} align="center" sx={cellStyle}>
+                  Keine Zahlungsvorgänge vorhanden
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
+
+      <CreatePaymentProcess
+        open={openModal}
+        onClose={() => setOpenModal(false)}
+      />
+
+      <EditPaymentProcess
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        process={selectedPaymentProcess}
+      />
+    </Container>
+  );
 }

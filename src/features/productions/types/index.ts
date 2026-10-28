@@ -14,11 +14,9 @@ export interface Production {
 
 export interface NewProductionDto {
     dateOfProduction: string
-    type: string
     productId: number
     quantity: number
     unitPrice: number
-    amount: number
     productionItems: NewProductionItemDto[]
     productArticle?: string
     productName?: string
@@ -37,12 +35,9 @@ export interface ProductionItem {
 }
 
 export interface NewProductionItemDto {
-    productionId: number
     productId: number
-    type: string
     quantity: number
     unitPrice: number
-    totalPrice: number
     productArticle?: string
     productName?: string
 }

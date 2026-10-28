@@ -75,6 +75,7 @@ import { getAdaptivePageSize } from "../../../utils/getAdaptivePageSize";
 import FilterToggleButton from "../../../components/ui/FilterToggleButton";
 import ClearFiltersButton from "../../../components/ui/ClearFiltersButton";
 import DateRangeFilter from "../../../components/ui/DateRangeFilter";
+import { selectPaymentsVersion } from "../../payments/paymentsSlice";
 
 export default function Purchases() {
   const dispatch = useAppDispatch();
@@ -83,6 +84,8 @@ export default function Purchases() {
   const purchasesVersion = useAppSelector(selectPurchasesVersion);
   const currentUser = useAppSelector(selectUser);
   const documentTypes = useAppSelector(selectTypeOfDocuments);
+  const paymentsVersion = useAppSelector(selectPaymentsVersion);
+
   const isAdmin = currentUser?.role === "ADMIN";
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(getAdaptivePageSize);
@@ -152,29 +155,56 @@ export default function Purchases() {
       filters.paymentStatus ||
       filters.documentId;
 
-    if (hasFilters) {
-      dispatch(
-        getPurchasesByFilter({
+    const request = hasFilters
+      ? getPurchasesByFilter({
           page,
           size: pageSize,
           ...convertFiltersToParams(filters),
           searchQuery: debouncedSearchTerm,
           sort,
-        }),
-      );
-    } else if (debouncedSearchTerm) {
-      dispatch(
-        searchPurchases({
-          page,
-          size: pageSize,
-          query: debouncedSearchTerm,
-          sort,
-        }),
-      );
-    } else {
-      dispatch(getPurchases({ page, size: pageSize, sort }));
-    }
-  }, [dispatch, page, pageSize, debouncedSearchTerm, filters, sort, purchasesVersion,]);
+        })
+      : debouncedSearchTerm
+        ? searchPurchases({
+            page,
+            size: pageSize,
+            query: debouncedSearchTerm,
+            sort,
+          })
+        : getPurchases({
+            page,
+            size: pageSize,
+            sort,
+          });
+
+    const promise = dispatch(request);
+    let active = true;
+
+    void promise
+      .unwrap()
+      .then((result) => {
+        if (!active) return;
+
+        if (page > 0 && page >= result.totalPages) {
+          setPage(Math.max(0, result.totalPages - 1));
+        }
+      })
+      .catch(() => {
+        // Ошибка загрузки уже сохраняется в purchasesSlice.
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [
+    dispatch,
+    page,
+    pageSize,
+    debouncedSearchTerm,
+    filters,
+    sort,
+    purchasesVersion,
+    paymentsVersion,
+  ]);
 
   const handlePageChange = (_: any, value: number) => {
     setPage(value - 1);
@@ -232,9 +262,13 @@ export default function Purchases() {
     setPage(0);
   };
 
+  const hasPurchaseDiscount = (purchase: any) =>
+    purchase.purchaseItems?.some(
+      (item: any) => Number(item.discountAmount ?? 0) > 0,
+    ) ?? false;
+
   return (
     <Box sx={listPageStyle}>
-
       <Box sx={pageToolbarStyle}>
         <Box display="flex" gap={2}>
           <SearchBox
@@ -555,6 +589,12 @@ export default function Purchases() {
                                       Einzelpreis
                                     </TableCell>
 
+                                    {hasPurchaseDiscount(purchase) && (
+                                      <TableCell sx={fixedCellWidth(120)}>
+                                        Rabatt
+                                      </TableCell>
+                                    )}
+
                                     <TableCell sx={fixedCellWidth(100)}>
                                       Netto
                                     </TableCell>
@@ -599,6 +639,17 @@ export default function Purchases() {
                                         <TableCell sx={rightCellStyle}>
                                           {formatNumber(item.unitPrice)} €
                                         </TableCell>
+
+                                        {hasPurchaseDiscount(purchase) && (
+                                          <TableCell sx={rightCellStyle}>
+                                            {Number(item.discountAmount ?? 0) >
+                                            0
+                                              ? `${Math.round(Number(item.discount ?? 0))}% / ${formatNumber(
+                                                  item.discountAmount,
+                                                )} €`
+                                              : ""}
+                                          </TableCell>
+                                        )}
 
                                         <TableCell sx={rightCellStyle}>
                                           {formatNumber(item.totalPrice)} €

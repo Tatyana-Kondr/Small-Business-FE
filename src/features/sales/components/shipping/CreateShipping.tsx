@@ -1,64 +1,41 @@
-import React, { useEffect, useState } from "react";
-import {
-  TextField,
-  Button,
-  DialogTitle,
-  Dialog,
-  DialogContent,
-  DialogActions,
-} from "@mui/material";
+import { useEffect, useState } from "react";
+
+import { Button, TextField } from "@mui/material";
+
 import { useAppDispatch, useAppSelector } from "../../../../redux/hooks";
-import {  NewShippingDto } from "../../types";
+
+import { NewShippingDto } from "../../types";
+
+import { addShipping, selectLoading } from "../../shippingsSlice";
+
 import { showSuccessToast } from "../../../../utils/toast";
-import { handleApiError } from "../../../../utils/handleApiError";
-import { addShipping, getShippings } from "../../shippingsSlice";
+import { getApiErrorMessage } from "../../../../utils/errors/handleApiError";
+
+import { isBackendValidationErrors } from "../../../../utils/validation/validation";
+import { translateValidationMessage } from "../../../../utils/validation/validationMessages";
+
+import DraggableDialog from "../../../../components/DraggableDialog";
+import DialogTitleText from "../../../../components/DialogTitleText";
+
+import { primaryButtonStyle } from "../../../../styles/buttonStyles";
 
 interface CreateShippingModalProps {
   open: boolean;
   onClose: () => void;
 }
 
-export const CreateShipping: React.FC<CreateShippingModalProps> = ({ open, onClose }) => {
-  const dispatch = useAppDispatch();
-  const loading = useAppSelector((state) => state.shippings.loading);
+const initialFormState: NewShippingDto = {
+  name: "",
+};
 
-  const initialFormState: NewShippingDto = {
-    name: "",
-  };
+export function CreateShipping({ open, onClose }: CreateShippingModalProps) {
+  const dispatch = useAppDispatch();
+
+  const loading = useAppSelector(selectLoading);
 
   const [formData, setFormData] = useState<NewShippingDto>(initialFormState);
+
   const [error, setError] = useState("");
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-    if (error) setError("");
-  };
-
-  const handleSubmit = async () => {
-    if (!formData.name.trim()) {
-      setError("Bitte das Feld ausfüllen");
-      return;
-    }
-
-    try {
-      await dispatch(addShipping(formData)).unwrap();
-      dispatch(getShippings());
-      showSuccessToast("Erfolg", "Versandart wurde erfolgreich erstellt.");
-      handleClose();
-    } catch (err) {
-      handleApiError(err, "Fehler beim Erstellen eines Versandarts:");
-    }
-  };
-
-  const handleClose = () => {
-    onClose();
-    setFormData(initialFormState);
-    setError("");
-  };
 
   useEffect(() => {
     if (!open) {
@@ -67,38 +44,94 @@ export const CreateShipping: React.FC<CreateShippingModalProps> = ({ open, onClo
     }
   }, [open]);
 
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = event.target;
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+
+    setError("");
+  };
+
+  const handleClose = () => {
+    if (loading) return;
+
+    setError("");
+    onClose();
+  };
+
+  const handleSubmit = async () => {
+    if (loading) return;
+
+    const name = formData.name.trim();
+
+    // Проверка обязательного поля
+    if (!name) {
+      setError("Bitte das Feld ausfüllen.");
+      return;
+    }
+
+    setError("");
+
+    try {
+      await dispatch(addShipping({ name })).unwrap();
+
+      showSuccessToast("Erfolg", "Die Versandart wurde erfolgreich erstellt.");
+
+      handleClose();
+    } catch (error) {
+      // Ошибки Bean Validation от Backend
+      if (isBackendValidationErrors(error)) {
+        const nameError = error.errors.find(
+          (validationError) => validationError.field === "name",
+        );
+
+        if (nameError) {
+          setError(translateValidationMessage(nameError.message));
+          return;
+        }
+      }
+
+      // Ошибки бизнес-логики от Backend
+      setError(
+        getApiErrorMessage(error, "Fehler beim Erstellen der Versandart."),
+      );
+    }
+  };
+
   return (
-    <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
-      <DialogTitle sx={{ textAlign: "left", fontWeight: "bold", textDecoration: 'underline', color: "#0277bd" }}>Neuen Versandart anlegen</DialogTitle>
-      <DialogContent>
-        <TextField
-          id="name"
-          autoFocus
-          margin="normal"
-          fullWidth
-          label="Name"
-          name="name"
-          required
-          value={formData.name}
-          onChange={handleChange}
-          error={!!error}
-          helperText={error}
-          inputProps={{ 'aria-label': 'Name des Versandarts' }}
-        />
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={handleClose} disabled={loading}>
-          Abbrechen
-        </Button>
+    <DraggableDialog
+      open={open}
+      onClose={loading ? undefined : handleClose}
+      dialogWidth={500}
+      title={<DialogTitleText>Neue Versandart</DialogTitleText>}
+      actions={
         <Button
           onClick={handleSubmit}
-          color="primary"
           variant="contained"
           disabled={loading}
+          sx={primaryButtonStyle}
         >
-          Speichern
+          {loading ? "Speichern..." : "Speichern"}
         </Button>
-      </DialogActions>
-    </Dialog>
+      }
+    >
+      <TextField
+        id="name"
+        autoFocus
+        fullWidth
+        required
+        label="Name"
+        name="name"
+        value={formData.name}
+        onChange={handleChange}
+        error={Boolean(error)}
+        helperText={error}
+        disabled={loading}
+        sx={{ mt: 3 }}
+      />
+    </DraggableDialog>
   );
-};
+}

@@ -1,34 +1,34 @@
 
 export interface Product {
-  id: number
-  name: string
-  article: string
-  vendorArticle: string
-  purchasingPrice: number
-  markupPercentage: number
-  sellingPrice: number
-  unitOfMeasurement: UnitOfMeasurement
-  weight: number
-  newDimensions: Dimensions
-  productCategory: ProductCategory
-  description: string
-  customsNumber: string
-  createdDate: string
-  dateOfLastPurchase: string
-  lastModifiedDate: string
-  storageLocation: string
-   hasPhoto?: boolean;
-  quantity?: number;
+  id: number;
+  name: string;
+  article: string;
+  vendorArticle: string | null;
+  purchasingPrice: number | null;
+  markupPercentage: number | null;
+  sellingPrice: number | null;
+  unitOfMeasurement: UnitOfMeasurement;
+  weight: number | null;
+  newDimensions: Dimensions | null;
+  productCategory: ProductCategory;
+  description: string | null;
+  customsNumber: string | null;
+  createdDate: string;
+  dateOfLastPurchase: string | null;
+  lastModifiedDate: string | null;
+  storageLocation: string | null;
+  hasPhoto: boolean;
+  quantity: number;
 }
 
 export interface ProductPickDto {
-  id: number
-  name: string
-  article: string
-  vendorArticle: string
-  purchasingPrice: number
-  sellingPrice: number
-  categoryId: number
+  id: number;
+  name: string;
+  article: string;
+  vendorArticle: string | null;
+  purchasingPrice: number | null;
+  sellingPrice: number | null;
+  categoryId: number;
 }
 
 export interface ProductCategory {
@@ -38,10 +38,10 @@ export interface ProductCategory {
 }
 
 export interface Dimensions {
-  height: number;
-  length: number;
-  width: number;
-  diameter: number;
+  width?: number;
+  height?: number;
+  length?: number;
+  diameter?: number;
 }
 
 export interface ProductFile {
@@ -65,14 +65,17 @@ export interface NewProductCategoryDto {
 
 export interface NewProductDto {
   name: string;
-  vendorArticle: string
-  purchasingPrice: number
-  markupPercentage: number
-  sellingPrice: number
-  productCategory: ProductCategory
-  unitOfMeasurementId?: number
-  unitOfMeasurement?: UnitOfMeasurement
-  storageLocation?: string
+  vendorArticle: string;
+  purchasingPrice: number | null;
+  markupPercentage: number | null;
+  sellingPrice: number | null;
+  productCategoryId: number;
+  unitOfMeasurementId: number;
+  storageLocation?: string;
+}
+
+export interface UpdateProductArticleDto{
+  article: string;
 }
 
 export interface NewUnitOfMeasurementDto {
@@ -80,27 +83,23 @@ export interface NewUnitOfMeasurementDto {
 }
 
 export interface UpdateProductDto {
-  name?: string;
-  article?: string;
+  name: string;
+  article: string;
   vendorArticle?: string;
-  purchasingPrice?: number;
-  markupPercentage?: number;
-  sellingPrice?: number;
-  unitOfMeasurementId?: number;
-  unitOfMeasurement?: UnitOfMeasurement;
+  purchasingPrice: number | null;
+  markupPercentage: number | null;
+  sellingPrice: number | null;
+  unitOfMeasurementId: number;
   weight?: number;
   newDimensions?: Dimensions;
-  productCategory?: ProductCategory;
+  productCategoryId: number;
   description?: string;
-  storageLocation?: string
   customsNumber?: string;
-  // Добавляем индексную сигнатуру
-  [key: string]: string | number | Dimensions | ProductCategory | UnitOfMeasurement | undefined;
+  storageLocation?: string;
 }
 
 export interface ProductsState {
   productsPaged: Product[];
-  productsAll: Product[],
   selectedProduct: Product | undefined;
   pickProducts: ProductPickDto[];
   pickLoading: boolean;
@@ -117,7 +116,9 @@ export interface ProductsState {
 
 export interface ProductCategoriesState {
   productCategoriesList: ProductCategory[];
-  selectedProductCategory: ProductCategory | undefined;
+  selectedProductCategory?: ProductCategory;
+  loading: boolean;
+  error: string | null;
 }
 
 export interface ProductFilesState {

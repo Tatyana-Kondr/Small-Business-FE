@@ -1,6 +1,6 @@
-import type { Action, ThunkAction } from "@reduxjs/toolkit"
-import { combineSlices, configureStore } from "@reduxjs/toolkit"
-import { setupListeners } from "@reduxjs/toolkit/query"
+import type { Action, ThunkAction } from "@reduxjs/toolkit";
+import { combineSlices, configureStore } from "@reduxjs/toolkit";
+import { setupListeners } from "@reduxjs/toolkit/query";
 import { productsSlice } from "../features/products/productsSlice";
 import { authSlice } from "../features/auth/authSlice";
 import { customersSlice } from "../features/customers/customersSlice";
@@ -21,51 +21,55 @@ import { warehouseSlice } from "../features/warehouse/warehouseSlice";
 import { termOfPaymentSlice } from "../features/sales/termOfPaymentSlice";
 import { salesReportSlice } from "../features/reports/salesReportSlice";
 import { purchaseDocumentsSlice } from "../features/purchases/purchaseDocumentsSlice";
+import { taxRatesSlice } from "../features/sales/taxRatesSlice";
+import { discountRatesSlice } from "../features/sales/discountRatesSlice";
 
+const rootReducer = combineSlices(
+  productsSlice,
+  authSlice,
+  customersSlice,
+  productCategoriesSlice,
+  productFilesSlice,
+  purchasesSlice,
+  salesSlice,
+  paymentsSlice,
+  paymentMethodsSlice,
+  paymentProcessesSlice,
+  shippingsSlice,
+  companiesSlice,
+  productionsSlice,
+  unitsOfMeasurementSlice,
+  typeOfDocumentSlice,
+  warehouseSlice,
+  termOfPaymentSlice,
+  modalSlice,
+  salesReportSlice,
+  purchaseDocumentsSlice,
+  taxRatesSlice,
+  discountRatesSlice,
+);
 
-const rootReducer = combineSlices(productsSlice, 
-                                  authSlice,
-                                  customersSlice, 
-                                  productCategoriesSlice,       
-                                  productFilesSlice, 
-                                  purchasesSlice, 
-                                  salesSlice,
-                                  paymentsSlice,
-                                  paymentMethodsSlice,
-                                  paymentProcessesSlice,
-                                  shippingsSlice,
-                                  companiesSlice,
-                                  productionsSlice,
-                                  unitsOfMeasurementSlice,
-                                  typeOfDocumentSlice,
-                                  warehouseSlice,
-                                  termOfPaymentSlice,
-                                  modalSlice,
-                                  salesReportSlice,
-                                  purchaseDocumentsSlice,
-)
-
-// TypeScript-оператор, который позволяет получить тип возвращаемого значения функции. 
-// В данном случае, typeof rootReducer даёт тип самой функции редьюсера, 
-// а ReturnType извлекает тип того, что эта функция возвращает 
+// TypeScript-оператор, который позволяет получить тип возвращаемого значения функции.
+// В данном случае, typeof rootReducer даёт тип самой функции редьюсера,
+// а ReturnType извлекает тип того, что эта функция возвращает
 // (то есть тип состояния, которое хранит Redux Store)
 export type RootState = ReturnType<typeof rootReducer>;
 
-// makeStore упрощает настройку Store и подключение middleware для работы с API, 
+// makeStore упрощает настройку Store и подключение middleware для работы с API,
 // что ускоряет разработку и поддержание приложения.
 export const makeStore = (preloadedState?: Partial<RootState>) => {
   const store = configureStore({
     reducer: rootReducer,
     // Добавление промежуточного программного обеспечения api позволяет выполнять кэширование,
     //  аннулирование, опрос и другие полезные функции "rtk-запроса".
-   middleware: (getDefaultMiddleware) =>
+    middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({
         serializableCheck: {
-          
-          ignoredPaths: ["modal.props", "meta.arg.file"],
-          ignoredActionPaths: ["payload.props"],
+          ignoredPaths: ["modal.props"],
 
-          // игнорируем экшены загрузки файла
+          ignoredActionPaths: ["payload.props", "meta.arg.file"],
+
+          // игнорируем экшены загрузки файла продукта
           ignoredActions: [
             "productFiles/uploadProductFile/pending",
             "productFiles/uploadProductFile/fulfilled",
@@ -78,14 +82,19 @@ export const makeStore = (preloadedState?: Partial<RootState>) => {
 
   // configure listeners using the provided defaults
   // optional, but required for `refetchOnFocus`/`refetchOnReconnect` behaviors
-  setupListeners(store.dispatch)
-  return store
-}
+  setupListeners(store.dispatch);
+  return store;
+};
 
-export const store = makeStore()
+export const store = makeStore();
 
 // Infer the type of `store`
-export type AppStore = typeof store
+export type AppStore = typeof store;
 // Infer the `AppDispatch` type from the store itself
-export type AppDispatch = AppStore["dispatch"]
-export type AppThunk<ThunkReturnType = void> = ThunkAction<ThunkReturnType, RootState, unknown, Action>
+export type AppDispatch = AppStore["dispatch"];
+export type AppThunk<ThunkReturnType = void> = ThunkAction<
+  ThunkReturnType,
+  RootState,
+  unknown,
+  Action
+>;

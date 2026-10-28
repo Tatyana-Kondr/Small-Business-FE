@@ -8,7 +8,7 @@ import {
   selectStatus,
 } from "../features/auth/authSlice";
 import { AuthRequestDto } from "../features/auth/types";
-import { errorMap } from "../utils/handleApiError";
+
 import {
   loginButtonStyle,
   loginCardStyle,
@@ -16,6 +16,7 @@ import {
   loginPageStyle,
   loginTitleStyle,
 } from "../styles/loginStyles";
+import { errorMap } from "../utils/errors/errorMap";
 
 const LoginForm: React.FC = () => {
   const dispatch = useAppDispatch();

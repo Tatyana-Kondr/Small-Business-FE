@@ -1,109 +1,170 @@
-import { Box, Button, Container, Paper, styled, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from "@mui/material";
+import {
+  Box,
+  Button,
+  Container,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableRow,
+} from "@mui/material";
+
 import { useEffect, useState } from "react";
+
 import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
-import { getDocumentTypes, selectTypeOfDocuments } from "../typeOfDocumentSlice";
+
+import {
+  getDocumentTypes,
+  selectTypeOfDocuments,
+} from "../typeOfDocumentSlice";
+
 import { TypeOfDocument } from "../types";
+
 import DeleteDocumentType from "./DeleteDocumentType";
 import { CreateDocumentType } from "./CreateDocumentType";
 import EditDocumentType from "./EditDocumentType";
 
+import {
+  cellStyle,
+  centerCellStyle,
+  compactTableContainerStyle,
+  compactTableStyle,
+  fixedCellWidth,
+  leftBorderCellStyle,
+  StyledTableHead,
+  tableRowHoverStyle,
+} from "../../../styles/tableStyles";
 
-const StyledTableHead = styled(TableHead)(({
-    backgroundColor: "#1a3d6d",
-    "& th": {
-        color: "white",
-        fontWeight: "bold",
-        borderRight: "1px solid #ddd",
-        textAlign: "center"
-    },
-}));
-const StyledTableRow = styled(TableRow)({
-    backgroundColor: "#ffffff",
-    "&:hover": {
-        backgroundColor: "#f5f5f5", // Подсветка строки при наведении
-        cursor: "pointer",
-    },
-});
+import {
+  outlinedButtonStyle,
+  primaryButtonStyle,
+} from "../../../styles/buttonStyles";
+
+import { compactPageToolbarStyle } from "../../../styles/formStyles";
 
 export default function DocumentTypesList() {
-    const dispatch = useAppDispatch();
-    const types = useAppSelector(selectTypeOfDocuments);
-    const [selectedType, setSelectedType] = useState<TypeOfDocument | null>(null);
-    const [openModal, setOpenModal] = useState(false);
-    const [editOpen, setEditOpen] = useState(false);
+  const dispatch = useAppDispatch();
 
-    useEffect(() => {
-        dispatch(getDocumentTypes());
-    }, [dispatch]);
+  const types = useAppSelector(selectTypeOfDocuments);
 
-    const handleEdit = (type: TypeOfDocument) => {
-        setSelectedType(type);
-        setEditOpen(true);
-    };
+  const [selectedType, setSelectedType] = useState<TypeOfDocument | null>(null);
 
-    return (
-       <Container>
-            {/* Верхняя панель */}
-            <Box display="flex" justifyContent="flex-end" alignItems="center" mb={2}>                            
-                <Button variant="contained" color="primary" onClick={() => setOpenModal(true)}>
-                    Neuen Dokumenttyp anlegen
-                </Button>
-            </Box>
+  const [openModal, setOpenModal] = useState(false);
 
-            {/* Таблица */}
-            <TableContainer component={Paper} sx={{ boxShadow: "none" }}>
-                <Table>
-                    <StyledTableHead>
-                        <TableRow>
-                            <TableCell>ID</TableCell>
-                            <TableCell>Name</TableCell>
-                            <TableCell></TableCell>
-                        </TableRow>
-                    </StyledTableHead>
-                    <TableBody>
-                        {types.length > 0 ? (
-                            types.map((type) => (
-                                <StyledTableRow key={type.id}>
-                                    <TableCell style={{ padding: "6px 12px", borderRight: "1px solid #ddd", borderLeft: "1px solid #ddd" }}>{type.id}</TableCell>
-                                    <TableCell sx={{ width: "400px", padding: "6px 12px", borderRight: "1px solid #ddd" }}>{type.name}</TableCell>
-                                    <TableCell sx={{ width: "200px", padding: "6px", borderRight: "1px solid #ddd" }}>
-                                        <Box display="flex" justifyContent="space-between" gap={1}>
-                                            <Button
-                                                variant="outlined"
-                                                color="primary"
-                                                size="small"
-                                                onClick={() => handleEdit(type)}
-                                                sx={{ minWidth: "100px", "&:hover": { borderColor: "#00acc1" } }}
-                                            >
-                                                Bearbeiten
-                                            </Button>
+  const [editOpen, setEditOpen] = useState(false);
 
-                                            <Box sx={{ minWidth: "80px" }}>
-                                                <DeleteDocumentType
-                                                    typeId={type.id}
-                                                    name={type.name}
-                                                />
-                                            </Box>
-                                        </Box>
-                                    </TableCell>
+  useEffect(() => {
+    dispatch(getDocumentTypes());
+  }, [dispatch]);
 
-                                </StyledTableRow>
-                            ))
-                        ) : (
-                            <TableRow>
-                                <TableCell colSpan={4} align="center">Keine Dokumenttypen vorhanden</TableCell>
-                            </TableRow>
-                        )}
-                    </TableBody>
-                </Table>
-            </TableContainer>
-            <CreateDocumentType open={openModal} onClose={() => setOpenModal(false)} />
+  const handleEdit = (type: TypeOfDocument) => {
+    setSelectedType(type);
+    setEditOpen(true);
+  };
 
-            <EditDocumentType
-                open={editOpen}
-                onClose={() => setEditOpen(false)}
-                type={selectedType}
-            />
-        </Container>
-    );
+  const tableWidth = 800;
+
+  return (
+    <Container>
+      <Box sx={compactPageToolbarStyle(tableWidth)}>
+        <Button
+          variant="contained"
+          onClick={() => setOpenModal(true)}
+          sx={{
+            ...primaryButtonStyle,
+            ml: "auto",
+          }}
+        >
+          Neuen Dokumenttyp anlegen
+        </Button>
+      </Box>
+
+      <TableContainer
+        component={Paper}
+        sx={compactTableContainerStyle(tableWidth)}
+      >
+        <Table sx={compactTableStyle(tableWidth)}>
+          <StyledTableHead>
+            <TableRow>
+              <TableCell sx={fixedCellWidth(80)}>ID</TableCell>
+
+              <TableCell>Name</TableCell>
+
+              <TableCell sx={fixedCellWidth(250)}>Aktionen</TableCell>
+            </TableRow>
+          </StyledTableHead>
+
+          <TableBody>
+            {types.length > 0 ? (
+              types.map((type) => (
+                <TableRow key={type.id} sx={tableRowHoverStyle}>
+                  <TableCell
+                    sx={{
+                      ...centerCellStyle,
+                      ...leftBorderCellStyle,
+                      ...fixedCellWidth(80),
+                    }}
+                  >
+                    {type.id}
+                  </TableCell>
+
+                  <TableCell sx={cellStyle}>{type.name}</TableCell>
+
+                  <TableCell
+                    sx={{
+                      ...cellStyle,
+                      ...fixedCellWidth(250),
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        gap: 1,
+                      }}
+                    >
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() => handleEdit(type)}
+                        sx={{
+                          ...outlinedButtonStyle,
+                          minWidth: 110,
+                        }}
+                      >
+                        Bearbeiten
+                      </Button>
+
+                      <Box>
+                        <DeleteDocumentType typeId={type.id} name={type.name} />
+                      </Box>
+                    </Box>
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={3} align="center" sx={cellStyle}>
+                  Keine Dokumenttypen vorhanden
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
+
+      <CreateDocumentType
+        open={openModal}
+        onClose={() => setOpenModal(false)}
+      />
+
+      <EditDocumentType
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        type={selectedType}
+      />
+    </Container>
+  );
 }

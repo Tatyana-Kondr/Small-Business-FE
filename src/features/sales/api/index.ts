@@ -1,5 +1,5 @@
 import { apiFetch } from "../../../utils/apiFetch";
-import { NewSaleDto, NewShippingDto, NewTermOfPaymentDto, PaginatedResponse, Sale, Shipping, TermOfPayment } from "../types";
+import { DiscountRate, NewDiscountRateDto, NewSaleDto, NewShippingDto, NewTaxRateDto, NewTermOfPaymentDto, PaginatedResponse, Sale, Shipping, TaxRate, TermOfPayment } from "../types";
 
 export async function fetchSales(
  page: number,
@@ -127,60 +127,64 @@ export async function fetchUpdateSalePaymentStatus(id: number): Promise<Sale> {
    );
  }
 
+ 
  // === Shipping ===
- 
- export async function fetchAllShippings(): Promise<Shipping[]> {
-   return apiFetch<Shipping[]>(
-     `/api/shippings`,
-     {auth: true},
-     "Fehler beim Laden der Versand."
-   );
- }
- 
- export async function fetchShippingById(id: number): Promise<Shipping> {
-   return apiFetch<Shipping>(
-     `/api/shippings/${id}`,
-     {auth: true},
-     "Fehler beim Laden des Versands."
-   );
- }
- 
- export async function fetchCreateShipping(data: NewShippingDto): Promise<Shipping> {
-   return apiFetch<Shipping>(
-     `/api/shippings`,
-     {
-       method: "POST",
-       headers: { "Content-Type": "application/json" },
-       body: JSON.stringify(data),
-       auth: true, 
-     },
-     "Fehler beim Erstellen des Versands."
-   );
- }
- 
- export async function fetchUpdateShipping(
-   id: number,
-   data: NewShippingDto
- ): Promise<Shipping> {
-   return apiFetch<Shipping>(
-     `/api/shippings/${id}`,
-     {
-       method: "PUT",
-       headers: { "Content-Type": "application/json" },
-       body: JSON.stringify(data),
-       auth: true,
-     },
-     "Fehler beim Aktualisieren des Versands."
-   );
- }
- 
- export async function fetchDeleteShipping(id: number): Promise<void> {
-   await apiFetch<void>(
-     `/api/shippings/${id}`,
-     { method: "DELETE", auth: true },
-     "Fehler beim Löschen des Versands."
-   );
- }
+
+export async function fetchAllShippings(): Promise<Shipping[]> {
+  return apiFetch<Shipping[]>(
+    "/api/shippings",
+    { auth: true },
+    "Beim Laden der Versandarten ist ein Fehler aufgetreten.",
+  );
+}
+
+export async function fetchShippingById(id: number): Promise<Shipping> {
+  return apiFetch<Shipping>(
+    `/api/shippings/${id}`,
+    { auth: true },
+    "Beim Laden der Versandart ist ein Fehler aufgetreten.",
+  );
+}
+
+export async function fetchCreateShipping(
+  data: NewShippingDto,
+): Promise<Shipping> {
+  return apiFetch<Shipping>(
+    "/api/shippings",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+      auth: true,
+    },
+    "Beim Erstellen der Versandart ist ein Fehler aufgetreten.",
+  );
+}
+
+export async function fetchUpdateShipping(
+  id: number,
+  data: NewShippingDto,
+): Promise<Shipping> {
+  return apiFetch<Shipping>(
+    `/api/shippings/${id}`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+      auth: true,
+    },
+    "Beim Aktualisieren der Versandart ist ein Fehler aufgetreten.",
+  );
+}
+
+export async function fetchDeleteShipping(id: number): Promise<void> {
+  await apiFetch<void>(
+    `/api/shippings/${id}`,
+    { method: "DELETE", auth: true },
+    "Beim Löschen der Versandart ist ein Fehler aufgetreten.",
+  );
+}
+
 
  // === Term of payment ===
 
@@ -236,3 +240,135 @@ export async function fetchUpdateSalePaymentStatus(id: number): Promise<Sale> {
       "Beim Löschen der Zahlungsbedingung ist ein Fehler aufgetreten."
     );
   }
+
+  // === Tax Rates ===
+
+export async function fetchAllTaxRates(): Promise<TaxRate[]> {
+  return apiFetch<TaxRate[]>(
+    `/api/tax-rates`,
+    { auth: true },
+    "Fehler beim Laden der Steuersätze."
+  );
+}
+
+export async function fetchActiveTaxRates(): Promise<TaxRate[]> {
+  return apiFetch<TaxRate[]>(
+    `/api/tax-rates/active`,
+    { auth: true },
+    "Fehler beim Laden der aktiven Steuersätze."
+  );
+}
+
+export async function fetchDefaultTaxRate(): Promise<TaxRate> {
+  return apiFetch<TaxRate>(
+    `/api/tax-rates/default`,
+    { auth: true },
+    "Fehler beim Laden des Standard-Steuersatzes."
+  );
+}
+
+export async function fetchCreateTaxRate(
+  data: NewTaxRateDto
+): Promise<TaxRate> {
+  return apiFetch<TaxRate>(
+    `/api/tax-rates`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+      auth: true,
+    },
+    "Fehler beim Erstellen des Steuersatzes."
+  );
+}
+
+export async function fetchUpdateTaxRate(
+  id: number,
+  data: NewTaxRateDto
+): Promise<TaxRate> {
+  return apiFetch<TaxRate>(
+    `/api/tax-rates/${id}`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+      auth: true,
+    },
+    "Fehler beim Aktualisieren des Steuersatzes."
+  );
+}
+
+export async function fetchDeleteTaxRate(
+  id: number
+): Promise<void> {
+  await apiFetch<void>(
+    `/api/tax-rates/${id}`,
+    {
+      method: "DELETE",
+      auth: true,
+    },
+    "Fehler beim Löschen des Steuersatzes."
+  );
+}
+
+// === Discount Rates ===
+
+export async function fetchAllDiscountRates(): Promise<DiscountRate[]> {
+  return apiFetch<DiscountRate[]>(
+    `/api/discount-rates`,
+    { auth: true },
+    "Beim Laden der Rabattsätze ist ein Fehler aufgetreten."
+  );
+}
+
+export async function fetchActiveDiscountRates(): Promise<DiscountRate[]> {
+  return apiFetch<DiscountRate[]>(
+    `/api/discount-rates/active`,
+    { auth: true },
+    "Beim Laden der aktiven Rabattsätze ist ein Fehler aufgetreten."
+  );
+}
+
+export async function fetchCreateDiscountRate(
+  data: NewDiscountRateDto
+): Promise<DiscountRate> {
+  return apiFetch<DiscountRate>(
+    `/api/discount-rates`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+      auth: true,
+    },
+    "Beim Erstellen des Rabattsatzes ist ein Fehler aufgetreten."
+  );
+}
+
+export async function fetchUpdateDiscountRate(
+  id: number,
+  data: NewDiscountRateDto
+): Promise<DiscountRate> {
+  return apiFetch<DiscountRate>(
+    `/api/discount-rates/${id}`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+      auth: true,
+    },
+    "Beim Aktualisieren des Rabattsatzes ist ein Fehler aufgetreten."
+  );
+}
+
+export async function fetchDeleteDiscountRate(
+  id: number
+): Promise<void> {
+  await apiFetch<void>(
+    `/api/discount-rates/${id}`,
+    {
+      method: "DELETE",
+      auth: true,
+    },
+    "Beim Löschen des Rabattsatzes ist ein Fehler aufgetreten."
+  );
+}

@@ -1,22 +1,68 @@
-import { Alert, Box, Button, CircularProgress, TextField, Typography } from "@mui/material";
-import { NewCompanyDto } from "../types";
-import { selectCompany, selectError, selectLoading, updateCompany, updateCompanyLogo } from "../companiesSlice";
+import {
+  Alert,
+  Box,
+  Button,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  Divider,
+  Paper,
+  TextField,
+  Typography,
+} from "@mui/material";
+
 import { useRef, useState } from "react";
-import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
+
 import { ErrorMessage, Field, Form, Formik } from "formik";
-import { companyValidationSchema } from "../../../utils/companyValidationSchema";
+
+import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
+
+import {
+  selectCompany,
+  selectError,
+  selectLoading,
+  updateCompany,
+  updateCompanyLogo,
+} from "../companiesSlice";
+
+import { NewCompanyDto } from "../types";
+
+import { companyValidationSchema } from "../../../utils/validation/companyValidationSchema";
+
+import PageTitle from "../../../components/PageTitle";
+
+import {
+  cancelButtonStyle,
+  primaryButtonStyle,
+} from "../../../styles/buttonStyles";
+import { sectionTitleStyle } from "../../../styles/typographyStyles";
 
 export default function CompanyCard() {
   const dispatch = useAppDispatch();
+
   const company = useAppSelector(selectCompany);
   const loading = useAppSelector(selectLoading);
   const error = useAppSelector(selectError);
 
   const [editing, setEditing] = useState(false);
   const [uploading, setUploading] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  if (loading) return <CircularProgress />;
+  if (loading && !company) {
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          py: 4,
+        }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   if (!company) {
     return (
@@ -39,159 +85,181 @@ export default function CompanyCard() {
 
   const handleSubmit = async (values: NewCompanyDto) => {
     try {
-      await dispatch(updateCompany({ id: company.id, data: values })).unwrap();
+      await dispatch(
+        updateCompany({
+          id: company.id,
+          data: values,
+        }),
+      ).unwrap();
+
       setEditing(false);
-    } catch (err: any) {
-      console.error(err.message || "Fehler beim Speichern");
+    } catch (error) {
+      console.error(error);
     }
   };
 
   const handleFileChange = async (
-    event: React.ChangeEvent<HTMLInputElement>
+    event: React.ChangeEvent<HTMLInputElement>,
   ) => {
-    if (event.target.files && event.target.files[0]) {
-      const file = event.target.files[0];
-      setUploading(true);
+    const file = event.target.files?.[0];
 
-      try {
-        const formData = new FormData();
-        formData.append("file", file);
+    if (!file) {
+      return;
+    }
 
-        await dispatch(updateCompanyLogo({ id: company.id, formData })).unwrap();
-      } catch (err: any) {
-        console.error("Fehler beim Hochladen des Logos:", err.message);
-      } finally {
-        setUploading(false);
-        event.target.value = ""; // чтобы можно было выбрать тот же файл ещё раз
-      }
+    setUploading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      await dispatch(
+        updateCompanyLogo({
+          id: company.id,
+          formData,
+        }),
+      ).unwrap();
+    } catch (error) {
+      console.error("Fehler beim Hochladen des Logos:", error);
+    } finally {
+      setUploading(false);
+      event.target.value = "";
     }
   };
 
   return (
-    <Box sx={{ maxWidth: 800, p: 3, border: "1px solid #ccc", borderRadius: 2 }}>
-      {editing ? (
-        <Formik
-          initialValues={initialValues}
-          validationSchema={companyValidationSchema}
-          onSubmit={handleSubmit}
+    <>
+      <Paper
+        variant="outlined"
+        sx={{
+          maxWidth: 900,
+          mx: "auto",
+          p: 3,
+          borderRadius: 2,
+          boxShadow: "none",
+        }}
+      >
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            gap: 4,
+          }}
         >
-          {({ isSubmitting }) => (
-            <Form>
-              <Typography variant="h6" gutterBottom>
-                Unternehmen bearbeiten
-              </Typography>
-
-              {error && <Alert severity="error">{error}</Alert>}
-
-              {[
-                "name",
-                "address",
-                "phone",
-                "email",
-                "bank",
-                "ibanNumber",
-                "bicNumber",
-                "vatId",
-              ].map((field) => (
-                <Box key={field} mb={1}>
-                  <Field
-                    as={TextField}
-                    label={field.charAt(0).toUpperCase() + field.slice(1)}
-                    name={field}
-                    fullWidth
-                    margin="normal"
-                  />
-                  <ErrorMessage
-                    name={field}
-                    render={(msg) => (
-                      <div style={{ color: "red", fontSize: 12 }}>{msg}</div>
-                    )}
-                  />
-                </Box>
-              ))}
-
-              <Box display="flex" justifyContent="flex-end" gap={1} mt={2}>
-                <Button variant="outlined" onClick={() => setEditing(false)}>
-                  Abbrechen
-                </Button>
-                <Button type="submit" variant="contained" disabled={isSubmitting}>
-                  Speichern
-                </Button>
-              </Box>
-            </Form>
-          )}
-        </Formik>
-      ) : (
-        <Box display="flex" justifyContent="space-between" alignItems="flex-start" gap={3}>
-          {/* Левая колонка с данными */}
-          <Box flex={1} sx={{ textAlign: "left" }}>
-            <Typography variant="subtitle1">
-              <strong>Name:</strong> {company.name}
-            </Typography>
-            <Typography variant="subtitle1">
-              <strong>Adresse:</strong> {company.address}
-            </Typography>
-            <Typography variant="subtitle1">
-              <strong>Telefon:</strong> {company.phone}
-            </Typography>
-            <Typography variant="subtitle1">
-              <strong>E-Mail:</strong> {company.email}
-            </Typography>
-            <Typography variant="subtitle1">
-              <strong>Bank:</strong> {company.bank}
-            </Typography>
-            <Typography variant="subtitle1">
-              <strong>IBAN:</strong> {company.ibanNumber}
-            </Typography>
-            <Typography variant="subtitle1">
-              <strong>BIC:</strong> {company.bicNumber}
-            </Typography>
-            <Typography variant="subtitle1">
-              <strong>USt-IdNr.:</strong> {company.vatId}
+          {/* Левая часть */}
+          <Box
+            sx={{
+              flex: 1,
+              minWidth: 0,
+            }}
+          >
+            {/* Unternehmensdaten */}
+            <Typography variant="subtitle1" sx={sectionTitleStyle}>
+              Unternehmensdaten
             </Typography>
 
-            <Button
-              sx={{ mt: 2 }}
-              variant="contained"
-              onClick={() => setEditing(true)}
+            <InfoRow label="Name" value={company.name} />
+
+            <InfoRow label="Adresse" value={company.address} />
+
+            <Divider sx={{ my: 2 }} />
+
+            {/* Kontakt */}
+            <Typography variant="subtitle1" sx={sectionTitleStyle}>
+              Kontaktdaten
+            </Typography>
+
+            <InfoRow label="Telefon" value={company.phone} />
+
+            <InfoRow label="E-Mail" value={company.email} />
+
+            <Divider sx={{ my: 2 }} />
+
+            {/* Bank */}
+            <Typography variant="subtitle1" sx={sectionTitleStyle}>
+              Bankverbindung
+            </Typography>
+
+            <InfoRow label="Bank" value={company.bank} />
+
+            <InfoRow label="IBAN" value={company.ibanNumber} />
+
+            <InfoRow label="BIC" value={company.bicNumber} />
+
+            <InfoRow label="USt-IdNr." value={company.vatId} />
+
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "flex-start",
+                mt: 3,
+              }}
             >
-              Bearbeiten
-            </Button>
+              <Button
+                variant="contained"
+                onClick={() => setEditing(true)}
+                sx={{
+                  ...primaryButtonStyle,
+                  minWidth: 250,
+                }}
+              >
+                Bearbeiten
+              </Button>
+            </Box>
           </Box>
 
-          {/* Правая колонка с логотипом */}
-          <Box display="flex" flexDirection="column" alignItems="center" gap={1}>
+          {/* Правая часть с логотипом */}
+          <Box
+            sx={{
+              width: 240,
+              flexShrink: 0,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 1,
+            }}
+          >
             {company.logoUrl ? (
-              <img
+              <Box
+                component="img"
                 src={`${import.meta.env.VITE_API_URL}${company.logoUrl}`}
-                alt="Company Logo"
-                style={{
-                  width: 150,
-                  height: 120,
+                alt="Firmenlogo"
+                sx={{
+                  width: 210,
+                  height: 150,
                   objectFit: "contain",
-                  border: "1px solid #ccc",
-                  borderRadius: 8,
+                  border: "1px solid",
+                  borderColor: "divider",
+                  borderRadius: 2,
+                  p: 1,
                 }}
               />
             ) : (
               <Box
                 sx={{
-                  width: 150,
-                  height: 120,
+                  width: 210,
+                  height: 150,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  border: "1px dashed #ccc",
-                  borderRadius: 8,
+                  border: "1px dashed",
+                  borderColor: "divider",
+                  borderRadius: 2,
                 }}
               >
-                <Typography variant="caption" color="textSecondary">
+                <Typography variant="caption" color="text.secondary">
                   Kein Logo
                 </Typography>
               </Box>
             )}
 
-            {/* Скрытый input */}
             <input
               ref={fileInputRef}
               type="file"
@@ -200,25 +268,178 @@ export default function CompanyCard() {
               onChange={handleFileChange}
             />
 
-            {/* Текст-ссылка */}
-            <Typography
-              variant="body2"
-              sx={{
-                color: "primary.main",
-                cursor: uploading ? "default" : "pointer",
-                "&:hover": !uploading
-                  ? { textDecoration: "underline", color: "primary.dark" }
-                  : {},
-                opacity: uploading ? 0.6 : 1,
-                mt: 1,
-              }}
-              onClick={() => !uploading && fileInputRef.current?.click()}
+            <Button
+              variant="text"
+              size="small"
+              disabled={uploading}
+              onClick={() => fileInputRef.current?.click()}
             >
-              {uploading ? "Hochladen..." : "Neues Logo hochladen"}
-            </Typography>
+              {uploading ? "Hochladen..." : "Logo ändern"}
+            </Button>
           </Box>
         </Box>
-      )}
+      </Paper>
+
+      {/* Dialog редактирования */}
+      <Dialog
+        open={editing}
+        onClose={loading ? undefined : () => setEditing(false)}
+        fullWidth
+        maxWidth="md"
+      >
+        <Formik
+          initialValues={initialValues}
+          validationSchema={companyValidationSchema}
+          enableReinitialize
+          onSubmit={handleSubmit}
+        >
+          {({ isSubmitting }) => (
+            <Form>
+              <DialogContent>
+                <PageTitle>Unternehmen bearbeiten</PageTitle>
+
+                {error && (
+                  <Alert severity="error" sx={{ mb: 2 }}>
+                    {error}
+                  </Alert>
+                )}
+
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: {
+                      xs: "1fr",
+                      md: "1fr 1fr",
+                    },
+                    gap: 2,
+                    mt: 4,
+                  }}
+                >
+                  <CompanyField name="name" label="Name" />
+
+                  <CompanyField name="address" label="Adresse" />
+
+                  <CompanyField name="phone" label="Telefon" />
+
+                  <CompanyField name="email" label="E-Mail" type="email" />
+
+                  <CompanyField name="bank" label="Bank" />
+
+                  <CompanyField name="ibanNumber" label="IBAN" />
+
+                  <CompanyField name="bicNumber" label="BIC" />
+
+                  <CompanyField name="vatId" label="USt-IdNr." />
+                </Box>
+              </DialogContent>
+
+              <DialogActions
+                sx={{
+                  px: 3,
+                  pb: 3,
+                  justifyContent: "space-between",
+                }}
+              >
+                <Button
+                  variant="outlined"
+                  onClick={() => setEditing(false)}
+                  disabled={isSubmitting || loading}
+                  sx={cancelButtonStyle}
+                >
+                  Abbrechen
+                </Button>
+
+                <Button
+                  type="submit"
+                  variant="contained"
+                  disabled={isSubmitting || loading}
+                  sx={primaryButtonStyle}
+                >
+                  {isSubmitting || loading ? "Speichern..." : "Speichern"}
+                </Button>
+              </DialogActions>
+            </Form>
+          )}
+        </Formik>
+      </Dialog>
+    </>
+  );
+}
+
+interface InfoRowProps {
+  label: string;
+  value?: string | null;
+}
+
+function InfoRow({ label, value }: InfoRowProps) {
+  return (
+    <Box
+      sx={{
+        display: "grid",
+        gridTemplateColumns: "110px auto",
+        justifyContent: "start",
+        alignItems: "baseline",
+        columnGap: 2,
+        py: 0.35,
+      }}
+    >
+      <Typography
+        variant="body2"
+        sx={{
+          fontWeight: 700,
+          textAlign: "left",
+        }}
+      >
+        {label}:
+      </Typography>
+
+      <Typography
+        variant="body2"
+        sx={{
+          textAlign: "left",
+          wordBreak: "break-word",
+        }}
+      >
+        {value || "—"}
+      </Typography>
+    </Box>
+  );
+}
+
+interface CompanyFieldProps {
+  name: keyof NewCompanyDto;
+  label: string;
+  type?: string;
+}
+
+function CompanyField({ name, label, type = "text" }: CompanyFieldProps) {
+  return (
+    <Box>
+      <Field
+        as={TextField}
+        name={name}
+        label={label}
+        type={type}
+        fullWidth
+        size="small"
+      />
+
+      <ErrorMessage
+        name={name}
+        render={(message) => (
+          <Typography
+            variant="caption"
+            color="error"
+            sx={{
+              display: "block",
+              mt: 0.5,
+              ml: 1.5,
+            }}
+          >
+            {message}
+          </Typography>
+        )}
+      />
     </Box>
   );
 }

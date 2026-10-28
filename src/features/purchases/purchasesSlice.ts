@@ -1,4 +1,5 @@
 import { createAppSlice } from "../../redux/createAppSlice";
+import { HttpError } from "../../utils/errors/handleFetchError";
 import {
   fetchAddPurchase,
   fetchDeletePurchase,
@@ -79,8 +80,16 @@ export const purchasesSlice = createAppSlice({
     ),
 
     addPurchase: create.asyncThunk(
-      async (newPurchase: NewPurchaseDto) => {
-        return await fetchAddPurchase(newPurchase);
+      async (newPurchase: NewPurchaseDto, { rejectWithValue }) => {
+        try {
+          return await fetchAddPurchase(newPurchase);
+        } catch (error) {
+          if (error instanceof HttpError) {
+            return rejectWithValue(error.data ?? { message: error.message });
+          }
+
+          throw error;
+        }
       },
       {
         pending: handlePending,
@@ -91,12 +100,16 @@ export const purchasesSlice = createAppSlice({
           state.purchasesVersion += 1;
         },
 
-        rejected: (state, action) =>
-          handleRejected(
-            state,
-            action,
-            "Fehler beim Hinzufügen der Bestellung.",
-          ),
+        rejected: (state, action) => {
+          state.loading = false;
+
+          const payload = action.payload as { message?: string } | undefined;
+
+          state.error =
+            payload?.message ||
+            action.error.message ||
+            "Fehler beim Hinzufügen der Bestellung.";
+        },
       },
     ),
 
@@ -208,65 +221,76 @@ export const purchasesSlice = createAppSlice({
     ),
 
     updatePurchase: create.asyncThunk(
-  async ({
-    id,
-    updatedPurchase,
-  }: {
-    id: number;
-    updatedPurchase: NewPurchaseDto;
-  }) => {
-    return await fetchUpdatePurchase(id, updatedPurchase);
-  },
-  {
-    pending: handlePending,
+      async (
+        {
+          id,
+          updatedPurchase,
+        }: {
+          id: number;
+          updatedPurchase: NewPurchaseDto;
+        },
+        { rejectWithValue },
+      ) => {
+        try {
+          return await fetchUpdatePurchase(id, updatedPurchase);
+        } catch (error) {
+          if (error instanceof HttpError) {
+            return rejectWithValue(error.data ?? { message: error.message });
+          }
 
-    fulfilled: (state, action) => {
-      state.loading = false;
-      state.error = null;
+          throw error;
+        }
+      },
+      {
+        pending: handlePending,
 
-      if (state.selectedPurchase?.id === action.payload.id) {
-        state.selectedPurchase = action.payload;
-      }
+        fulfilled: (state, action) => {
+          state.loading = false;
+          state.error = null;
 
-      state.purchasesVersion += 1;
-    },
+          if (state.selectedPurchase?.id === action.payload.id) {
+            state.selectedPurchase = action.payload;
+          }
 
-    rejected: (state, action) =>
-      handleRejected(
-        state,
-        action,
-        "Fehler beim Bearbeiten der Bestellung.",
-      ),
-  },
-),
+          state.purchasesVersion += 1;
+        },
+
+        rejected: (state, action) => {
+          state.loading = false;
+
+          const payload = action.payload as { message?: string } | undefined;
+
+          state.error =
+            payload?.message ||
+            action.error.message ||
+            "Fehler beim Bearbeiten der Bestellung.";
+        },
+      },
+    ),
 
     deletePurchase: create.asyncThunk(
-  async (id: number) => {
-    await fetchDeletePurchase(id);
-    return id;
-  },
-  {
-    pending: handlePending,
+      async (id: number) => {
+        await fetchDeletePurchase(id);
+        return id;
+      },
+      {
+        pending: handlePending,
 
-    fulfilled: (state, action) => {
-      state.loading = false;
-      state.error = null;
+        fulfilled: (state, action) => {
+          state.loading = false;
+          state.error = null;
 
-      if (state.selectedPurchase?.id === action.payload) {
-        state.selectedPurchase = undefined;
-      }
+          if (state.selectedPurchase?.id === action.payload) {
+            state.selectedPurchase = undefined;
+          }
 
-      state.purchasesVersion += 1;
-    },
+          state.purchasesVersion += 1;
+        },
 
-    rejected: (state, action) =>
-      handleRejected(
-        state,
-        action,
-        "Fehler beim Löschen der Bestellung.",
-      ),
-  },
-),
+        rejected: (state, action) =>
+          handleRejected(state, action, "Fehler beim Löschen der Bestellung."),
+      },
+    ),
 
     updatePurchasePaymentStatus: create.asyncThunk(
       async (id: number) => {
@@ -275,9 +299,15 @@ export const purchasesSlice = createAppSlice({
       {
         fulfilled: (state, action) => {
           const updatedPurchase = action.payload;
+
           state.purchasesList = state.purchasesList.map((p) =>
             p.id === updatedPurchase.id ? updatedPurchase : p,
           );
+
+          if (state.selectedPurchase?.id === updatedPurchase.id) {
+            state.selectedPurchase = updatedPurchase;
+          }
+
           state.loading = false;
           state.error = null;
         },

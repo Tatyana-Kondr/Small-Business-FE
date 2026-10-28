@@ -1,17 +1,22 @@
 import { useEffect, useState } from "react";
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  TextField,
-  Button,
-  DialogActions,
-} from "@mui/material";
+
+import { Button, TextField } from "@mui/material";
+
 import { useAppDispatch } from "../../../../redux/hooks";
-import { showSuccessToast } from "../../../../utils/toast";
-import { handleApiError } from "../../../../utils/handleApiError";
+
 import { Shipping } from "../../types";
-import { getShippings, updateShipping } from "../../shippingsSlice";
+import { updateShipping } from "../../shippingsSlice";
+
+import { showSuccessToast } from "../../../../utils/toast";
+import { getApiErrorMessage } from "../../../../utils/errors/handleApiError";
+
+import { isBackendValidationErrors } from "../../../../utils/validation/validation";
+import { translateValidationMessage } from "../../../../utils/validation/validationMessages";
+
+import DraggableDialog from "../../../../components/DraggableDialog";
+import DialogTitleText from "../../../../components/DialogTitleText";
+
+import { primaryButtonStyle } from "../../../../styles/buttonStyles";
 
 interface EditShippingProps {
   open: boolean;
@@ -19,72 +24,119 @@ interface EditShippingProps {
   shipping: Shipping | null;
 }
 
-export default function EditShipping({ open, onClose, shipping }: EditShippingProps) {
+export default function EditShipping({
+  open,
+  onClose,
+  shipping,
+}: EditShippingProps) {
   const dispatch = useAppDispatch();
-  const [name, setName] = useState<string>("");
+
+  const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // При изменении обновляем локальный стейт
   useEffect(() => {
-    setName(shipping?.name ?? "");
+    if (open) {
+      setName(shipping?.name ?? "");
+      setError("");
+    }
+  }, [open, shipping]);
+
+  const handleClose = () => {
+    if (loading) return;
+
     setError("");
-  }, [shipping]);
+    onClose();
+  };
 
   const handleSubmit = async () => {
-    if (!name.trim()) {
-      setError("Bitte das Feld ausfüllen");
+    if (loading || !shipping) return;
+
+    const trimmedName = name.trim();
+
+    // Проверка обязательного поля
+    if (!trimmedName) {
+      setError("Bitte das Feld ausfüllen.");
       return;
     }
-    if (!shipping) {
-      setError("Ungültiger Vessandart");
-      return;
-    }
+
     setLoading(true);
     setError("");
+
     try {
-      await dispatch(updateShipping({ id: shipping.id, updatedShipping: { name: name } })).unwrap();
-      await dispatch(getShippings());
-      showSuccessToast("Erfolg", "Der Versandart wurde erfolgreich aktualisiert.");
+      await dispatch(
+        updateShipping({
+          id: shipping.id,
+          updatedShipping: {
+            name: trimmedName,
+          },
+        }),
+      ).unwrap();
+
+      showSuccessToast(
+        "Erfolg",
+        "Die Versandart wurde erfolgreich aktualisiert.",
+      );
+
       onClose();
-    } catch (err) {
-      handleApiError(err, "Fehler bei der Aktualisierung des Versandarts");
+    } catch (error) {
+      // Ошибки Bean Validation от Backend
+      if (isBackendValidationErrors(error)) {
+        const nameError = error.errors.find(
+          (validationError) => validationError.field === "name",
+        );
+
+        if (nameError) {
+          setError(translateValidationMessage(nameError.message));
+          return;
+        }
+      }
+
+      // Ошибки бизнес-логики от Backend
+      setError(
+        getApiErrorMessage(
+          error,
+          "Beim Aktualisieren der Versandart ist ein Fehler aufgetreten.",
+        ),
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCancel = () => {
-    onClose();
-    setName("");
-    setError("");
-  };
-
   return (
-    <Dialog open={open} onClose={handleCancel} fullWidth maxWidth="sm">
-      <DialogTitle sx={{ textAlign:"left", fontWeight: "bold", textDecoration: 'underline', color: "#0277bd"}}>Versandart bearbeiten</DialogTitle>
-      <DialogContent>
-        <TextField
-          autoFocus
-          fullWidth
-          margin="normal"
-          label="Versandart"
-          name="name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          error={!!error}
-          helperText={error}
-          disabled={loading}
-        />
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={handleCancel} color="secondary" disabled={loading}>
-          Abbrechen
+    <DraggableDialog
+      open={open}
+      onClose={loading ? undefined : handleClose}
+      dialogWidth={500}
+      title={<DialogTitleText>Versandart bearbeiten</DialogTitleText>}
+      actions={
+        <Button
+          onClick={handleSubmit}
+          variant="contained"
+          disabled={loading || !shipping}
+          sx={primaryButtonStyle}
+        >
+          {loading ? "Speichern..." : "Speichern"}
         </Button>
-        <Button onClick={handleSubmit} color="primary" variant="contained" disabled={loading}>
-          Speichern
-        </Button>
-      </DialogActions>
-    </Dialog>
+      }
+    >
+      <TextField
+        autoFocus
+        fullWidth
+        required
+        label="Versandart"
+        name="name"
+        value={name}
+        onChange={(event) => {
+          setName(event.target.value);
+          setError("");
+        }}
+        error={Boolean(error)}
+        helperText={error}
+        disabled={loading || !shipping}
+        sx={{ mt: 3 }}
+      />
+    </DraggableDialog>
   );
 }

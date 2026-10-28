@@ -9,21 +9,21 @@ email: string
 website: string
 }
 
-export interface AddressDto{
-    postalCode: string
-    country: string
-    city: string
-    street: string 
-    building:string
+export interface AddressDto {
+  postalCode: string | null;
+  country: string;
+  city: string | null;
+  street: string | null;
+  building: string | null;
 }
 
 export interface NewCustomerDto {
   name: string;
-  customerNumber?: string | null;  // customerNumber может быть null или не передано
-  addressDto: AddressDto;  // адрес всегда обязателен
-  phone?: string | null;  // phone может быть пустым или null
-  email?: string | null;  // email может быть пустым или null
-  website?: string | null;  // website может быть пустым или null
+  customerNumber?: string | null;
+  addressDto: AddressDto;
+  phone?: string | null;
+  email?: string | null;
+  website?: string | null;
 }
 
 export interface CustomerPick{

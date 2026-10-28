@@ -1,4 +1,13 @@
-import { Box, Button, Grid, Paper, Tab, Tabs, TextField, Typography } from "@mui/material";
+import {
+  Box,
+  Button,
+  Grid,
+  Paper,
+  Tab,
+  Tabs,
+  TextField,
+  Typography,
+} from "@mui/material";
 import { useState, useEffect } from "react";
 import { useAppDispatch, useAppSelector } from "../redux/hooks";
 import { getAllUsers } from "../features/auth/authSlice";
@@ -12,30 +21,37 @@ import UnitsList from "../features/products/components/unitOfMeasurement/UnitsLi
 import { getUnits } from "../features/products/unitsOfMeasurementSlice";
 import DocumentTypesList from "../features/purchases/documentTypes/DocumentTypesList";
 import { getTermsOfPayment } from "../features/sales/termOfPaymentSlice";
-import TermOfPaymentList from "../features/sales/termOfPayment/TermOfPaymentList";
+import TermOfPaymentList from "../features/sales/components/termOfPayment/TermOfPaymentList";
+import { getTaxRates } from "../features/sales/taxRatesSlice";
+import TaxRatesList from "../features/sales/components/taxRate/TaxRatesList";
+import { getDiscountRates } from "../features/sales/discountRatesSlice";
+import DiscountRatesList from "../features/sales/components/discountRate/DiscountRatesList";
+import { productCardTabsStyle } from "../styles/productCardStyles";
 
 interface AdminSettingsProps {
   autoLogoutMinutes: number;
   setAutoLogoutMinutes: (minutes: number) => void;
 }
 
-export default function AdminSettings({ autoLogoutMinutes, setAutoLogoutMinutes }: AdminSettingsProps) {
+export default function AdminSettings({
+  autoLogoutMinutes,
+  setAutoLogoutMinutes,
+}: AdminSettingsProps) {
   const dispatch = useAppDispatch();
 
   const [tab, setTab] = useState(0);
   const [minutes, setMinutes] = useState(autoLogoutMinutes);
   const company = useAppSelector(selectCompany);
 
-
   useEffect(() => {
     dispatch(getAllUsers());
   }, [dispatch]);
 
   useEffect(() => {
-  dispatch(getCompany());
-}, [dispatch]);
+    dispatch(getCompany());
+  }, [dispatch]);
 
-useEffect(() => {
+  useEffect(() => {
     dispatch(getShippings());
   }, [dispatch]);
 
@@ -47,6 +63,13 @@ useEffect(() => {
     dispatch(getTermsOfPayment());
   }, [dispatch]);
 
+  useEffect(() => {
+    dispatch(getTaxRates());
+  }, [dispatch]);
+
+  useEffect(() => {
+    dispatch(getDiscountRates());
+  }, [dispatch]);
 
   // При монтировании синхронизируем состояние с App
   useEffect(() => {
@@ -64,14 +87,25 @@ useEffect(() => {
   };
 
   return (
-    <Paper sx={{ p: 3 }}>
-
-      <Tabs value={tab} onChange={(_, newValue) => setTab(newValue)}>
+    <Paper
+      sx={{
+        p: 3,
+        minHeight: "calc(100vh - 96px)",
+        boxSizing: "border-box",
+      }}
+    >
+      <Tabs
+        value={tab}
+        onChange={(_, newValue) => setTab(newValue)}
+        sx={productCardTabsStyle}
+      >
         <Tab label="Benutzer" />
         <Tab label="Versand" />
         <Tab label="Maßeinheit" />
         <Tab label="Dokumenttyp" />
         <Tab label="Zahlungsbedingungen" />
+        <Tab label="Steuersätze" />
+        <Tab label="Rabatte" />
         <Tab label="Unternehmen" />
         <Tab label="Einstellungen" />
       </Tabs>
@@ -95,7 +129,7 @@ useEffect(() => {
           </Box>
         )}
 
-         {tab === 3 && (
+        {tab === 3 && (
           <Box>
             <DocumentTypesList />
           </Box>
@@ -109,11 +143,23 @@ useEffect(() => {
 
         {tab === 5 && (
           <Box>
-            {company && company.id ? <CompanyCard /> : <RegisterCompany />}
+            <TaxRatesList />
           </Box>
         )}
 
         {tab === 6 && (
+          <Box>
+            <DiscountRatesList />
+          </Box>
+        )}
+
+        {tab === 7 && (
+          <Box>
+            {company && company.id ? <CompanyCard /> : <RegisterCompany />}
+          </Box>
+        )}
+
+        {tab === 8 && (
           <Box>
             <Typography variant="h6" gutterBottom>
               Auto-Logout-Einstellungen (in Minuten)

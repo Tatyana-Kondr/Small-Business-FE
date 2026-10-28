@@ -12,7 +12,7 @@ import {
   Tooltip,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
 
@@ -56,15 +56,32 @@ import PageTitle from "../../../components/PageTitle";
 export default function CustomersWithNumber() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const customers = useAppSelector(selectCustomersWithCustomerNumber);
   const totalPages = useAppSelector(selectTotalPages);
   const customersVersion = useAppSelector(selectCustomersVersion);
 
-  const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(getAdaptivePageSize);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
+  const [page, setPage] = useState(Number(searchParams.get("page")) || 0);
+
+  const [searchTerm, setSearchTerm] = useState(
+    searchParams.get("search") || "",
+  );
+
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(
+    searchParams.get("search") || "",
+  );
+
+  useEffect(() => {
+  setSearchParams(
+    {
+      page: page.toString(),
+      search: searchTerm,
+    },
+    { replace: true },
+  );
+}, [page, searchTerm, setSearchParams]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -90,32 +107,46 @@ export default function CustomersWithNumber() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm.trim());
-      setPage(0);
     }, 500);
 
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
   useEffect(() => {
-    if (debouncedSearchTerm) {
-      dispatch(
-        searchCustomersWithCustomerNumber({
+    const request = debouncedSearchTerm
+      ? searchCustomersWithCustomerNumber({
           page,
           size: pageSize,
           query: debouncedSearchTerm,
           sort: "name",
-        }),
-      );
-    } else {
-      dispatch(
-        getCustomersWithCustomerNumber({
+        })
+      : getCustomersWithCustomerNumber({
           page,
           size: pageSize,
           sort: "name",
-        }),
-      );
-    }
+        });
+
+    const promise = dispatch(request);
+    let active = true;
+
+    void promise
+      .unwrap()
+      .then((result) => {
+        if (!active) return;
+
+        if (page > 0 && page >= result.totalPages) {
+          setPage(Math.max(0, result.totalPages - 1));
+        }
+      })
+      .catch(() => {
+        // Ошибка загрузки сохраняется в customersSlice.
+      });
+
+    return () => {
+      active = false;
+    };
   }, [dispatch, page, pageSize, debouncedSearchTerm, customersVersion]);
+
   const handleRowDoubleClick = (customerId: number) => {
     navigate(`/kunde/${customerId}`);
   };
@@ -132,16 +163,16 @@ export default function CustomersWithNumber() {
           value={searchTerm}
           onChange={(event) => {
             setSearchTerm(event.target.value);
+            setPage(0);
           }}
           onClear={() => {
             setSearchTerm("");
+            setDebouncedSearchTerm("");
             setPage(0);
           }}
           label="Kunde suchen"
         />
       </Box>
-
-      {/* Таблица */}
       <Box sx={listTableAreaStyle}>
         <TableContainer
           component={Paper}
@@ -154,17 +185,11 @@ export default function CustomersWithNumber() {
             <StyledTableHead>
               <TableRow>
                 <TableCell sx={{ minWidth: 250 }}>Name</TableCell>
-
                 <TableCell sx={fixedCellWidth(120)}>KundenNr</TableCell>
-
                 <TableCell sx={{ minWidth: 350 }}>Adresse</TableCell>
-
                 <TableCell sx={fixedCellWidth(160)}>Telefon</TableCell>
-
                 <TableCell sx={fixedCellWidth(220)}>E-Mail</TableCell>
-
                 <TableCell sx={fixedCellWidth(200)}>Webseite</TableCell>
-
                 <TableCell sx={fixedCellWidth(50)} />
               </TableRow>
             </StyledTableHead>
@@ -265,7 +290,6 @@ export default function CustomersWithNumber() {
                             <Tooltip title="Löschen" arrow>
                               <IconButton
                                 size="small"
-                                onClick={(event) => event.stopPropagation()}
                                 sx={actionIconButtonStyle}
                               >
                                 <DeleteIcon fontSize="small" />
@@ -289,7 +313,6 @@ export default function CustomersWithNumber() {
         </TableContainer>
       </Box>
 
-      {/* Пагинация */}
       <Box sx={listPaginationStyle}>
         <Pagination
           count={totalPages}

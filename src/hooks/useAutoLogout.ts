@@ -1,115 +1,267 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+
 import { useAppDispatch } from "../redux/hooks";
 import { logout } from "../features/auth/authSlice";
 
 interface AutoLogoutOptions {
-  timeout?: number; // общее время до выхода
-  warningTime?: number; // за сколько мс показывать предупреждение
-  checkInterval?: number; // проверка сна ПК
+  timeout: number;
+  warningTime?: number;
+  checkInterval?: number;
 }
 
-// берем время из .env (в минутах) и конвертируем в мс
-const envTimeoutMinutes = Number(import.meta.env.VITE_AUTOLOGOUT_TIMEOUT);
-
-const isAutoLogoutEnabled = envTimeoutMinutes > 0;
-const envTimeoutMs = isAutoLogoutEnabled
-  ? envTimeoutMinutes * 60 * 1000
-  : Infinity;
-
+const LAST_ACTIVITY_KEY = "lastActivity";
 
 export function useAutoLogout({
-  timeout = envTimeoutMs,
-  warningTime = 60 * 1000,  // за 60 секунд до выхода
-  checkInterval = 60 * 1000,
-}: AutoLogoutOptions = {}) {
-  if (!isAutoLogoutEnabled) {
-  return {
-    showModal: false,
-    endTime: Infinity,
-    warningTime: 0,
-    handleLogout: () => {},
-  };
-}
-
+  timeout,
+  warningTime = Math.min(60 * 1000, timeout * 0.2),
+  checkInterval = 10 * 1000,
+}: AutoLogoutOptions) {
   const dispatch = useAppDispatch();
 
   const lastActivityRef = useRef(Date.now());
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastMouseMoveRef = useRef(0);
+  const logoutStartedRef = useRef(false);
 
-  // состояние для модалки
+  const warningTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const logoutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const [showModal, setShowModal] = useState(false);
   const [endTime, setEndTime] = useState(Date.now() + timeout);
 
-  // ====== Логаут ======
-  const handleLogout = useCallback(() => {
-    setShowModal(false);
-    localStorage.setItem("forceLogout", String(Date.now())); // синхронизируем вкладки
-    dispatch(logout());
-  }, [dispatch]);
+  // ---------------------------------------------
+  // Очистка таймеров
+  // ---------------------------------------------
 
-  // ====== Сброс таймера ======
+  const clearTimers = useCallback(() => {
+    if (warningTimerRef.current !== null) {
+      clearTimeout(warningTimerRef.current);
+      warningTimerRef.current = null;
+    }
+
+    if (logoutTimerRef.current !== null) {
+      clearTimeout(logoutTimerRef.current);
+      logoutTimerRef.current = null;
+    }
+  }, []);
+
+  // ---------------------------------------------
+  // Logout
+  // ---------------------------------------------
+
+  const performLogout = useCallback(() => {
+    if (logoutStartedRef.current) {
+      return;
+    }
+
+    logoutStartedRef.current = true;
+
+    clearTimers();
+    setShowModal(false);
+
+    // Единый logout для Exit и автоматического выхода
+    void dispatch(logout());
+  }, [dispatch, clearTimers]);
+
+  const handleLogout = performLogout;
+
+  // ---------------------------------------------
+  // Планирование предупреждения и logout
+  // ---------------------------------------------
+
+  const scheduleTimers = useCallback(
+    (lastActivity: number) => {
+      clearTimers();
+
+      const now = Date.now();
+      const deadline = lastActivity + timeout;
+
+      lastActivityRef.current = lastActivity;
+      setEndTime(deadline);
+
+      const remaining = deadline - now;
+
+      if (remaining <= 0) {
+        performLogout();
+        return;
+      }
+
+      const effectiveWarningTime = Math.min(warningTime, timeout * 0.2);
+      const warningDelay = Math.max(0, remaining - effectiveWarningTime);
+
+      setShowModal(remaining <= effectiveWarningTime);
+
+      if (remaining > effectiveWarningTime) {
+        warningTimerRef.current = setTimeout(() => {
+          setShowModal(true);
+        }, warningDelay);
+      }
+
+      logoutTimerRef.current = setTimeout(() => {
+        performLogout();
+      }, remaining);
+    },
+    [timeout, warningTime, clearTimers, performLogout],
+  );
+
+  // ---------------------------------------------
+  // Активность пользователя
+  // ---------------------------------------------
+
   const resetTimer = useCallback(() => {
+    if (logoutStartedRef.current) {
+      return;
+    }
+
     const now = Date.now();
-    lastActivityRef.current = now;
-    setEndTime(now + timeout);
 
-    localStorage.setItem("lastActivity", String(now));
+    localStorage.setItem(LAST_ACTIVITY_KEY, String(now));
 
-    if (timerRef.current) clearTimeout(timerRef.current);
-    setShowModal(false);
+    scheduleTimers(now);
+  }, [scheduleTimers]);
 
-    const timeUntilWarning = timeout - warningTime;
-    timerRef.current = setTimeout(() => {
-      setShowModal(true);
-    }, timeUntilWarning);
-  }, [timeout, warningTime]);
+  // ---------------------------------------------
+  // Effects
+  // ---------------------------------------------
 
-  // ====== Эффекты ======
   useEffect(() => {
-    // события активности
-    const events = ["mousemove", "keydown", "mousedown", "scroll", "touchstart"];
-    events.forEach((event) => window.addEventListener(event, resetTimer));
+    logoutStartedRef.current = false;
 
-    // проверка сна
+    // При первом запуске учитываем сохранённую
+    // активность из других вкладок.
+    const storedActivity = Number(localStorage.getItem(LAST_ACTIVITY_KEY));
+
+    const now = Date.now();
+
+    const initialActivity =
+      Number.isFinite(storedActivity) &&
+      storedActivity > 0 &&
+      storedActivity <= now
+        ? storedActivity
+        : now;
+
+    scheduleTimers(initialActivity);
+
+    // -------------------------------------------
+    // События активности
+    // -------------------------------------------
+
+    const handleActivity = () => {
+      resetTimer();
+    };
+
+    const handleMouseMove = () => {
+      const now = Date.now();
+
+      if (now - lastMouseMoveRef.current < 1000) {
+        return;
+      }
+
+      lastMouseMoveRef.current = now;
+      resetTimer();
+    };
+
+    const events = ["keydown", "mousedown", "scroll", "touchstart"];
+
+    events.forEach((event) => {
+      window.addEventListener(event, handleActivity);
+    });
+
+    window.addEventListener("mousemove", handleMouseMove);
+
+    // -------------------------------------------
+    // Проверка после сна компьютера
+    // -------------------------------------------
+
     const checkSleep = setInterval(() => {
-      if (Date.now() - lastActivityRef.current > timeout) {
-        handleLogout();
+      if (logoutStartedRef.current) {
+        return;
+      }
+
+      const storedActivity = Number(localStorage.getItem(LAST_ACTIVITY_KEY));
+
+      const latestActivity = Math.max(
+        lastActivityRef.current,
+        Number.isFinite(storedActivity) ? storedActivity : 0,
+      );
+
+      if (Date.now() - latestActivity >= timeout) {
+        performLogout();
+      } else if (latestActivity > lastActivityRef.current) {
+        scheduleTimers(latestActivity);
       }
     }, checkInterval);
 
-    // вкладка ушла в background / проснулась
+    // -------------------------------------------
+    // Возвращение на вкладку
+    // -------------------------------------------
+
     const handleVisibility = () => {
-      if (document.visibilityState === "visible") {
-        const last = Number(localStorage.getItem("lastActivity")) || 0;
-        if (Date.now() - last > timeout) {
-          handleLogout();
-        } else {
-          resetTimer();
+      if (document.visibilityState !== "visible") {
+        return;
+      }
+
+      const storedActivity = Number(localStorage.getItem(LAST_ACTIVITY_KEY));
+
+      const latestActivity = Math.max(
+        lastActivityRef.current,
+        Number.isFinite(storedActivity) ? storedActivity : 0,
+      );
+
+      if (Date.now() - latestActivity >= timeout) {
+        performLogout();
+      } else {
+        scheduleTimers(latestActivity);
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    // -------------------------------------------
+    // Синхронизация вкладок
+    // -------------------------------------------
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === LAST_ACTIVITY_KEY && event.newValue) {
+        const activity = Number(event.newValue);
+
+        if (Number.isFinite(activity) && activity > lastActivityRef.current) {
+          scheduleTimers(activity);
         }
       }
     };
-    document.addEventListener("visibilitychange", handleVisibility);
 
-    
-
-    // синхронизация между вкладками
-    const handleStorage = (e: StorageEvent) => {
-      if (e.key === "forceLogout") {
-        handleLogout();
-      }
-    };
-    window.addEventListener("storage", handleStorage);
-
-    resetTimer();
+    // -------------------------------------------
+    // Cleanup
+    // -------------------------------------------
 
     return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
+      clearTimers();
       clearInterval(checkSleep);
-      events.forEach((event) => window.removeEventListener(event, resetTimer));
+
+      events.forEach((event) => {
+        window.removeEventListener(event, handleActivity);
+      });
+
+      window.removeEventListener("mousemove", handleMouseMove);
+
       document.removeEventListener("visibilitychange", handleVisibility);
+
       window.removeEventListener("storage", handleStorage);
     };
-  }, [resetTimer, handleLogout, timeout, checkInterval]);
+  }, [
+    timeout,
+    checkInterval,
+    resetTimer,
+    scheduleTimers,
+    performLogout,
+    clearTimers,
+  ]);
 
-  return { showModal, endTime, warningTime, handleLogout };
+  return {
+    showModal,
+    endTime,
+    warningTime: Math.min(warningTime, timeout * 0.2),
+    handleLogout,
+  };
 }

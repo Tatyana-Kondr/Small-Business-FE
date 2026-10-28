@@ -1,5 +1,14 @@
 import { useState } from "react";
-import { AppBar, Box, Button, Divider, IconButton, MenuItem, Toolbar, Tooltip } from "@mui/material";
+import {
+  AppBar,
+  Box,
+  Button,
+  Divider,
+  IconButton,
+  MenuItem,
+  Toolbar,
+  Tooltip,
+} from "@mui/material";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import KeyboardDoubleArrowLeftOutlinedIcon from "@mui/icons-material/KeyboardDoubleArrowLeftOutlined";
@@ -164,12 +173,9 @@ export default function HeaderApp() {
   const [submenuLeft, setSubmenuLeft] = useState(0);
 
   const handleLogout = () => {
-    dispatch(logout())
-      .unwrap()
-      .finally(() => {
-        localStorage.removeItem("accessToken");
-        navigate("/login", { replace: true });
-      });
+    void dispatch(logout());
+
+    navigate("/login", { replace: true });
   };
 
   const handleGoBack = () => {
@@ -313,10 +319,10 @@ export default function HeaderApp() {
                     backgroundColor: isActive ? menuBgColor : "transparent",
                     fontWeight: 700,
                     textTransform: "uppercase",
-                    "&:hover": { backgroundColor: menuBgColor, color: "white", },
-                    "&:focus": { outline: "none", },
-                    "&.Mui-focusVisible": { outline: "none", },
-                    "&:active": { boxShadow: "none", },
+                    "&:hover": { backgroundColor: menuBgColor, color: "white" },
+                    "&:focus": { outline: "none" },
+                    "&.Mui-focusVisible": { outline: "none" },
+                    "&:active": { boxShadow: "none" },
                   }}
                 >
                   {menu.label}

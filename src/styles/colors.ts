@@ -10,6 +10,7 @@ export const colors = {
   iconGrey: "#bdbdbd",
   grey: "#888",
   border: "#ddd",
+  darkGrey: "#333232",
 
   gradientDark: "#006064",
   gradientLight: "#47dadf",
@@ -22,5 +23,6 @@ export const colors = {
 
   danger: "#d32f2f",
   dangerLight: "#ee4f4f",
+  dangerBackground: "#fddede",
   
 };

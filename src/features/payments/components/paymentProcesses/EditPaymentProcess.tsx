@@ -1,17 +1,22 @@
 import { useEffect, useState } from "react";
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  TextField,
-  Button,
-  DialogActions,
-} from "@mui/material";
+
+import { Button, TextField } from "@mui/material";
+
 import { useAppDispatch } from "../../../../redux/hooks";
+
 import { PaymentProcess } from "../../types";
-import { getPaymentProcesses, updatePaymentProcess } from "../../paymentProcessesSlice";
+import { updatePaymentProcess } from "../../paymentProcessesSlice";
+
 import { showSuccessToast } from "../../../../utils/toast";
-import { handleApiError } from "../../../../utils/handleApiError";
+import { getApiErrorMessage } from "../../../../utils/errors/handleApiError";
+
+import { isBackendValidationErrors } from "../../../../utils/validation/validation";
+import { translateValidationMessage } from "../../../../utils/validation/validationMessages";
+
+import DraggableDialog from "../../../../components/DraggableDialog";
+import DialogTitleText from "../../../../components/DialogTitleText";
+
+import { primaryButtonStyle } from "../../../../styles/buttonStyles";
 
 interface EditPaymentProcessProps {
   open: boolean;
@@ -19,72 +24,119 @@ interface EditPaymentProcessProps {
   process: PaymentProcess | null;
 }
 
-export default function EditPaymentProcess({ open, onClose, process }: EditPaymentProcessProps) {
+export default function EditPaymentProcess({
+  open,
+  onClose,
+  process,
+}: EditPaymentProcessProps) {
   const dispatch = useAppDispatch();
-  const [name, setName] = useState<string>("");
+
+  const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // При изменении процесса обновляем локальный стейт
   useEffect(() => {
-    setName(process?.processName ?? "");
+    if (open) {
+      setName(process?.processName ?? "");
+      setError("");
+    }
+  }, [open, process]);
+
+  const handleClose = () => {
+    if (loading) return;
+
     setError("");
-  }, [process]);
+    onClose();
+  };
 
   const handleSubmit = async () => {
-    if (!name.trim()) {
-      setError("Bitte das Feld ausfüllen");
+    if (loading || !process) return;
+
+    const processName = name.trim();
+
+    // Проверка обязательного поля
+    if (!processName) {
+      setError("Bitte das Feld ausfüllen.");
       return;
     }
-    if (!process) {
-      setError("Ungültiger Zahlungsvorgang");
-      return;
-    }
+
     setLoading(true);
     setError("");
+
     try {
-      await dispatch(updatePaymentProcess({ id: process.id, updatedPaymentProcess: { processName: name } })).unwrap();
-      await dispatch(getPaymentProcesses());
-      showSuccessToast("Erfolg", "Die Zahlungsvorgang wurde erfolgreich aktualisiert.");
+      await dispatch(
+        updatePaymentProcess({
+          id: process.id,
+          updatedPaymentProcess: {
+            processName,
+          },
+        }),
+      ).unwrap();
+
+      showSuccessToast(
+        "Erfolg",
+        "Der Zahlungsvorgang wurde erfolgreich aktualisiert.",
+      );
+
       onClose();
-    } catch (err) {
-      handleApiError(err, "Fehler bei der Aktualisierung des Zahlungsvorgangs");
+    } catch (error) {
+      // Ошибки Bean Validation от Backend
+      if (isBackendValidationErrors(error)) {
+        const nameError = error.errors.find(
+          (validationError) => validationError.field === "processName",
+        );
+
+        if (nameError) {
+          setError(translateValidationMessage(nameError.message));
+          return;
+        }
+      }
+
+      // Ошибки бизнес-логики от Backend
+      setError(
+        getApiErrorMessage(
+          error,
+          "Beim Aktualisieren des Zahlungsvorgangs ist ein Fehler aufgetreten.",
+        ),
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCancel = () => {
-    onClose();
-    setName("");
-    setError("");
-  };
-
   return (
-    <Dialog open={open} onClose={handleCancel} fullWidth maxWidth="sm">
-      <DialogTitle sx={{ textAlign:"left", fontWeight: "bold", textDecoration: 'underline', color: "#0277bd"}}>Zahlungsvorgang bearbeiten</DialogTitle>
-      <DialogContent>
-        <TextField
-          autoFocus
-          fullWidth
-          margin="normal"
-          label="Vorgang"
-          name="processName"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          error={!!error}
-          helperText={error}
-          disabled={loading}
-        />
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={handleCancel} color="secondary" disabled={loading}>
-          Abbrechen
+    <DraggableDialog
+      open={open}
+      onClose={loading ? undefined : handleClose}
+      dialogWidth={500}
+      title={<DialogTitleText>Zahlungsvorgang bearbeiten</DialogTitleText>}
+      actions={
+        <Button
+          onClick={handleSubmit}
+          variant="contained"
+          disabled={loading || !process}
+          sx={primaryButtonStyle}
+        >
+          {loading ? "Speichern..." : "Speichern"}
         </Button>
-        <Button onClick={handleSubmit} color="primary" variant="contained" disabled={loading}>
-          Speichern
-        </Button>
-      </DialogActions>
-    </Dialog>
+      }
+    >
+      <TextField
+        autoFocus
+        fullWidth
+        required
+        label="Vorgang"
+        name="processName"
+        value={name}
+        onChange={(event) => {
+          setName(event.target.value);
+          setError("");
+        }}
+        error={Boolean(error)}
+        helperText={error}
+        disabled={loading || !process}
+        sx={{ mt: 3 }}
+      />
+    </DraggableDialog>
   );
 }

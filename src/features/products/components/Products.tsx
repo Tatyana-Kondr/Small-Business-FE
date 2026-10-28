@@ -31,7 +31,7 @@ import {
   selectProductCategories,
 } from "../productCategoriesSlice";
 import { useSearchParams } from "react-router-dom";
-import { getAllProductFiles, selectProductFiles } from "../productFilesSlice";
+import { getProductFiles } from "../productFilesSlice";
 import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
 import NoPhotographyIcon from "@mui/icons-material/NoPhotography";
 import ArrowBackIos from "@mui/icons-material/ArrowBackIos";
@@ -64,19 +64,17 @@ import {
 import SortableHeader from "../../../components/ui/SortableHeader";
 import { Product } from "../types";
 import { getAdaptivePageSize } from "../../../utils/getAdaptivePageSize";
-
-const formatNumber = (value: number) => (
-  <span style={{ color: value < 0 ? "red" : "inherit" }}>{value}</span>
-);
+import { formatNumber } from "../../../utils/formatNumber";
+import { formatWeight } from "../../../utils/formatWeigh";
+import { handleApiError } from "../../../utils/errors/handleApiError";
 
 export default function Products() {
   const dispatch = useAppDispatch();
+
   const isAuthenticated = useAppSelector(selectIsAuthenticated);
   const products = useAppSelector(selectProductsPaged);
   const totalPages = useAppSelector(selectTotalPages);
-
   const categories = useAppSelector(selectProductCategories);
-  const productFiles = useAppSelector(selectProductFiles);
   const productsVersion = useAppSelector(selectProductsVersion);
 
   const navigate = useNavigate();
@@ -132,12 +130,6 @@ export default function Products() {
   useEffect(() => {
     dispatch(getProductCategories());
   }, [dispatch]);
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      dispatch(getAllProductFiles());
-    }
-  }, [dispatch, isAuthenticated]);
 
   useEffect(() => {
     setSearchParams({
@@ -223,23 +215,28 @@ export default function Products() {
     return product.quantity ?? 0;
   };
 
-  const handleOpenPreview = (productId: number) => {
-    const related = productFiles
-      .filter(
-        (f) =>
-          (f.product?.id === productId || f.productId === productId) &&
-          f.fileUrl &&
-          !f.fileUrl.toLowerCase().includes("no.jpg"),
-      )
+  const handleOpenPreview = async (productId: number) => {
+    try {
+      const files = await dispatch(getProductFiles(productId)).unwrap();
 
-      .map((f) => `${import.meta.env.VITE_API_URL}${f.fileUrl}`);
+      const imageFiles = files.filter((file) =>
+        /\.(jpg|jpeg|png)$/i.test(file.originFileName),
+      );
 
-    if (related.length > 0) {
-      setCurrentPhotos(related);
+      const photoUrls = imageFiles.map(
+        (file) => `${import.meta.env.VITE_API_URL}${file.fileUrl}`,
+      );
+
+      if (photoUrls.length === 0) {
+        console.warn("Keine Fotos für Produkt:", productId);
+        return;
+      }
+
+      setCurrentPhotos(photoUrls);
       setCurrentPhotoIndex(0);
       setOpenPreview(true);
-    } else {
-      console.warn("⚠️ Нет фото для продукта:", productId);
+    } catch (error) {
+      handleApiError(error, "Fehler beim Laden der Produktfotos");
     }
   };
 
@@ -256,7 +253,7 @@ export default function Products() {
   return (
     <Box sx={listPageStyle}>
       <Box sx={pageToolbarStyle}>
-        <Box display="flex" gap={2}>
+        <Box display="flex" gap={2} >
           <FormControl sx={{ minWidth: 200, backgroundColor: "white" }}>
             <InputLabel id="category-select-label">Kategorie</InputLabel>
             <Select
@@ -282,7 +279,6 @@ export default function Products() {
         </Box>
       </Box>
 
-      {/* Таблица */}
       <Box sx={listTableAreaStyle}>
         <TableContainer
           component={Paper}
@@ -447,7 +443,7 @@ export default function Products() {
                           ...fixedCellWidth(80),
                         }}
                       >
-                        {product.unitOfMeasurement.name}
+                        {product.unitOfMeasurement?.name ?? ""}
                       </TableCell>
                       <TableCell
                         sx={{
@@ -455,16 +451,24 @@ export default function Products() {
                           ...fixedCellWidth(80),
                         }}
                       >
-                        {product.weight
-                          ? formatNumber(product.weight)
-                          : ""}{" "}
+                        {product.weight != null
+                          ? formatWeight(product.weight)
+                          : ""}
                       </TableCell>
                       <TableCell
-                        sx={{ ...rightCellStyle, ...fixedCellWidth(70) }}
+                        sx={{
+                          ...rightCellStyle,
+                          ...fixedCellWidth(70),
+                          color:
+                            getStockQuantity(product) !== null &&
+                            (getStockQuantity(product) ?? 0) < 0
+                              ? "error.main"
+                              : "inherit",
+                        }}
                       >
                         {getStockQuantity(product) === null
-                          ? " "
-                          : formatNumber(getStockQuantity(product) ?? 0)}
+                          ? ""
+                          : getStockQuantity(product)}
                       </TableCell>
                       <TableCell
                         sx={{
@@ -500,6 +504,7 @@ export default function Products() {
           color="primary"
         />
       </Box>
+
       <Modal open={openPreview} onClose={handleClosePreview}>
         <Box
           sx={{
@@ -507,61 +512,74 @@ export default function Products() {
             top: "50%",
             left: "50%",
             transform: "translate(-50%, -50%)",
-            width: "80%",
-            maxWidth: 900,
+
+            width: "min(900px, 95vw)",
+            height: "min(600px, 90vh)",
+
             bgcolor: "background.paper",
             boxShadow: 24,
             borderRadius: 2,
-            p: 3,
+            overflow: "hidden",
+
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            flexDirection: "column",
           }}
         >
+          {/* Закрытие */}
           <IconButton
             onClick={handleClosePreview}
-            sx={{ position: "absolute", top: 8, right: 8 }}
+            sx={{
+              position: "absolute",
+              top: 12,
+              right: 12,
+              zIndex: 2,
+            }}
           >
             <CloseIcon />
           </IconButton>
 
-          {/* Стрелка влево */}
+          {/* Предыдущая фотография */}
           {currentPhotos.length > 1 && (
             <IconButton
               onClick={handlePrevPhoto}
               sx={{
                 position: "absolute",
-                left: 16,
+                left: 12,
                 top: "50%",
                 transform: "translateY(-50%)",
+                zIndex: 2,
               }}
             >
               <ArrowBackIos />
             </IconButton>
           )}
 
-          {/* Само фото */}
-          <img
-            src={currentPhotos[currentPhotoIndex]}
-            alt="Produktfoto"
-            style={{
-              maxWidth: "100%",
-              maxHeight: "70vh",
-              objectFit: "contain",
-              borderRadius: 8,
-            }}
-          />
+          {/* Фотография */}
+          {currentPhotos.length > 0 && (
+            <Box
+              component="img"
+              src={currentPhotos[currentPhotoIndex]}
+              alt="Produktfoto"
+              sx={{
+                width: "calc(100% - 120px)",
+                height: "calc(100% - 80px)",
+                objectFit: "contain",
+                display: "block",
+              }}
+            />
+          )}
 
-          {/* Стрелка вправо */}
+          {/* Следующая фотография */}
           {currentPhotos.length > 1 && (
             <IconButton
               onClick={handleNextPhoto}
               sx={{
                 position: "absolute",
-                right: 16,
+                right: 12,
                 top: "50%",
                 transform: "translateY(-50%)",
+                zIndex: 2,
               }}
             >
               <ArrowForwardIos />

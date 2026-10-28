@@ -21,6 +21,7 @@ import {
   SelectChangeEvent,
   CircularProgress,
   Tooltip,
+  FormHelperText,
 } from "@mui/material";
 import { Delete as DeleteIcon, Clear as ClearIcon } from "@mui/icons-material";
 import { useNavigate, useParams } from "react-router-dom";
@@ -29,12 +30,19 @@ import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs, { Dayjs } from "dayjs";
 import { deDE } from "@mui/x-date-pickers/locales";
 import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
-import { NewPurchaseDto, NewPurchaseItemDto, TypeOfDocument } from "../types";
+import {
+  NewPurchaseDto,
+  NewPurchaseItemDto,
+  PurchaseFormDto,
+  PurchaseFormItem,
+  TypeOfDocument,
+} from "../types";
 import {
   getProductCategories,
   selectProductCategories,
 } from "../../products/productCategoriesSlice";
 import {
+  clearPickProducts,
   getPickProducts,
   selectPickLoading,
   selectPickProducts,
@@ -46,22 +54,20 @@ import {
   selectLoadingPick,
 } from "../../customers/customersSlice";
 import { ProductPickDto } from "../../products/types";
-import { handleApiError } from "../../../utils/handleApiError";
+import { handleApiError } from "../../../utils/errors/handleApiError";
 import { showSuccessToast } from "../../../utils/toast";
 import {
   getDocumentTypes,
   selectTypeOfDocuments,
 } from "../typeOfDocumentSlice";
 import CompactNumberCell from "../../../components/CompactNumberCell";
-import {
-  cancelButtonStyle,
-  primaryButtonStyle,
-} from "../../../styles/buttonStyles";
+import { primaryButtonStyle } from "../../../styles/buttonStyles";
 import {
   actionCellStyle,
   cellStyle,
   centerCellStyle,
   fixedCellWidth,
+  leftBorderCellStyle,
   rightCellStyle,
   saleTableNameCellStyle,
   saleTableNameInputStyle,
@@ -69,15 +75,49 @@ import {
   tableRowHoverStyle,
 } from "../../../styles/tableStyles";
 import { colors } from "../../../styles/colors";
-import { saleDateFieldStyle } from "../../../styles/formStyles";
+import { dateFieldStyle } from "../../../styles/formStyles";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
-import { deletePurchaseDocument, getPurchaseDocuments, selectPurchaseDocuments, selectPurchaseDocumentsLoading, uploadPurchaseDocument } from "../purchaseDocumentsSlice";
+import {
+  deletePurchaseDocument,
+  getPurchaseDocuments,
+  selectPurchaseDocuments,
+  selectPurchaseDocumentsLoading,
+  uploadPurchaseDocument,
+} from "../purchaseDocumentsSlice";
 import { openPurchaseDocument } from "../api";
+import { getActiveTaxRates, selectTaxRates } from "../../sales/taxRatesSlice";
+import {
+  getActiveDiscountRates,
+  selectDiscountRates,
+} from "../../sales/discountRatesSlice";
+import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
+import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
+import {
+  clearFieldError,
+  FormErrors,
+  hasErrors,
+  isBackendValidationErrors,
+  validateRequiredFields,
+} from "../../../utils/validation/validation";
+import {
+  validatePercentage,
+  validatePrice,
+  validateQuantity,
+} from "../../../utils/validation/numberValidation";
+import { translateValidationMessage } from "../../../utils/validation/validationMessages";
+import { formatNumber } from "../../../utils/formatNumber";
 
 const typeOptions = ["EINKAUF", "LIEFERANT_RABATT"] as const;
 type PurchaseType = (typeof typeOptions)[number];
+
+type PurchaseItemErrors = {
+  quantity?: string;
+  unitPrice?: string;
+  discount?: string;
+  taxPercentage?: string;
+};
 
 export default function PurchaseCard() {
   const dispatch = useAppDispatch();
@@ -85,7 +125,7 @@ export default function PurchaseCard() {
   const { purchaseId } = useParams<{ purchaseId: string }>();
   const id = Number(purchaseId);
 
-  const [purchase, setPurchase] = useState<NewPurchaseDto>({
+  const [purchase, setPurchase] = useState<PurchaseFormDto>({
     vendorId: 0,
     vendorName: "",
     purchasingDate: "",
@@ -94,6 +134,7 @@ export default function PurchaseCard() {
     documentNumber: "",
     purchaseItems: [],
     paymentStatus: "",
+    hasPayments: false,
   });
   const [dateValue, setDateValue] = useState<Dayjs | null>(null);
   const vendorsPick = useAppSelector(selectCustomersPickList);
@@ -102,27 +143,40 @@ export default function PurchaseCard() {
   const pickProducts = useAppSelector(selectPickProducts);
   const pickLoading = useAppSelector(selectPickLoading);
   const documentTypes = useAppSelector(selectTypeOfDocuments);
+  const taxRates = useAppSelector(selectTaxRates);
+  const discountRates = useAppSelector(selectDiscountRates);
   const purchaseDocuments = useAppSelector(selectPurchaseDocuments);
-const purchaseDocumentsLoading = useAppSelector(selectPurchaseDocumentsLoading);
-
-const [documentFile, setDocumentFile] = useState<File | null>(null);
+  const purchaseDocumentsLoading = useAppSelector(
+    selectPurchaseDocumentsLoading,
+  );
+  const [documentFiles, setDocumentFiles] = useState<File[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
+  const [defaultTax, setDefaultTax] = useState<number | "mixed">(0);
+  const [defaultDiscount, setDefaultDiscount] = useState<number | "mixed">(0);
   const [searchTerm, setSearchTerm] = useState("");
-  const [debouncedTerm, setDebouncedTerm] = useState(searchTerm);
+  const [loading, setLoading] = useState(false);
+  const [documentDataChanged, setDocumentDataChanged] = useState(false);
+  const [errors, setErrors] = useState<FormErrors<NewPurchaseDto>>({});
+  const [itemErrors, setItemErrors] = useState<
+    Record<number, PurchaseItemErrors>
+  >({});
+
+  const canSearchProducts =
+    selectedCategory !== null || searchTerm.trim().length >= 2;
 
   useEffect(() => {
     dispatch(getDocumentTypes());
+    dispatch(getActiveTaxRates());
+    dispatch(getActiveDiscountRates());
   }, [dispatch]);
 
   useEffect(() => {
-    // Загрузка поставщиков
     dispatch(getCustomersPickList())
       .unwrap()
       .catch((error) =>
         handleApiError(error, "Fehler beim Laden der Lieferanten."),
       );
 
-    // Загрузка данных покупки
     dispatch(getPurchaseById(Number(purchaseId)))
       .unwrap()
       .then((p) => {
@@ -136,8 +190,24 @@ const [documentFile, setDocumentFile] = useState<File | null>(null);
           documentNumber: p.documentNumber,
           purchaseItems: p.purchaseItems,
           paymentStatus: p.paymentStatus,
+          hasPayments: p.hasPayments,
         });
         setDateValue(p.purchasingDate ? dayjs(p.purchasingDate) : null);
+        const itemTaxes = [
+          ...new Set(
+            p.purchaseItems.map((item) => Number(item.taxPercentage ?? 0)),
+          ),
+        ];
+
+        const itemDiscounts = [
+          ...new Set(p.purchaseItems.map((item) => Number(item.discount ?? 0))),
+        ];
+
+        setDefaultTax(itemTaxes.length === 1 ? itemTaxes[0] : "mixed");
+
+        setDefaultDiscount(
+          itemDiscounts.length === 1 ? itemDiscounts[0] : "mixed",
+        );
       })
       .catch((error) =>
         handleApiError(error, "Fehler beim Laden der Bestellung."),
@@ -147,164 +217,308 @@ const [documentFile, setDocumentFile] = useState<File | null>(null);
   }, [dispatch, purchaseId]);
 
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedTerm(searchTerm), 350);
-    return () => clearTimeout(t);
-  }, [searchTerm]);
-
-  useEffect(() => {
-    dispatch(
-      getPickProducts({
-        searchTerm: debouncedTerm,
-        categoryId: selectedCategory ?? null,
-        limit: 50,
-      }),
-    );
-  }, [dispatch, debouncedTerm, selectedCategory]);
-
-  useEffect(() => {
     setSearchTerm("");
   }, [selectedCategory]);
 
   useEffect(() => {
-  if (!id || Number.isNaN(id)) return;
+    const term = searchTerm.trim();
 
-  dispatch(getPurchaseDocuments(id))
-    .unwrap()
-    .catch((error) =>
-      handleApiError(
-        error,
-        "Fehler beim Laden der Dokumente."
-      )
+    if (selectedCategory === null && term.length < 2) {
+      dispatch(clearPickProducts());
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      dispatch(
+        getPickProducts({
+          searchTerm: term,
+          categoryId: selectedCategory,
+          limit: 100,
+        }),
+      );
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [dispatch, searchTerm, selectedCategory]);
+
+  useEffect(() => {
+    if (!id || Number.isNaN(id)) return;
+
+    dispatch(getPurchaseDocuments(id))
+      .unwrap()
+      .catch((error) =>
+        handleApiError(error, "Fehler beim Laden der Dokumente."),
+      );
+  }, [dispatch, id]);
+
+  const roundMoney = (value: number) =>
+    Math.round((value + Number.EPSILON) * 100) / 100;
+
+  const { subtotalBeforeDiscount, subtotal, discountAmount, taxSum, total } =
+    useMemo(() => {
+      let subtotalBeforeDiscount = 0;
+      let subtotal = 0;
+      let discountAmount = 0;
+      let taxSum = 0;
+      let total = 0;
+
+      for (const item of purchase.purchaseItems) {
+        const quantity = Number.isFinite(Number(item.quantity))
+          ? Number(item.quantity)
+          : 0;
+
+        const unitPrice = Number.isFinite(Number(item.unitPrice))
+          ? Number(item.unitPrice)
+          : 0;
+
+        subtotalBeforeDiscount += quantity * unitPrice;
+
+        subtotal += Number.isFinite(Number(item.totalPrice))
+          ? Number(item.totalPrice)
+          : 0;
+
+        discountAmount += Number.isFinite(Number(item.discountAmount))
+          ? Number(item.discountAmount)
+          : 0;
+
+        taxSum += Number.isFinite(Number(item.taxAmount))
+          ? Number(item.taxAmount)
+          : 0;
+
+        total += Number.isFinite(Number(item.totalAmount))
+          ? Number(item.totalAmount)
+          : 0;
+      }
+
+      return {
+        subtotalBeforeDiscount: roundMoney(subtotalBeforeDiscount),
+        subtotal: roundMoney(subtotal),
+        discountAmount: roundMoney(discountAmount),
+        taxSum: roundMoney(taxSum),
+        total: roundMoney(total),
+      };
+    }, [purchase.purchaseItems]);
+
+  //---DOCUMENT--//
+
+  const handleRemoveDocumentFile = (index: number) => {
+    setDocumentFiles((prev) =>
+      prev.filter((_, fileIndex) => fileIndex !== index),
     );
-}, [dispatch, id]);
-
-  const { subtotal, taxSum, total } = useMemo(() => {
-    if (!purchase.purchaseItems || purchase.purchaseItems.length === 0) {
-      return { subtotal: 0, taxSum: 0, total: 0 };
-    }
-
-    let subtotal = 0;
-    let taxSum = 0;
-    let total = 0;
-
-    for (const item of purchase.purchaseItems) {
-      subtotal += item.totalPrice;
-      taxSum += item.taxAmount;
-      total += item.totalAmount;
-    }
-
-    return {
-      subtotal: parseFloat(subtotal.toFixed(2)),
-      taxSum: parseFloat(taxSum.toFixed(2)),
-      total: parseFloat(total.toFixed(2)),
-    };
-  }, [purchase.purchaseItems]);
+  };
 
   const handleUploadDocument = async () => {
-  if (!documentFile) {
-    handleApiError(
-      new Error("Bitte wählen Sie zuerst eine Datei aus.")
-    );
-    return;
-  }
+    if (documentFiles.length === 0) {
+      handleApiError(
+        new Error("Bitte wählen Sie zuerst mindestens eine Datei aus."),
+      );
+      return;
+    }
 
-  try {
-    await dispatch(
-      uploadPurchaseDocument({
-        purchaseId: id,
-        file: documentFile,
-        documentName:
-          purchase?.document?.name ?? "Dokument",
-        vendorName:
-          purchase?.vendorName ?? "Lieferant",
-        purchaseDate:
-          purchase?.purchasingDate ?? "Datum",
-      })
-    ).unwrap();
+    try {
+      setLoading(true);
 
-    setDocumentFile(null);
+      for (const file of documentFiles) {
+        await dispatch(
+          uploadPurchaseDocument({
+            purchaseId: id,
+            file,
+          }),
+        ).unwrap();
+      }
 
-    showSuccessToast(
-      "Erfolg",
-      "Dokument erfolgreich hochgeladen"
-    );
-  } catch (error) {
-    handleApiError(
-      error,
-      "Dokument konnte nicht hochgeladen werden."
-    );
-  }
-};
+      setDocumentFiles([]);
 
-const handleDeleteDocument = async (
-  documentId: number
-) => {
-  try {
-    await dispatch(
-      deletePurchaseDocument(documentId)
-    ).unwrap();
+      showSuccessToast(
+        "Erfolg",
+        documentFiles.length === 1
+          ? "Dokument erfolgreich hochgeladen"
+          : `${documentFiles.length} Dokumente erfolgreich hochgeladen`,
+      );
+    } catch (error) {
+      handleApiError(error, "Dokumente konnten nicht hochgeladen werden.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    showSuccessToast(
-      "Erfolg",
-      "Dokument erfolgreich gelöscht"
-    );
-  } catch (error) {
-    handleApiError(
-      error,
-      "Dokument konnte nicht gelöscht werden."
-    );
-  }
-};
+  const handleDeleteDocument = async (documentId: number) => {
+    try {
+      await dispatch(deletePurchaseDocument(documentId)).unwrap();
 
+      showSuccessToast("Erfolg", "Dokument erfolgreich gelöscht");
+    } catch (error) {
+      handleApiError(error, "Dokument konnte nicht gelöscht werden.");
+    }
+  };
+
+  //---ITEMS---//
   const handleAddProductToCart = (product: ProductPickDto) => {
     const quantity = 1;
-    const unitPrice = product.purchasingPrice;
-    const totalPrice = quantity * unitPrice;
-    const taxPercentage = 19;
-    const taxAmount = (totalPrice * taxPercentage) / 100;
-    const totalAmount = totalPrice + taxAmount;
+    const unitPrice = roundMoney(Number(product.purchasingPrice) || 0);
+    const discount = defaultDiscount === "mixed" ? 0 : defaultDiscount;
+    const priceBeforeDiscount = roundMoney(quantity * unitPrice);
+    const discountAmount = roundMoney((priceBeforeDiscount * discount) / 100);
+    const totalPrice = roundMoney(priceBeforeDiscount - discountAmount);
+    const taxPercentage =
+      defaultTax === "mixed"
+        ? (taxRates.find((rate) => rate.defaultRate)?.value ?? 0)
+        : defaultTax;
+    const taxAmount = roundMoney((totalPrice * taxPercentage) / 100);
+    const totalAmount = roundMoney(totalPrice + taxAmount);
 
-    const item: NewPurchaseItemDto = {
+    const item: PurchaseFormItem = {
       productId: product.id,
       productName: product.name,
-      purchaseId: Number(purchaseId),
       quantity,
       unitPrice,
-      totalPrice,
+      discount,
       taxPercentage,
+      position: purchase.purchaseItems.length + 1,
+      discountAmount,
+      totalPrice,
       taxAmount,
       totalAmount,
-      position: purchase.purchaseItems.length + 1,
     };
 
     setPurchase((prev) => ({
       ...prev,
       purchaseItems: [...prev.purchaseItems, item],
     }));
+
+    setErrors((prev) => clearFieldError(prev, "purchaseItems"));
   };
 
   const handleRemoveItem = (index: number) => {
-    setPurchase((prev) => ({
-      ...prev,
-      purchaseItems: prev.purchaseItems.filter((_, i) => i !== index),
-    }));
+    setPurchase((prev) => {
+      const updatedItems = prev.purchaseItems
+        .filter((_, i) => i !== index)
+        .map((item, i) => ({
+          ...item,
+          position: i + 1,
+        }));
+
+      if (updatedItems.length === 0) {
+        setErrors((current) => ({
+          ...current,
+          purchaseItems: "Bitte mindestens einen Artikel hinzufügen.",
+        }));
+      }
+
+      return {
+        ...prev,
+        purchaseItems: updatedItems,
+      };
+    });
+
+    setItemErrors((prev) => {
+      const updatedErrors: Record<number, PurchaseItemErrors> = {};
+
+      Object.entries(prev).forEach(([key, errors]) => {
+        const currentIndex = Number(key);
+
+        if (currentIndex < index) {
+          updatedErrors[currentIndex] = errors;
+        }
+
+        if (currentIndex > index) {
+          updatedErrors[currentIndex - 1] = errors;
+        }
+      });
+
+      return updatedErrors;
+    });
   };
 
-  const recalculateItem = (item: NewPurchaseItemDto): NewPurchaseItemDto => {
-    const quantity = item.quantity ?? 0;
-    const unitPrice = item.unitPrice ?? 0;
-    const taxPercentage = item.taxPercentage ?? 0;
+  const handleMoveItem = (index: number, direction: "up" | "down") => {
+    const newIndex = direction === "up" ? index - 1 : index + 1;
 
-    const totalPrice = quantity * unitPrice;
-    const taxAmount = (totalPrice * taxPercentage) / 100;
-    const totalAmount = totalPrice + taxAmount;
+    if (newIndex < 0 || newIndex >= purchase.purchaseItems.length) {
+      return;
+    }
+
+    setPurchase((prev) => {
+      const updatedItems = [...prev.purchaseItems];
+
+      [updatedItems[index], updatedItems[newIndex]] = [
+        updatedItems[newIndex],
+        updatedItems[index],
+      ];
+
+      const reorderedItems = updatedItems.map((item, itemIndex) => ({
+        ...item,
+        position: itemIndex + 1,
+      }));
+
+      return {
+        ...prev,
+        purchaseItems: reorderedItems,
+      };
+    });
+
+    setItemErrors((prev) => {
+      const updatedErrors = { ...prev };
+
+      const currentErrors = prev[index];
+      const targetErrors = prev[newIndex];
+
+      delete updatedErrors[index];
+      delete updatedErrors[newIndex];
+
+      if (currentErrors) {
+        updatedErrors[newIndex] = currentErrors;
+      }
+
+      if (targetErrors) {
+        updatedErrors[index] = targetErrors;
+      }
+
+      return updatedErrors;
+    });
+  };
+
+  const recalculateItem = (item: PurchaseFormItem): PurchaseFormItem => {
+    const quantity = Number(item.quantity) || 0;
+    const unitPrice = Number(item.unitPrice) || 0;
+    const discount = Number(item.discount) || 0;
+    const taxPercentage = Number(item.taxPercentage) || 0;
+    const priceBeforeDiscount = roundMoney(quantity * unitPrice);
+    const discountAmount = roundMoney((priceBeforeDiscount * discount) / 100);
+    const totalPrice = roundMoney(priceBeforeDiscount - discountAmount);
+    const taxAmount = roundMoney((totalPrice * taxPercentage) / 100);
+    const totalAmount = roundMoney(totalPrice + taxAmount);
 
     return {
       ...item,
-      totalPrice: parseFloat(totalPrice.toFixed(2)),
-      taxAmount: parseFloat(taxAmount.toFixed(2)),
-      totalAmount: parseFloat(totalAmount.toFixed(2)),
+      discount,
+      discountAmount,
+      totalPrice,
+      taxAmount,
+      totalAmount,
     };
+  };
+
+  const clearItemError = (index: number, field: keyof PurchaseItemErrors) => {
+    setItemErrors((prev) => {
+      const rowErrors = prev[index];
+
+      if (!rowErrors?.[field]) {
+        return prev;
+      }
+
+      const updatedRowErrors = { ...rowErrors };
+      delete updatedRowErrors[field];
+
+      const updatedErrors = { ...prev };
+
+      if (Object.keys(updatedRowErrors).length === 0) {
+        delete updatedErrors[index];
+      } else {
+        updatedErrors[index] = updatedRowErrors;
+      }
+
+      return updatedErrors;
+    });
   };
 
   const handleItemChange = (
@@ -312,78 +526,273 @@ const handleDeleteDocument = async (
     field: keyof NewPurchaseItemDto,
     value: string | number,
   ) => {
-    setPurchase((prevPurchase) => {
-      const updatedItems = [...prevPurchase.purchaseItems];
-      const currentItem = { ...updatedItems[index] };
+    setPurchase((prev) => {
+      const updatedItems = [...prev.purchaseItems];
 
-      if (
-        field === "taxPercentage" ||
-        field === "quantity" ||
-        field === "unitPrice"
-      ) {
-        const parsedValue = Number(value);
-        if (!isNaN(parsedValue)) {
-          (currentItem as any)[field] = parsedValue;
-        }
-      } else {
-        (currentItem as any)[field] = value;
-      }
+      const currentItem: PurchaseFormItem = {
+        ...updatedItems[index],
+        [field]: value,
+      };
 
-      updatedItems[index] = recalculateItem(currentItem);
+      const quantity = Number.isFinite(Number(currentItem.quantity))
+        ? Number(currentItem.quantity)
+        : 0;
+
+      const unitPrice = Number.isFinite(Number(currentItem.unitPrice))
+        ? Number(currentItem.unitPrice)
+        : 0;
+
+      const discount = Number.isFinite(Number(currentItem.discount))
+        ? Number(currentItem.discount)
+        : 0;
+
+      const taxPercentage = Number.isFinite(Number(currentItem.taxPercentage))
+        ? Number(currentItem.taxPercentage)
+        : 0;
+
+      const priceBeforeDiscount = roundMoney(quantity * unitPrice);
+
+      const discountAmount = roundMoney((priceBeforeDiscount * discount) / 100);
+
+      const totalPrice = roundMoney(priceBeforeDiscount - discountAmount);
+
+      const taxAmount = roundMoney((totalPrice * taxPercentage) / 100);
+
+      const totalAmount = roundMoney(totalPrice + taxAmount);
+
+      currentItem.quantity = quantity;
+      currentItem.unitPrice = unitPrice;
+      currentItem.discount = discount;
+      currentItem.discountAmount = discountAmount;
+      currentItem.taxPercentage = taxPercentage;
+      currentItem.totalPrice = totalPrice;
+      currentItem.taxAmount = taxAmount;
+      currentItem.totalAmount = totalAmount;
+
+      updatedItems[index] = currentItem;
 
       return {
-        ...prevPurchase,
+        ...prev,
         purchaseItems: updatedItems,
       };
     });
+
+    if (
+      field === "quantity" ||
+      field === "unitPrice" ||
+      field === "discount" ||
+      field === "taxPercentage"
+    ) {
+      clearItemError(index, field as keyof PurchaseItemErrors);
+    }
   };
 
-  const handleSubmit = () => {
-    if (!purchase.purchaseItems.length) {
-      handleApiError(new Error("Die Bestellung enthält keine Artikel."));
-      return;
+  const validatePurchaseItems = (): boolean => {
+    if (purchase.purchaseItems.length === 0) {
+      setErrors((prev) => ({
+        ...prev,
+        purchaseItems: "Bitte mindestens einen Artikel hinzufügen.",
+      }));
+
+      setItemErrors({});
+
+      return false;
     }
 
-    if (!purchase.vendorId || !purchase.purchasingDate) {
-      handleApiError(
-        new Error("Bitte füllen Sie alle Pflichtfelder korrekt aus."),
+    const newItemErrors: Record<number, PurchaseItemErrors> = {};
+
+    purchase.purchaseItems.forEach((item, index) => {
+      const errors: PurchaseItemErrors = {};
+
+      const quantityError = validateQuantity(Number(item.quantity));
+
+      if (quantityError) {
+        errors.quantity = quantityError;
+      }
+
+      const unitPriceError = validatePrice(Number(item.unitPrice));
+
+      if (unitPriceError) {
+        errors.unitPrice = unitPriceError;
+      }
+
+      const discountError = validatePercentage(Number(item.discount));
+
+      if (discountError) {
+        errors.discount = discountError;
+      }
+
+      const taxError = validatePercentage(Number(item.taxPercentage));
+
+      if (taxError) {
+        errors.taxPercentage = taxError;
+      }
+
+      if (Object.keys(errors).length > 0) {
+        newItemErrors[index] = errors;
+      }
+    });
+
+    setItemErrors(newItemErrors);
+
+    return Object.keys(newItemErrors).length === 0;
+  };
+
+  const applyBackendValidationErrors = (error: unknown): boolean => {
+    if (!isBackendValidationErrors(error)) {
+      return false;
+    }
+
+    const formErrors: FormErrors<NewPurchaseDto> = {};
+    const purchaseItemErrors: Record<number, PurchaseItemErrors> = {};
+
+    error.errors.forEach((validationError) => {
+      const message = translateValidationMessage(validationError.message);
+
+      if (
+        validationError.field === "vendorId" ||
+        validationError.field === "purchasingDate" ||
+        validationError.field === "documentId" ||
+        validationError.field === "documentNumber" ||
+        validationError.field === "purchaseItems"
+      ) {
+        formErrors[validationError.field] = message;
+        return;
+      }
+
+      const itemMatch = validationError.field.match(
+        /^purchaseItems\[(\d+)]\.(quantity|unitPrice|discount|taxPercentage)$/,
       );
+
+      if (!itemMatch) {
+        return;
+      }
+
+      const index = Number(itemMatch[1]);
+
+      const field = itemMatch[2] as keyof PurchaseItemErrors;
+
+      purchaseItemErrors[index] = {
+        ...purchaseItemErrors[index],
+        [field]: message,
+      };
+    });
+
+    setErrors(formErrors);
+    setItemErrors(purchaseItemErrors);
+
+    return true;
+  };
+
+  // --- SUBMIT ---//
+  const handleSubmit = async () => {
+    if (loading) {
       return;
     }
 
-    const updatedPurchaseItems = purchase.purchaseItems.map((item, index) => ({
-      ...item,
-      taxPercentage: item.taxPercentage ?? 0,
-      taxAmount:
-        (item.unitPrice ?? 0) *
-        (item.quantity ?? 0) *
-        ((item.taxPercentage ?? 0) / 100),
-      totalAmount:
-        (item.unitPrice ?? 0) * (item.quantity ?? 0) +
-        (item.unitPrice ?? 0) *
-          (item.quantity ?? 0) *
-          ((item.taxPercentage ?? 0) / 100),
-      position: index + 1,
-    }));
+    const validationErrors = validateRequiredFields(purchase, [
+      "vendorId",
+      "purchasingDate",
+      "documentId",
+    ]);
+
+    if (
+      purchase.purchasingDate &&
+      dayjs(purchase.purchasingDate).isAfter(dayjs(), "day")
+    ) {
+      validationErrors.purchasingDate =
+        "Das Datum darf nicht in der Zukunft liegen.";
+    }
+
+    setErrors(validationErrors);
+
+    const itemsAreValid = validatePurchaseItems();
+
+    if (hasErrors(validationErrors) || !itemsAreValid) {
+      return;
+    }
 
     const updatedPurchaseToSend: NewPurchaseDto = {
-      ...purchase,
-      purchaseItems: updatedPurchaseItems,
+      vendorId: purchase.vendorId,
+      purchasingDate: purchase.purchasingDate,
+      type: purchase.type,
       documentId: purchase.documentId,
+      documentNumber: purchase.documentNumber.trim(),
+      purchaseItems: purchase.purchaseItems.map((item) => ({
+        productId: item.productId,
+        productName: item.productName,
+        quantity: item.quantity,
+        unitPrice: roundMoney(Number(item.unitPrice)),
+        discount: roundMoney(Number(item.discount)),
+        taxPercentage: roundMoney(Number(item.taxPercentage)),
+      })),
     };
 
-    dispatch(updatePurchase({ id, updatedPurchase: updatedPurchaseToSend }))
-      .unwrap()
-      .then(() => {
-        showSuccessToast("Erfolg", "Bestellung erfolgreich aktualisiert");
-        navigate("/purchases");
-      })
-      .catch((error) =>
-        handleApiError(
-          error,
-          "Die Bestellung konnte nicht aktualisiert werden.",
-        ),
+    try {
+      setLoading(true);
+
+      const updatedPurchase = await dispatch(
+        updatePurchase({
+          id,
+          updatedPurchase: updatedPurchaseToSend,
+        }),
+      ).unwrap();
+
+      setPurchase({
+        vendorId: updatedPurchase.vendorId,
+        vendorName: updatedPurchase.vendorName,
+        purchasingDate: updatedPurchase.purchasingDate,
+        type: updatedPurchase.type,
+        documentId: updatedPurchase.document?.id ?? 0,
+        document: updatedPurchase.document,
+        documentNumber: updatedPurchase.documentNumber,
+        paymentStatus: updatedPurchase.paymentStatus,
+        hasPayments: updatedPurchase.hasPayments,
+        purchaseItems: updatedPurchase.purchaseItems,
+      });
+
+      setDateValue(
+        updatedPurchase.purchasingDate
+          ? dayjs(updatedPurchase.purchasingDate)
+          : null,
       );
+
+      const itemTaxes = [
+        ...new Set(
+          updatedPurchase.purchaseItems.map((item) =>
+            Number(item.taxPercentage ?? 0),
+          ),
+        ),
+      ];
+
+      const itemDiscounts = [
+        ...new Set(
+          updatedPurchase.purchaseItems.map((item) =>
+            Number(item.discount ?? 0),
+          ),
+        ),
+      ];
+
+      setDefaultTax(itemTaxes.length === 1 ? itemTaxes[0] : "mixed");
+
+      setDefaultDiscount(
+        itemDiscounts.length === 1 ? itemDiscounts[0] : "mixed",
+      );
+
+      setErrors({});
+      setItemErrors({});
+      setDocumentDataChanged(false);
+
+      showSuccessToast("Erfolg", "Bestellung erfolgreich aktualisiert");
+    } catch (error) {
+      if (applyBackendValidationErrors(error)) {
+        return;
+      }
+
+      handleApiError(error, "Die Bestellung konnte nicht aktualisiert werden.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const selectedVendor =
@@ -396,17 +805,46 @@ const handleDeleteDocument = async (
         }
       : null);
 
+  const getDocumentFileName = (fileUrl: string): string => {
+    return fileUrl.split("/").pop() ?? fileUrl;
+  };
+
   return (
-    <Container maxWidth="xl" sx={{ mt: 3 }}>
+    <Container maxWidth="xl">
       <Grid container spacing={3} sx={{ p: 2 }}>
         <Grid item xs={12} md={12}>
-          <Paper elevation={3} sx={{ p: 3 }}>
+          <Paper elevation={3} sx={{ p: 3, position: "relative" }}>
+            <Tooltip title="Schließen" arrow>
+              <IconButton
+                onClick={() => navigate(-1)}
+                disabled={loading}
+                aria-label="Schließen"
+                sx={{
+                  position: "absolute",
+                  top: 8,
+                  right: 8,
+                  zIndex: 1,
+                  color: colors.iconGrey,
+
+                  transition:
+                    "color 0.2s ease-in-out, background-color 0.2s ease-in-out",
+
+                  "&:hover": {
+                    color: colors.grey,
+                    transform: "scale(1.1)",
+                  },
+                }}
+              >
+                <ClearIcon />
+              </IconButton>
+            </Tooltip>
             <Box
               sx={{
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
                 mb: 2,
+                pr: 4,
               }}
             >
               <Typography
@@ -415,351 +853,540 @@ const handleDeleteDocument = async (
               >
                 {`Bestellung Nr. ${id}`}
               </Typography>
-
-              <Grid item xs={3} sx={{ pl: 2, pb: 2, pt: 2 }}>
-                <FormControl fullWidth>
-                  <InputLabel id="purchase-type-label">
-                    Art der Operation
-                  </InputLabel>
-
-                  <Select
-                    labelId="purchase-type-label"
-                    label="Art der Operation"
-                    value={purchase.type}
-                    onChange={(e) =>
-                      setPurchase({
-                        ...purchase,
-                        type: e.target.value as PurchaseType,
-                      })
-                    }
-                  >
-                    {typeOptions.map((type) => (
-                      <MenuItem key={type} value={type}>
-                        {type}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
             </Box>
 
             {/* Lieferant */}
-<Grid container spacing={2} sx={{ mb: 2 }}>
+            <Grid container spacing={2} sx={{ mb: 2 }}>
+              {/* LINKS: Bestelldaten */}
+              <Grid item xs={12} md={9} sx={{ mt: 1 }}>
+                <Box
+                  sx={{
+                    height: "100%",
+                  }}
+                >
+                  {/* Lieferant / Datum */}
+                  <Grid container spacing={2}>
+                    <Grid item xs={8}>
+                      <Autocomplete
+                        fullWidth
+                        disabled={loading || purchase.hasPayments}
+                        loading={vendorsPickLoading}
+                        options={[...vendorsPick].sort((a, b) =>
+                          a.name.localeCompare(b.name),
+                        )}
+                        getOptionLabel={(option) =>
+                          option.customerNumber
+                            ? `${option.name} (${option.customerNumber})`
+                            : option.name
+                        }
+                        isOptionEqualToValue={(option, value) =>
+                          option.id === value.id
+                        }
+                        value={selectedVendor}
+                        onChange={(_, value) => {
+                          setPurchase((prev) => ({
+                            ...prev,
+                            vendorId: value?.id ?? 0,
+                            vendorName: value?.name ?? "",
+                          }));
 
-  {/* LINKS: Bestelldaten */}
-  <Grid item xs={12} md={9}>
-    <Box
-      sx={{
-        height: "100%",
-      }}
-    >
-      {/* Lieferant */}
-      <Autocomplete
-        fullWidth
-        loading={vendorsPickLoading}
-        options={[...vendorsPick].sort((a, b) =>
-          a.name.localeCompare(b.name)
-        )}
-        getOptionLabel={(option) =>
-          option.customerNumber
-            ? `${option.name} (${option.customerNumber})`
-            : option.name
-        }
-        isOptionEqualToValue={(option, value) =>
-          option.id === value.id
-        }
-        value={selectedVendor}
-        onChange={(_, value) => {
-          setPurchase((prev) => ({
-            ...prev,
-            vendorId: value?.id ?? 0,
-            vendorName: value?.name ?? "",
-          }));
-        }}
-        renderInput={(params) => (
-          <TextField
-            {...params}
-            label="Lieferant"
-            InputProps={{
-              ...params.InputProps,
-              endAdornment: (
-                <>
-                  {vendorsPickLoading && (
-                    <CircularProgress size={18} />
+                          setDocumentDataChanged(true);
+
+                          setErrors((prev) =>
+                            clearFieldError(prev, "vendorId"),
+                          );
+                        }}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            label="Lieferant"
+                            error={Boolean(errors.vendorId)}
+                            helperText={errors.vendorId}
+                            InputProps={{
+                              ...params.InputProps,
+                              endAdornment: (
+                                <>
+                                  {vendorsPickLoading && (
+                                    <CircularProgress size={18} />
+                                  )}
+
+                                  {params.InputProps.endAdornment}
+                                </>
+                              ),
+                            }}
+                          />
+                        )}
+                      />
+                      {purchase.hasPayments && (
+                        <FormHelperText sx={{ ml: 1 }}>
+                          Der Lieferant kann nicht geändert werden, da bereits
+                          Zahlungen vorhanden sind.
+                        </FormHelperText>
+                      )}
+                    </Grid>
+
+                    <Grid item xs={2}>
+                      <LocalizationProvider
+                        dateAdapter={AdapterDayjs}
+                        adapterLocale="de"
+                        localeText={
+                          deDE.components.MuiLocalizationProvider.defaultProps
+                            .localeText
+                        }
+                      >
+                        <DatePicker
+                          label="Datum"
+                          disabled={loading}
+                          value={dateValue}
+                          disableFuture
+                          onChange={(newValue) => {
+                            setDateValue(newValue);
+
+                            setPurchase((prev) => ({
+                              ...prev,
+                              purchasingDate: newValue
+                                ? newValue.format("YYYY-MM-DD")
+                                : "",
+                            }));
+                            setDocumentDataChanged(true);
+                            setErrors((prev) =>
+                              clearFieldError(prev, "purchasingDate"),
+                            );
+                          }}
+                          slotProps={{
+                            textField: {
+                              fullWidth: true,
+                              size: "small",
+                              sx: dateFieldStyle,
+                              error: Boolean(errors.purchasingDate),
+                              helperText: errors.purchasingDate,
+                            },
+                          }}
+                        />
+                      </LocalizationProvider>
+                    </Grid>
+
+                    <Grid item xs={2}>
+                      <FormControl fullWidth>
+                        <InputLabel id="purchase-type-label">
+                          Vorgangsart
+                        </InputLabel>
+
+                        <Select
+                          disabled={loading}
+                          labelId="purchase-type-label"
+                          label="Art der Operation"
+                          value={purchase.type}
+                          onChange={(e) =>
+                            setPurchase({
+                              ...purchase,
+                              type: e.target.value as PurchaseType,
+                            })
+                          }
+                        >
+                          {typeOptions.map((type) => (
+                            <MenuItem key={type} value={type}>
+                              {type}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </Grid>
+                  </Grid>
+
+                  {/* Dokument / Dokumentnummer / Rabatt / MWSt */}
+                  <Grid container spacing={2} sx={{ mt: 1 }}>
+                    <Grid item xs={4}>
+                      <FormControl fullWidth error={Boolean(errors.documentId)}>
+                        <InputLabel id="purchase-document-label">
+                          Dokument
+                        </InputLabel>
+
+                        <Select
+                          disabled={loading}
+                          labelId="purchase-document-label"
+                          label="Dokument"
+                          value={purchase.documentId || ""}
+                          onChange={(e: SelectChangeEvent<number>) => {
+                            const selectedId = Number(e.target.value);
+
+                            setPurchase((prev) => ({
+                              ...prev,
+                              documentId: selectedId,
+                            }));
+                            setDocumentDataChanged(true);
+                            setErrors((prev) =>
+                              clearFieldError(prev, "documentId"),
+                            );
+                          }}
+                        >
+                          <MenuItem value="">Bitte wählen</MenuItem>
+
+                          {documentTypes.map((doc: TypeOfDocument) => (
+                            <MenuItem key={doc.id} value={doc.id}>
+                              {doc.name}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                        {errors.documentId && (
+                          <FormHelperText>{errors.documentId}</FormHelperText>
+                        )}
+                      </FormControl>
+                    </Grid>
+
+                    <Grid item xs={4}>
+                      <TextField
+                        label="Dokumentnummer"
+                        disabled={loading}
+                        error={Boolean(errors.documentNumber)}
+                        helperText={errors.documentNumber}
+                        value={purchase.documentNumber}
+                        onChange={(e) => {
+                          setPurchase((prev) => ({
+                            ...prev,
+                            documentNumber: e.target.value,
+                          }));
+                          setDocumentDataChanged(true);
+                          setErrors((prev) =>
+                            clearFieldError(prev, "documentNumber"),
+                          );
+                        }}
+                        fullWidth
+                      />
+                    </Grid>
+
+                    <Grid item xs={2}>
+                      <FormControl fullWidth>
+                        <InputLabel id="purchase-default-discount-label">
+                          Rabatt %
+                        </InputLabel>
+
+                        <Select
+                          labelId="purchase-default-discount-label"
+                          label="Rabatt %"
+                          disabled={loading}
+                          value={defaultDiscount}
+                          onChange={(e) => {
+                            const value = Number(e.target.value);
+
+                            setDefaultDiscount(value);
+
+                            setPurchase((prev) => ({
+                              ...prev,
+                              purchaseItems: prev.purchaseItems.map((item) =>
+                                recalculateItem({
+                                  ...item,
+                                  discount: value,
+                                }),
+                              ),
+                            }));
+                          }}
+                        >
+                          {defaultDiscount === "mixed" && (
+                            <MenuItem value="mixed" disabled>
+                              Mix
+                            </MenuItem>
+                          )}
+
+                          {discountRates.map((rate) => (
+                            <MenuItem key={rate.id} value={rate.value}>
+                              {rate.value}%
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </Grid>
+
+                    <Grid item xs={2}>
+                      <FormControl fullWidth>
+                        <InputLabel id="purchase-default-tax-label">
+                          MWSt %
+                        </InputLabel>
+
+                        <Select
+                          labelId="purchase-default-tax-label"
+                          label="MWSt %"
+                          disabled={loading}
+                          value={defaultTax}
+                          onChange={(e) => {
+                            const value = Number(e.target.value);
+
+                            setDefaultTax(value);
+
+                            setPurchase((prev) => ({
+                              ...prev,
+                              purchaseItems: prev.purchaseItems.map((item) =>
+                                recalculateItem({
+                                  ...item,
+                                  taxPercentage: value,
+                                }),
+                              ),
+                            }));
+                          }}
+                        >
+                          {defaultTax === "mixed" && (
+                            <MenuItem value="mixed" disabled>
+                              Mix
+                            </MenuItem>
+                          )}
+
+                          {taxRates.map((rate) => (
+                            <MenuItem key={rate.id} value={rate.value}>
+                              {rate.value}%
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </Grid>
+                  </Grid>
+                </Box>
+              </Grid>
+
+              {/* RECHTS: Dokumente */}
+              <Grid item xs={12} md={3}>
+                <Box
+                  sx={{
+                    height: "100%",
+                    minHeight: 90,
+                    px: 1.5,
+                    py: 1,
+                    border: `1px solid ${colors.border}`,
+                    borderRadius: 1,
+                    boxSizing: "border-box",
+                  }}
+                >
+                  {/* Upload */}
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1,
+                      mb: purchaseDocuments.length > 0 ? 0.5 : 0,
+                    }}
+                  >
+                    <Button
+                      variant="outlined"
+                      component="label"
+                      size="small"
+                      disabled={loading}
+                      startIcon={<UploadFileIcon />}
+                      sx={{
+                        flex: 1,
+                        minWidth: 0,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      Dateien wählen
+                      <input
+                        hidden
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        multiple
+                        onChange={(e) => {
+                          const files = Array.from(e.target.files ?? []);
+
+                          setDocumentFiles((prev) => [...prev, ...files]);
+
+                          e.target.value = "";
+                        }}
+                      />
+                    </Button>
+
+                    <Tooltip
+                      title={
+                        documentDataChanged
+                          ? "Bitte speichern Sie zuerst die Änderungen der Bestelldaten."
+                          : ""
+                      }
+                      arrow
+                    >
+                      <span>
+                        <Button
+                          variant="contained"
+                          size="small"
+                          onClick={handleUploadDocument}
+                          disabled={
+                            loading ||
+                            documentFiles.length === 0 ||
+                            purchaseDocumentsLoading ||
+                            documentDataChanged
+                          }
+                          sx={{
+                            minWidth: 42,
+                            px: 1,
+                            "&:hover": {
+                              backgroundColor: colors.accentDark,
+                            },
+                          }}
+                        >
+                          <UploadFileIcon fontSize="small" />
+                        </Button>
+                      </span>
+                    </Tooltip>
+                  </Box>
+
+                  {/* Выбранный файл до загрузки */}
+                  {documentFiles.length > 0 && (
+                    <Box
+                      sx={{
+                        mb: 0.5,
+                        maxHeight: 65,
+                        overflowY: "auto",
+                      }}
+                    >
+                      {documentFiles.map((file, index) => (
+                        <Box
+                          key={`${file.name}-${file.lastModified}-${index}`}
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            minHeight: 30,
+                            borderTop: `1px solid ${colors.border}`,
+                          }}
+                        >
+                          <Tooltip title={file.name} arrow>
+                            <Typography
+                              variant="caption"
+                              sx={{
+                                flex: 1,
+                                minWidth: 0,
+                                textAlign: "left",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {file.name}
+                            </Typography>
+                          </Tooltip>
+
+                          <Tooltip title="Entfernen" arrow>
+                            <IconButton
+                              size="small"
+                              disabled={loading}
+                              onClick={() => handleRemoveDocumentFile(index)}
+                              sx={{
+                                p: 0.4,
+                                "&:hover": {
+                                  color: "#d32f2f",
+                                  backgroundColor: "transparent",
+                                },
+                              }}
+                            >
+                              <DeleteOutlineIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
+                      ))}
+                    </Box>
                   )}
 
-                  {params.InputProps.endAdornment}
-                </>
-              ),
-            }}
-          />
-        )}
-      />
+                  {purchaseDocumentsLoading && (
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "center",
+                        py: 0.5,
+                      }}
+                    >
+                      <CircularProgress size={18} />
+                    </Box>
+                  )}
 
-      {/* Datum / Dokument / Dokumentnummer */}
-      <Grid container spacing={2} sx={{ mt: 0 }}>
-        <Grid item xs={4}>
-          <LocalizationProvider
-            dateAdapter={AdapterDayjs}
-            adapterLocale="de"
-            localeText={
-              deDE.components.MuiLocalizationProvider.defaultProps
-                .localeText
-            }
-          >
-            <DatePicker
-              label="Datum"
-              value={dateValue}
-              onChange={(newValue) => {
-                setDateValue(newValue);
+                  {/* Загруженные документы */}
+                  {!purchaseDocumentsLoading && (
+                    <Box
+                      sx={{
+                        maxHeight: 65,
+                        overflowY: "auto",
+                      }}
+                    >
+                      {purchaseDocuments.map((document) => (
+                        <Box
+                          key={document.id}
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            minHeight: 30,
+                            borderTop: `1px solid ${colors.border}`,
+                          }}
+                        >
+                          <Tooltip
+                            title={getDocumentFileName(document.fileUrl)}
+                            arrow
+                          >
+                            <Typography
+                              variant="caption"
+                              sx={{
+                                flex: 1,
+                                minWidth: 0,
+                                textAlign: "left",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {getDocumentFileName(document.fileUrl)}
+                            </Typography>
+                          </Tooltip>
 
-                setPurchase((prev) => ({
-                  ...prev,
-                  purchasingDate: newValue
-                    ? newValue.format("YYYY-MM-DD")
-                    : "",
-                }));
-              }}
-              slotProps={{
-                textField: {
-                  fullWidth: true,
-                  size: "small",
-                  sx: saleDateFieldStyle,
-                },
-              }}
-            />
-          </LocalizationProvider>
-        </Grid>
+                          <Tooltip title="Öffnen" arrow>
+                            <IconButton
+                              size="small"
+                              onClick={() =>
+                                openPurchaseDocument(document.fileUrl)
+                              }
+                              sx={{
+                                p: 0.4,
+                                "&:hover": {
+                                  color: colors.accentBlue,
+                                  backgroundColor: "transparent",
+                                },
+                              }}
+                            >
+                              <OpenInNewIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
 
-        <Grid item xs={4}>
-          <FormControl fullWidth>
-            <InputLabel id="purchase-document-label">
-              Dokument
-            </InputLabel>
+                          <Tooltip title="Löschen" arrow>
+                            <IconButton
+                              size="small"
+                              disabled={loading}
+                              onClick={() => handleDeleteDocument(document.id)}
+                              sx={{
+                                p: 0.4,
+                                "&:hover": {
+                                  color: "#d32f2f",
+                                  backgroundColor: "transparent",
+                                },
+                              }}
+                            >
+                              <DeleteOutlineIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
+                      ))}
 
-            <Select
-              labelId="purchase-document-label"
-              label="Dokument"
-              value={purchase.documentId || ""}
-              onChange={(e: SelectChangeEvent<number>) => {
-                const selectedId = Number(e.target.value);
+                      {purchaseDocuments.length === 0 && (
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          sx={{
+                            display: "block",
+                            textAlign: "left",
+                            mt: 0.5,
+                          }}
+                        >
+                          Keine Dokumente
+                        </Typography>
+                      )}
+                    </Box>
+                  )}
+                </Box>
+              </Grid>
+            </Grid>
 
-                setPurchase((prev) => ({
-                  ...prev,
-                  documentId: selectedId,
-                }));
-              }}
-            >
-              <MenuItem value="">Bitte wählen</MenuItem>
-
-              {documentTypes.map((doc: TypeOfDocument) => (
-                <MenuItem key={doc.id} value={doc.id}>
-                  {doc.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Grid>
-
-        <Grid item xs={4}>
-          <TextField
-            label="Dokumentnummer"
-            value={purchase.documentNumber}
-            onChange={(e) =>
-              setPurchase((prev) => ({
-                ...prev,
-                documentNumber: e.target.value,
-              }))
-            }
-            fullWidth
-          />
-        </Grid>
-      </Grid>
-    </Box>
-  </Grid>
-
-
-  {/* RECHTS: Dokumente */}
-  <Grid item xs={12} md={3}>
-    <Box
-      sx={{
-        height: "100%",
-        minHeight: 118,
-        px: 1.5,
-        py: 1,
-        border: `1px solid ${colors.border}`,
-        borderRadius: 1,
-        boxSizing: "border-box",
-      }}
-    >
-
-      {/* Upload */}
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          gap: 1,
-          mb: purchaseDocuments.length > 0 ? 0.5 : 0,
-        }}
-      >
-        <Button
-          variant="outlined"
-          component="label"
-          size="small"
-          startIcon={<UploadFileIcon />}
-          sx={{
-            flex: 1,
-            minWidth: 0,
-            whiteSpace: "nowrap",
-          }}
-        >
-          Datei wählen
-
-          <input
-            hidden
-            type="file"
-            accept=".pdf,.jpg,.jpeg,.png"
-            onChange={(e) => {
-              const file = e.target.files?.[0] ?? null;
-              setDocumentFile(file);
-            }}
-          />
-        </Button>
-
-        <Button
-          variant="contained"
-          size="small"
-          onClick={handleUploadDocument}
-          disabled={!documentFile || purchaseDocumentsLoading}
-          sx={{
-            minWidth: 42,
-            px: 1,
-          }}
-        >
-          <UploadFileIcon fontSize="small" />
-        </Button>
-      </Box>
-
-      {/* Выбранный файл до загрузки */}
-      {documentFile && (
-        <Tooltip title={documentFile.name} arrow>
-          <Typography
-            variant="caption"
-            sx={{
-              display: "block",
-              mb: 0.5,
-              textAlign: "left",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {documentFile.name}
-          </Typography>
-        </Tooltip>
-      )}
-
-      {purchaseDocumentsLoading && (
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "center",
-            py: 0.5,
-          }}
-        >
-          <CircularProgress size={18} />
-        </Box>
-      )}
-
-      {/* Загруженные документы */}
-      {!purchaseDocumentsLoading && (
-        <Box
-          sx={{
-            maxHeight: 72,
-            overflowY: "auto",
-          }}
-        >
-          {purchaseDocuments.map((document) => (
-            <Box
-              key={document.id}
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                minHeight: 30,
-                borderTop: `1px solid ${colors.border}`,
-              }}
-            >
-              <Tooltip
-                title={document.originFileName}
-                arrow
-              >
-                <Typography
-                  variant="caption"
-                  sx={{
-                    flex: 1,
-                    minWidth: 0,
-                    textAlign: "left",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {document.originFileName}
-                </Typography>
-              </Tooltip>
-
-              <Tooltip title="Öffnen" arrow>
-                <IconButton
-                  size="small"
-                  onClick={() =>
-                    openPurchaseDocument(document.fileUrl)
-                  }
-                  sx={{ p: 0.4 }}
-                >
-                  <OpenInNewIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-
-              <Tooltip title="Löschen" arrow>
-                <IconButton
-                  size="small"
-                  onClick={() =>
-                    handleDeleteDocument(document.id)
-                  }
-                  sx={{
-                    p: 0.4,
-                    "&:hover": {
-                      color: "#d32f2f",
-                      backgroundColor: "transparent",
-                    },
-                  }}
-                >
-                  <DeleteOutlineIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-            </Box>
-          ))}
-
-          {purchaseDocuments.length === 0 && (
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{
-                display: "block",
-                textAlign: "left",
-                mt: 0.5,
-              }}
-            >
-              Keine Dokumente
-            </Typography>
-          )}
-        </Box>
-      )}
-    </Box>
-  </Grid>
-
-</Grid>
-
+            {/* Artikeln_Tabelle */}
             <Box
               sx={{
                 minHeight: 200,
@@ -771,17 +1398,20 @@ const handleDeleteDocument = async (
               <Table size="small">
                 <StyledTableHead>
                   <TableRow>
-                    <TableCell sx={{ ...fixedCellWidth(45), fontSize: "12px" }}>
+                    <TableCell sx={{ ...fixedCellWidth(65), fontSize: "12px" }}>
                       Pos
                     </TableCell>
-                    <TableCell sx={{ width: "60%" }}>Name</TableCell>
-                    <TableCell sx={fixedCellWidth(80)}>Menge</TableCell>
-                    <TableCell sx={fixedCellWidth(95)}>Preis</TableCell>
-                    <TableCell sx={{ ...fixedCellWidth(75), fontSize: "12px" }}>
+                    <TableCell sx={{ width: "40%" }}>Name</TableCell>
+                    <TableCell sx={fixedCellWidth(75)}>Menge</TableCell>
+                    <TableCell sx={fixedCellWidth(90)}>Preis</TableCell>
+                    <TableCell sx={{ ...fixedCellWidth(65), fontSize: "12px" }}>
+                      Rabatt%
+                    </TableCell>
+                    <TableCell sx={fixedCellWidth(90)}>Netto</TableCell>
+                    <TableCell sx={{ ...fixedCellWidth(65), fontSize: "12px" }}>
                       MWSt%
                     </TableCell>
-                    <TableCell sx={fixedCellWidth(95)}>Netto</TableCell>
-                    <TableCell sx={fixedCellWidth(95)}>MWSt</TableCell>
+                    <TableCell sx={fixedCellWidth(90)}>MWSt</TableCell>
                     <TableCell sx={fixedCellWidth(40)}></TableCell>
                   </TableRow>
                 </StyledTableHead>
@@ -789,20 +1419,70 @@ const handleDeleteDocument = async (
                 <TableBody>
                   {purchase.purchaseItems.map((item, index) => (
                     <TableRow key={index} sx={tableRowHoverStyle}>
+                      {/* Position */}
                       <TableCell
                         sx={{
                           ...centerCellStyle,
-                          ...fixedCellWidth(45),
-                          borderLeft: `1px solid ${colors.border}`,
+                          ...fixedCellWidth(65),
+                          ...leftBorderCellStyle,
+                          p: 0.5,
                         }}
                       >
-                        {index + 1}
+                        <Box
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: 0.25,
+                          }}
+                        >
+                          <Typography
+                            component="span"
+                            sx={{
+                              minWidth: 18,
+                              fontSize: "0.8rem",
+                              textAlign: "center",
+                            }}
+                          >
+                            {item.position}
+                          </Typography>
+
+                          <Tooltip title="Nach oben" arrow>
+                            <span>
+                              <IconButton
+                                size="small"
+                                disabled={index === 0 || loading}
+                                onClick={() => handleMoveItem(index, "up")}
+                                sx={{ p: 0.25 }}
+                              >
+                                <ArrowUpwardIcon sx={{ fontSize: 16 }} />
+                              </IconButton>
+                            </span>
+                          </Tooltip>
+
+                          <Tooltip title="Nach unten" arrow>
+                            <span>
+                              <IconButton
+                                size="small"
+                                disabled={
+                                  index === purchase.purchaseItems.length - 1 ||
+                                  loading
+                                }
+                                onClick={() => handleMoveItem(index, "down")}
+                                sx={{ p: 0.25 }}
+                              >
+                                <ArrowDownwardIcon sx={{ fontSize: 16 }} />
+                              </IconButton>
+                            </span>
+                          </Tooltip>
+                        </Box>
                       </TableCell>
 
+                      {/* Produktname */}
                       <TableCell
                         sx={{
                           ...saleTableNameCellStyle,
-                          width: "60%",
+                          width: "40%",
                           verticalAlign: "middle",
                           py: 1,
                         }}
@@ -813,6 +1493,7 @@ const handleDeleteDocument = async (
                           minRows={1}
                           maxRows={3}
                           fullWidth
+                          disabled={loading}
                           value={item.productName}
                           onChange={(e) =>
                             handleItemChange(
@@ -830,39 +1511,7 @@ const handleDeleteDocument = async (
                         />
                       </TableCell>
 
-                      <TableCell
-                        sx={{
-                          ...cellStyle,
-                          ...fixedCellWidth(80),
-                        }}
-                      >
-                        <CompactNumberCell
-                          value={item.quantity}
-                          min={0}
-                          step={1}
-                          align="center"
-                          onChange={(value) =>
-                            handleItemChange(index, "quantity", value)
-                          }
-                        />
-                      </TableCell>
-
-                      <TableCell
-                        sx={{
-                          ...cellStyle,
-                          ...fixedCellWidth(95),
-                        }}
-                      >
-                        <CompactNumberCell
-                          value={item.unitPrice}
-                          min={0}
-                          step={0.01}
-                          onChange={(value) =>
-                            handleItemChange(index, "unitPrice", value)
-                          }
-                        />
-                      </TableCell>
-
+                      {/* Menge */}
                       <TableCell
                         sx={{
                           ...cellStyle,
@@ -870,20 +1519,64 @@ const handleDeleteDocument = async (
                         }}
                       >
                         <CompactNumberCell
-                          value={item.taxPercentage}
+                          value={item.quantity}
                           min={0}
-                          max={100}
                           step={1}
+                          disabled={loading}
+                          error={Boolean(itemErrors[index]?.quantity)}
+                          errorText={itemErrors[index]?.quantity}
                           onChange={(value) =>
-                            handleItemChange(index, "taxPercentage", value)
+                            handleItemChange(index, "quantity", value)
                           }
                         />
                       </TableCell>
 
+                      {/* Preis */}
+                      <TableCell
+                        sx={{
+                          ...cellStyle,
+                          ...fixedCellWidth(90),
+                        }}
+                      >
+                        <CompactNumberCell
+                          value={item.unitPrice}
+                          min={0}
+                          step={0.01}
+                          disabled={loading}
+                          error={Boolean(itemErrors[index]?.unitPrice)}
+                          errorText={itemErrors[index]?.unitPrice}
+                          onChange={(value) =>
+                            handleItemChange(index, "unitPrice", value)
+                          }
+                        />
+                      </TableCell>
+
+                      {/* Rabatt */}
+                      <TableCell
+                        sx={{
+                          ...cellStyle,
+                          ...fixedCellWidth(65),
+                        }}
+                      >
+                        <CompactNumberCell
+                          value={item.discount ?? 0}
+                          min={0}
+                          max={100}
+                          step={1}
+                          disabled={loading}
+                          error={Boolean(itemErrors[index]?.discount)}
+                          errorText={itemErrors[index]?.discount}
+                          onChange={(value) =>
+                            handleItemChange(index, "discount", value)
+                          }
+                        />
+                      </TableCell>
+
+                      {/* Netto */}
                       <TableCell
                         sx={{
                           ...rightCellStyle,
-                          ...fixedCellWidth(95),
+                          ...fixedCellWidth(90),
                         }}
                       >
                         {item.totalPrice.toLocaleString("de-DE", {
@@ -892,10 +1585,32 @@ const handleDeleteDocument = async (
                         })}
                       </TableCell>
 
+                      {/* MWSt */}
+                      <TableCell
+                        sx={{
+                          ...cellStyle,
+                          ...fixedCellWidth(65),
+                        }}
+                      >
+                        <CompactNumberCell
+                          value={item.taxPercentage}
+                          min={0}
+                          max={100}
+                          step={1}
+                          disabled={loading}
+                          error={Boolean(itemErrors[index]?.taxPercentage)}
+                          errorText={itemErrors[index]?.taxPercentage}
+                          onChange={(value) =>
+                            handleItemChange(index, "taxPercentage", value)
+                          }
+                        />
+                      </TableCell>
+
+                      {/* MWSt Betrag */}
                       <TableCell
                         sx={{
                           ...rightCellStyle,
-                          ...fixedCellWidth(95),
+                          ...fixedCellWidth(90),
                         }}
                       >
                         {item.taxAmount.toLocaleString("de-DE", {
@@ -911,23 +1626,26 @@ const handleDeleteDocument = async (
                         }}
                       >
                         <Tooltip title="Löschen" arrow>
-                          <IconButton
-                            size="small"
-                            onClick={() => handleRemoveItem(index)}
-                            aria-label="Zeile löschen"
-                            sx={{
-                              p: 0.5,
-                              transition: "transform 0.2s ease-in-out",
+                          <span>
+                            <IconButton
+                              size="small"
+                              onClick={() => handleRemoveItem(index)}
+                              disabled={loading}
+                              aria-label="Zeile löschen"
+                              sx={{
+                                p: 0.5,
+                                transition: "transform 0.2s ease-in-out",
 
-                              "&:hover": {
-                                color: "#d32f2f",
-                                transform: "scale(1.2)",
-                                backgroundColor: "transparent",
-                              },
-                            }}
-                          >
-                            <DeleteIcon />
-                          </IconButton>
+                                "&:hover": {
+                                  color: "#d32f2f",
+                                  transform: "scale(1.2)",
+                                  backgroundColor: "transparent",
+                                },
+                              }}
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          </span>
                         </Tooltip>
                       </TableCell>
                     </TableRow>
@@ -935,7 +1653,7 @@ const handleDeleteDocument = async (
 
                   {purchase.purchaseItems.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={8} align="center">
+                      <TableCell colSpan={9} align="center">
                         Keine Artikel vorhanden
                       </TableCell>
                     </TableRow>
@@ -961,23 +1679,17 @@ const handleDeleteDocument = async (
                 }}
               >
                 <Button
-                  onClick={() => navigate("/purchases")}
-                  sx={cancelButtonStyle}
-                >
-                  Abbrechen
-                </Button>
-
-                <Button
                   variant="contained"
                   onClick={handleSubmit}
-                  sx={primaryButtonStyle}
+                  sx={{ ...primaryButtonStyle, width: 200 }}
                   disabled={
+                    loading ||
                     !purchase.vendorId ||
                     !purchase.purchasingDate ||
                     purchase.purchaseItems.length === 0
                   }
                 >
-                  Aktualisieren
+                  {loading ? "Speichern..." : "Aktualisieren"}
                 </Button>
               </Box>
 
@@ -987,6 +1699,18 @@ const handleDeleteDocument = async (
                   textAlign: "right",
                 }}
               >
+                {discountAmount > 0 && (
+                  <>
+                    <Typography>
+                      Netto vor Rabatt: {subtotalBeforeDiscount.toFixed(2)} €
+                    </Typography>
+
+                    <Typography>
+                      Rabatt: -{discountAmount.toFixed(2)} €
+                    </Typography>
+                  </>
+                )}
+
                 <Typography>Netto: {subtotal.toFixed(2)} €</Typography>
 
                 <Typography>MWSt: {taxSum.toFixed(2)} €</Typography>
@@ -1062,21 +1786,6 @@ const handleDeleteDocument = async (
                   </Box>
                 )}
 
-                {!pickLoading &&
-                  pickProducts.length === 0 &&
-                  (searchTerm.length >= 2 || selectedCategory !== null) && (
-                    <Box
-                      sx={{
-                        p: 1,
-                        textAlign: "center",
-                        color: "text.secondary",
-                      }}
-                    >
-                      <Typography variant="caption">
-                        Keine Produkte gefunden
-                      </Typography>
-                    </Box>
-                  )}
                 <Table size="small">
                   <StyledTableHead>
                     <TableRow>
@@ -1087,39 +1796,43 @@ const handleDeleteDocument = async (
                     </TableRow>
                   </StyledTableHead>
                   <TableBody>
-                    {pickProducts.map((product) => (
-                      <TableRow
-                        key={product.id}
-                        sx={tableRowHoverStyle}
-                        onDoubleClick={() => handleAddProductToCart(product)}
-                      >
-                        <TableCell sx={cellStyle}>
-                          {product.name}
-                        </TableCell>
+                    {canSearchProducts &&
+                      pickProducts.map((product) => (
+                        <TableRow
+                          key={product.id}
+                          sx={tableRowHoverStyle}
+                          onDoubleClick={() => {
+                            if (!loading) {
+                              handleAddProductToCart(product);
+                            }
+                          }}
+                        >
+                          <TableCell sx={cellStyle}>{product.name}</TableCell>
 
-                        <TableCell sx={cellStyle}>
-                          {product.article}
-                        </TableCell>
+                          <TableCell sx={cellStyle}>
+                            {product.article}
+                          </TableCell>
 
-                        <TableCell sx={cellStyle}>
-                          {product.vendorArticle ?? ""}
-                        </TableCell>
+                          <TableCell sx={cellStyle}>
+                            {product.vendorArticle ?? ""}
+                          </TableCell>
 
-                        <TableCell sx={rightCellStyle}>
-                          {product.purchasingPrice.toLocaleString("de-DE", {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {!pickLoading && pickProducts.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={4} align="center">
-                          Keine Produkte gefunden
-                        </TableCell>
-                      </TableRow>
-                    )}
+                          <TableCell sx={rightCellStyle}>
+                            {product.purchasingPrice != null
+                              ? formatNumber(product.purchasingPrice)
+                              : ""}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    {canSearchProducts &&
+                      !pickLoading &&
+                      pickProducts.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={4} align="center">
+                            Keine Produkte gefunden
+                          </TableCell>
+                        </TableRow>
+                      )}
                   </TableBody>
                 </Table>
               </Box>

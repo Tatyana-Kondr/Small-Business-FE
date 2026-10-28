@@ -13,22 +13,10 @@ export async function fetchProducts(page: number, size: number, sort = "name,asc
   return apiFetch<PaginatedResponse<Product>>(
     `/api/products?${queryParams.toString()}`,
     { auth: true }, 
-    "Fehler beim Laden der Produktiste.",
+    "Fehler beim Laden der Produktliste.",
   );
 }
 
-export async function fetchAllProducts( searchTerm = ""): Promise<Product[]> {
-  const queryParams = new URLSearchParams();
-   if (searchTerm.trim() !== "") {
-    queryParams.append("search", searchTerm);
-  }
-  const qs = queryParams.toString();
-  return apiFetch<Product[]>(
-    `/api/products/all${qs ? `?${qs}` : ""}`,
-    { auth: true }, 
-    "Fehler beim Laden der Produktiste.",
-  );
-}
 
 export async function fetchPickProducts(params: {
   searchTerm?: string;
@@ -53,8 +41,21 @@ export async function fetchAddProduct(newProduct: NewProductDto): Promise<Produc
       body: JSON.stringify(newProduct),
       auth: true,
     },
-  "Fehler beim Hinzufügen des Produkt."
+  "Fehler beim Hinzufügen des Produkts."
 );
+}
+
+export async function fetchUpdateProductArticle( productId: number, article: string,): Promise<Product> {
+  return apiFetch<Product>(
+    `/api/products/${productId}/article`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", },
+      body: JSON.stringify({ article }),
+      auth: true,
+    },
+    "Die Artikelnummer konnte nicht aktualisiert werden.",
+  );
 }
 
 export async function fetchEditProduct({ id, updateProductDto }: { id: number, updateProductDto: UpdateProductDto }): Promise<Product> {
@@ -66,7 +67,7 @@ export async function fetchEditProduct({ id, updateProductDto }: { id: number, u
       body: JSON.stringify(updateProductDto),
       auth: true,
     },
-    "Fehler beim Aktualisieren des Produkt."
+    "Fehler beim Aktualisieren des Produkts."
   );
 }
 
@@ -74,7 +75,7 @@ export async function fetchProduct(id: number): Promise<Product> {
   return apiFetch<Product>(
     `/api/products/${id}`,
     { auth: true }, 
-    "Fehler beim Laden der Produkt."
+    "Fehler beim Laden des Produkts."
   );
 }
 
@@ -97,36 +98,64 @@ export async function fetchProductsByCategory(
   return apiFetch<PaginatedResponse<Product>>(
     `/api/products/category/${categoryId}?${queryParams.toString()}`,
     { auth: true },
-    "Fehler beim Laden der Produktiste."
+    "Fehler beim Laden der Produktliste."
   );
 }
-
-export async function fetchAllProductsByCategory(
-  categoryId: number,
-  searchTerm = ""
-): Promise<Product[]> {
-  const queryParams = new URLSearchParams();
-
-  if (searchTerm.trim() !== "") {
-    queryParams.append("search", searchTerm);
-  }
-
-  const qs = queryParams.toString();
-  return apiFetch(
-    `/api/products/category/${categoryId}/all${qs ? `?${qs}` : ""}`,
-    { auth: true },
-    "Fehler beim Laden der Produktiste."
-  );
-}
-
 
 export async function fetchDeleteProduct(id: number): Promise<void> {
   return apiFetch<void>(
     `/api/products/${id}`,
     { method: "DELETE", auth: true },
-    `Fehler beim Löschen des Produkt mit ID ${id}.`
+    `Fehler beim Löschen des Produkts mit ID ${id}.`
   );
 }
+
+export async function fetchSimilarProducts(
+  name: string,
+  vendorArticle?: string
+): Promise<ProductPickDto[]> {
+  const queryParams = new URLSearchParams();
+
+  queryParams.set("name", name.trim());
+
+  if (vendorArticle?.trim()) {
+    queryParams.set("vendorArticle", vendorArticle.trim());
+  }
+
+  return apiFetch<ProductPickDto[]>(
+    `/api/products/similar?${queryParams.toString()}`,
+    { auth: true },
+    "Fehler beim Prüfen auf ähnliche Produkte."
+  );
+}
+
+export async function fetchSimilarProductsForUpdate(
+  productId: number,
+  name?: string,
+  article?: string,
+  vendorArticle?: string,
+): Promise<ProductPickDto[]> {
+  const queryParams = new URLSearchParams();
+
+  if (name?.trim()) {
+    queryParams.set("name", name.trim());
+  }
+
+  if (article?.trim()) {
+    queryParams.set("article", article.trim());
+  }
+
+  if (vendorArticle?.trim()) {
+    queryParams.set("vendorArticle", vendorArticle.trim());
+  }
+
+  return apiFetch<ProductPickDto[]>(
+    `/api/products/${productId}/similar-update?${queryParams.toString()}`,
+    { auth: true },
+    "Fehler beim Prüfen auf ähnliche Produkte.",
+  );
+}
+
 
 
 // === ProductCategory ===
@@ -139,7 +168,7 @@ export async function fetchAddProductCategory(newCategory: NewProductCategoryDto
       body: JSON.stringify(newCategory),
       auth: true,
     },
-    "Fehler beim Hinzufügen des Produktkategorie."
+    "Fehler beim Hinzufügen der Produktkategorie."
   );
 }
 
@@ -160,7 +189,7 @@ export async function fetchEditProductCategory({ id, newProductCategoryDto }: { 
       body: JSON.stringify(newProductCategoryDto),
       auth: true,
     },
-    "Fehler beim Aktualisieren des Produktkategorie."
+    "Fehler beim Aktualisieren der Produktkategorie."
   );
 }
 
@@ -169,7 +198,7 @@ export async function fetchDeleteProductCategory(id: number): Promise<void> {
   return apiFetch<void>(
     `/api/product-categories/${id}`,
     { method: "DELETE", auth: true },
-    `Fehler beim Löschen des Produktkategorie mit ID ${id}.`
+    `Fehler beim Löschen der Produktkategorie mit ID ${id}.`
   );
 }
 
@@ -185,29 +214,29 @@ return apiFetch<ProductCategory[]>(
       },
       auth: true,
     },
-    "Fehler beim Laden der Produktkategorieiste."
+    "Fehler beim Laden der Produktkategorien."
   );
 }
 
 
 // Photos and Files
-export async function fetchProductFiles(productId: number): Promise<any> {
-  return apiFetch<any>(
+export async function fetchProductFiles(productId: number): Promise<ProductFile[]> {
+  return apiFetch<ProductFile[]>(
     `/api/products/${productId}/photos`,
     {
       method: "GET",
       headers: { "Content-Type": "application/json" },
       auth: true,
     },
-    "Fehler beim Abrufen von Produktdateien"
+    "Fehler beim Abrufen von Produktdateien",
   );
 }
 
-export async function fetchUploadProductFile(productId: number, file: File): Promise<any> {
+export async function fetchUploadProductFile(productId: number, file: File): Promise<ProductFile> {
  const formData = new FormData();
   formData.append("file", file);
 
-  return apiFetch<any>(
+  return apiFetch<ProductFile>(
     `/api/products/${productId}/files`,
     {
       method: "POST",

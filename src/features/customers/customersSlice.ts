@@ -1,4 +1,5 @@
 import { createAppSlice } from "../../redux/createAppSlice";
+import { HttpError } from "../../utils/errors/handleFetchError";
 import {
   fetchAddCustomer,
   fetchCustomer,
@@ -278,8 +279,19 @@ export const customersSlice = createAppSlice({
     ),
 
     addCustomer: create.asyncThunk(
-      async ({ newCustomerDto }: { newCustomerDto: NewCustomerDto }) => {
-        return await fetchAddCustomer(newCustomerDto);
+      async (
+        { newCustomerDto }: { newCustomerDto: NewCustomerDto },
+        { rejectWithValue },
+      ) => {
+        try {
+          return await fetchAddCustomer(newCustomerDto);
+        } catch (error) {
+          if (error instanceof HttpError) {
+            return rejectWithValue(error.data ?? { message: error.message });
+          }
+
+          throw error;
+        }
       },
       {
         pending: (state) => {
@@ -303,14 +315,25 @@ export const customersSlice = createAppSlice({
     ),
 
     editCustomer: create.asyncThunk(
-      async ({
-        id,
-        newCustomerDto,
-      }: {
-        id: number;
-        newCustomerDto: NewCustomerDto;
-      }) => {
-        return await fetchEditCustomer(id, newCustomerDto);
+      async (
+        {
+          id,
+          newCustomerDto,
+        }: {
+          id: number;
+          newCustomerDto: NewCustomerDto;
+        },
+        { rejectWithValue },
+      ) => {
+        try {
+          return await fetchEditCustomer(id, newCustomerDto);
+        } catch (error) {
+          if (error instanceof HttpError) {
+            return rejectWithValue(error.data ?? { message: error.message });
+          }
+
+          throw error;
+        }
       },
       {
         pending: (state) => {
@@ -339,9 +362,25 @@ export const customersSlice = createAppSlice({
     ),
 
     deleteCustomer: create.asyncThunk(
-      async (id: number) => {
-        await fetchDeleteCustomer(id);
-        return id;
+      async (id: number, { rejectWithValue }) => {
+        try {
+          await fetchDeleteCustomer(id);
+          return id;
+        } catch (error) {
+          if (error instanceof HttpError) {
+            return rejectWithValue({
+              status: error.status,
+              message: error.message,
+              errors:
+                error.data &&
+                typeof error.data === "object" &&
+                "errors" in error.data
+                  ? error.data.errors
+                  : undefined,
+            });
+          }
+          throw error;
+        }
       },
       {
         pending: (state) => {
@@ -362,7 +401,13 @@ export const customersSlice = createAppSlice({
 
         rejected: (state, action) => {
           state.loading = false;
+
+          const payload = action.payload as
+            | { status: number; message: string }
+            | undefined;
+
           state.error =
+            payload?.message ||
             action.error.message ||
             "Fehler beim Löschen des Kunden/Lieferanten.";
         },
@@ -371,9 +416,11 @@ export const customersSlice = createAppSlice({
   }),
   selectors: {
     selectCustomers: (state: CustomersState) => state.customersList,
-    selectCustomersWithCustomerNumber: (state: CustomersState) => state.customersList,
+    selectCustomersWithCustomerNumber: (state: CustomersState) =>
+      state.customersList,
     selectCustomersPickList: (state: CustomersState) => state.customersPickList,
-    selectCustomersPickListWithNumber: (state: CustomersState) => state.customersPickListWithNumber,
+    selectCustomersPickListWithNumber: (state: CustomersState) =>
+      state.customersPickListWithNumber,
     selectTotalPages: (state: CustomersState) => state.totalPages,
     selectCurrentPage: (state: CustomersState) => state.currentPage,
     selectPageSize: (state: CustomersState) => state.pageSize,

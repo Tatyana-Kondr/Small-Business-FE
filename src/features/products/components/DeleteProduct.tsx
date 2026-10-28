@@ -1,76 +1,78 @@
-import { useState } from "react";
-import { Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, Tooltip } from "@mui/material";
-import { deleteProduct } from "../productsSlice";
+import type { ReactNode } from "react";
+
 import { useAppDispatch } from "../../../redux/hooks";
-import { showSuccessToast } from "../../../utils/toast";
-import { handleApiError } from "../../../utils/handleApiError";
-import { colors } from "../../../styles/colors";
-import DeleteForeverOutlinedIcon from '@mui/icons-material/DeleteForeverOutlined';
+import { deleteProduct } from "../productsSlice";
+
+import { showErrorToast, showSuccessToast } from "../../../utils/toast";
+import { getApiErrorMessage } from "../../../utils/errors/handleApiError";
+
+import ConfirmDeleteDialog from "../../../components/ConfirmDeleteDialog";
 
 interface DeleteProductProps {
   productId: number;
   productName: string;
   productArticle: string;
   onSuccessDelete?: () => void;
+  trigger?: ReactNode;
 }
 
-export default function DeleteProduct({ productId, productName, productArticle, onSuccessDelete }: DeleteProductProps) {
+export default function DeleteProduct({
+  productId,
+  productName,
+  productArticle,
+  onSuccessDelete,
+  trigger,
+}: DeleteProductProps) {
   const dispatch = useAppDispatch();
-  const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
 
-  const handleOpen = () => setOpen(true);
-  const handleClose = () => setOpen(false);
-
-  const handleDelete = async () => {
-    setLoading(true);
+  const handleDelete = async (): Promise<void> => {
     try {
       await dispatch(deleteProduct(productId)).unwrap();
-      handleClose();
-      onSuccessDelete?.();
-      showSuccessToast("Erfolg", "Produkt wurde erfolgreich gelöscht!");
-    } catch (error: any) {
-      handleApiError(error, "Fehler beim Löschen des Produkts.");
-    } finally {
-      setLoading(false);
+    } catch (error: unknown) {
+      const err =
+        typeof error === "object" && error !== null
+          ? (error as Record<string, unknown>)
+          : null;
+
+      let message = getApiErrorMessage(
+        error,
+        `Fehler beim Löschen des Produkts ${productName}.`,
+      );
+
+      // Конкретные причины запрета удаления от Backend
+      if (err?.status === 409 && Array.isArray(err.errors)) {
+        const messages = err.errors
+          .filter(
+            (item): item is { message: string } =>
+              typeof item === "object" &&
+              item !== null &&
+              "message" in item &&
+              typeof item.message === "string",
+          )
+          .map((item) => item.message.trim())
+          .filter(Boolean);
+
+        if (messages.length > 0) {
+          message = messages.join("\n");
+        }
+      }
+
+      showErrorToast("Fehler beim Löschen", message);
+
+      // ConfirmDeleteDialog перехватит ошибку и останется открытым
+      throw error;
     }
+
+    showSuccessToast("Erfolg", `${productName} wurde erfolgreich gelöscht.`);
+
+    // Переход к списку только после успешного удаления
+    onSuccessDelete?.();
   };
 
   return (
-    <>
-      <Tooltip title="Produkt löschen" arrow>
-        <IconButton
-          onClick={handleOpen}
-          sx={{
-            color: colors.danger,
-            fontSize: "large",
-
-            "&:hover": {
-              color: colors.dangerLight,
-              //backgroundColor: "#fddede",
-              transform: "scale(1.3)",
-            },
-          }}
-        >
-          <DeleteForeverOutlinedIcon />
-        </IconButton>
-      </Tooltip>
-
-      <Dialog open={open} onClose={handleClose}>
-        <DialogTitle sx={{ color: "error.main", fontWeight: "bold" }}>⚠️ WARNUNG!</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            Wollen Sie der Produkt: <strong>{productName}</strong> Artikel: <strong>{productArticle}</strong> wirklich löschen?
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleClose} color="primary">Abbrechen</Button>
-          <Button onClick={handleDelete} color="error" disabled={loading}>
-            {loading ? "Löschung..." : "Löschen"}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-    </>
+    <ConfirmDeleteDialog trigger={trigger} onConfirm={handleDelete}>
+      Möchten Sie das Produkt <strong>{productName}</strong> mit der
+      Artikelnummer <strong>{productArticle}</strong> wirklich löschen?
+    </ConfirmDeleteDialog>
   );
 }

@@ -1,64 +1,45 @@
-import React, { useEffect, useState } from "react";
-import {
-  TextField,
-  Button,
-  DialogTitle,
-  Dialog,
-  DialogContent,
-  DialogActions,
-} from "@mui/material";
+import { useEffect, useState } from "react";
+
+import { Button, TextField } from "@mui/material";
+
 import { useAppDispatch, useAppSelector } from "../../../../redux/hooks";
+
 import { NewPaymentProcessDto } from "../../types";
-import { addPaymentProcess, getPaymentProcesses } from "../../paymentProcessesSlice";
+
+import { addPaymentProcess, selectLoading } from "../../paymentProcessesSlice";
+
 import { showSuccessToast } from "../../../../utils/toast";
-import { handleApiError } from "../../../../utils/handleApiError";
+import { getApiErrorMessage } from "../../../../utils/errors/handleApiError";
+
+import { isBackendValidationErrors } from "../../../../utils/validation/validation";
+import { translateValidationMessage } from "../../../../utils/validation/validationMessages";
+
+import DraggableDialog from "../../../../components/DraggableDialog";
+import DialogTitleText from "../../../../components/DialogTitleText";
+
+import { primaryButtonStyle } from "../../../../styles/buttonStyles";
 
 interface CreatePaymentProcessModalProps {
   open: boolean;
   onClose: () => void;
 }
 
-export const CreatePaymentProcess: React.FC<CreatePaymentProcessModalProps> = ({ open, onClose }) => {
+const initialFormState: NewPaymentProcessDto = {
+  processName: "",
+};
+
+export function CreatePaymentProcess({
+  open,
+  onClose,
+}: CreatePaymentProcessModalProps) {
   const dispatch = useAppDispatch();
-  const loading = useAppSelector((state) => state.paymentProcesses.loading);
 
-  const initialFormState: NewPaymentProcessDto = {
-    processName: "",
-  };
+  const loading = useAppSelector(selectLoading);
 
-  const [formData, setFormData] = useState<NewPaymentProcessDto>(initialFormState);
+  const [formData, setFormData] =
+    useState<NewPaymentProcessDto>(initialFormState);
+
   const [error, setError] = useState("");
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-    if (error) setError("");
-  };
-
-  const handleSubmit = async () => {
-    if (!formData.processName.trim()) {
-      setError("Bitte das Feld ausfüllen");
-      return;
-    }
-
-    try {
-      await dispatch(addPaymentProcess(formData)).unwrap();
-      dispatch(getPaymentProcesses());
-      showSuccessToast("Erfolg", "Zahlungsvorgang wurde erfolgreich erstellt.");
-      handleClose();
-    } catch (err) {
-      handleApiError(err, "Fehler beim Erstellen eines Zahlungsvorgangs:");
-    }
-  };
-
-  const handleClose = () => {
-    onClose();
-    setFormData(initialFormState);
-    setError("");
-  };
 
   useEffect(() => {
     if (!open) {
@@ -67,38 +48,100 @@ export const CreatePaymentProcess: React.FC<CreatePaymentProcessModalProps> = ({
     }
   }, [open]);
 
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = event.target;
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+
+    setError("");
+  };
+
+  const handleClose = () => {
+    if (loading) return;
+
+    setError("");
+    onClose();
+  };
+
+  const handleSubmit = async () => {
+    if (loading) return;
+
+    const processName = formData.processName.trim();
+
+    // Проверка обязательного поля
+    if (!processName) {
+      setError("Bitte das Feld ausfüllen.");
+      return;
+    }
+
+    setError("");
+
+    try {
+      await dispatch(addPaymentProcess({ processName })).unwrap();
+
+      showSuccessToast(
+        "Erfolg",
+        "Der Zahlungsvorgang wurde erfolgreich erstellt.",
+      );
+
+      handleClose();
+    } catch (error) {
+      // Ошибки Bean Validation от Backend
+      if (isBackendValidationErrors(error)) {
+        const nameError = error.errors.find(
+          (validationError) => validationError.field === "processName",
+        );
+
+        if (nameError) {
+          setError(translateValidationMessage(nameError.message));
+          return;
+        }
+      }
+
+      // Ошибки бизнес-логики от Backend
+      setError(
+        getApiErrorMessage(
+          error,
+          "Fehler beim Erstellen des Zahlungsvorgangs.",
+        ),
+      );
+    }
+  };
+
   return (
-    <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
-      <DialogTitle sx={{ textAlign: "left", fontWeight: "bold", textDecoration: 'underline', color: "#0277bd" }}>Neuen Zahlungsvorgang anlegen</DialogTitle>
-      <DialogContent>
-        <TextField
-          id="processName"
-          autoFocus
-          margin="normal"
-          fullWidth
-          label="Name"
-          name="processName"
-          required
-          value={formData.processName}
-          onChange={handleChange}
-          error={!!error}
-          helperText={error}
-          inputProps={{ 'aria-label': 'Name des Zahlungsprozesses' }}
-        />
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={handleClose} disabled={loading}>
-          Abbrechen
-        </Button>
+    <DraggableDialog
+      open={open}
+      onClose={loading ? undefined : handleClose}
+      dialogWidth={480}
+      title={<DialogTitleText>Neuen Zahlungsvorgang anlegen</DialogTitleText>}
+      actions={
         <Button
           onClick={handleSubmit}
-          color="primary"
           variant="contained"
           disabled={loading}
+          sx={primaryButtonStyle}
         >
-          Speichern
+          {loading ? "Speichern..." : "Speichern"}
         </Button>
-      </DialogActions>
-    </Dialog>
+      }
+    >
+      <TextField
+        id="processName"
+        autoFocus
+        fullWidth
+        required
+        label="Name"
+        name="processName"
+        value={formData.processName}
+        onChange={handleChange}
+        error={Boolean(error)}
+        helperText={error}
+        disabled={loading}
+        sx={{ mt: 3 }}
+      />
+    </DraggableDialog>
   );
-};
+}

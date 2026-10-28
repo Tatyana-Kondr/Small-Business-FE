@@ -1,4 +1,5 @@
 import { apiFetch } from "../../../utils/apiFetch";
+import { HttpError } from "../../../utils/errors/handleFetchError";
 import {
   AuthRequestDto,
   AuthResponseDto,
@@ -30,9 +31,14 @@ export async function fetchLogin(authRequestDto: AuthRequestDto): Promise<AuthRe
 // Обновление refreshToken
 export async function fetchRefreshToken(): Promise<AuthResponseDto> {
   const refreshToken = localStorage.getItem("refreshToken");
+
   if (!refreshToken) {
-    throw new Error("No refreshToken in storage");
+    throw new HttpError(
+      "Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.",
+      401,
+    );
   }
+
   return apiFetch<AuthResponseDto>("/api/auth/refresh", {
     method: "POST",
     body: JSON.stringify({ refreshToken }),
@@ -41,9 +47,9 @@ export async function fetchRefreshToken(): Promise<AuthResponseDto> {
 }
 
 // Выход пользователя
-export async function fetchLogout(): Promise<void> {
-  const refreshToken = localStorage.getItem("refreshToken");
-  if (!refreshToken) return;
+export async function fetchLogout(
+  refreshToken: string,
+): Promise<void> {
   return apiFetch<void>("/api/auth/logout", {
     method: "POST",
     body: JSON.stringify({ refreshToken }),

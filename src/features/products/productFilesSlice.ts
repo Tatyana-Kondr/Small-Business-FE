@@ -7,7 +7,7 @@ import {
   fetchReorderProductPhotos,
   fetchReplaceProductFile,
 } from "./api";
-import { ProductFilesState } from "./types";
+import { ProductFile, ProductFilesState } from "./types";
 
 const initialState: ProductFilesState = {
   files: [],
@@ -35,7 +35,6 @@ export const productFilesSlice = createAppSlice({
       {
         fulfilled: (state, action) => {
           state.files = action.payload;
-          console.log("Все фото загружены:", action.payload.length);
         },
       },
     ),
@@ -93,11 +92,38 @@ export const productFilesSlice = createAppSlice({
         productId: number;
         files: ProductFilesState["files"];
       }) => {
-        const photoIds = files.map((file) => file.id);
+        const allFiles = await fetchProductFiles(productId);
 
-        await fetchReorderProductPhotos(productId, photoIds);
+        const isImage = (fileName: string): boolean =>
+          /\.(jpg|jpeg|png)$/i.test(fileName);
 
-        return files;
+        const photos = allFiles.filter((file: ProductFile) =>
+          isImage(file.originFileName),
+        );
+
+        const documents = allFiles.filter(
+          (file: ProductFile) => !isImage(file.originFileName),
+        );
+
+        const requestedPhotoIds = files.map((file: ProductFile) => file.id);
+        const existingPhotoIds = photos.map((file: ProductFile) => file.id);
+
+        if (
+          requestedPhotoIds.length !== existingPhotoIds.length ||
+          new Set(requestedPhotoIds).size !== existingPhotoIds.length ||
+          requestedPhotoIds.some((id) => !existingPhotoIds.includes(id))
+        ) {
+          throw new Error("Ungültige Reihenfolge der Produktbilder.");
+        }
+
+        const reorderedFiles = [...files, ...documents];
+
+        await fetchReorderProductPhotos(
+          productId,
+          reorderedFiles.map((file) => file.id),
+        );
+
+        return reorderedFiles;
       },
       {
         fulfilled: (state, action) => {

@@ -1,140 +1,233 @@
-import React, { useEffect, useState } from "react";
+
+import { useEffect, useState } from "react";
 import {
-  TextField,
   Button,
-  DialogTitle,
-  Dialog,
-  DialogContent,
-  DialogActions,
+  FormControlLabel,
+  Switch,
+  TextField,
 } from "@mui/material";
 import { useAppDispatch, useAppSelector } from "../../../../redux/hooks";
 import { NewPaymentMethodDto } from "../../types";
-import { paymentMethodsSlice } from "../../paymentMethodsSlice";
-import { handleApiError } from "../../../../utils/handleApiError";
+import {
+  addPaymentMethod,
+  selectLoading,
+} from "../../paymentMethodsSlice";
 import { showSuccessToast } from "../../../../utils/toast";
-
-
+import { getApiErrorMessage } from "../../../../utils/errors/handleApiError";
+import { isBackendValidationErrors } from "../../../../utils/validation/validation";
+import { translateValidationMessage } from "../../../../utils/validation/validationMessages";
+import DraggableDialog from "../../../../components/DraggableDialog";
+import DialogTitleText from "../../../../components/DialogTitleText";
+import { primaryButtonStyle } from "../../../../styles/buttonStyles";
 
 interface CreatePaymentMethodModalProps {
   open: boolean;
   onClose: () => void;
 }
 
-export const CreatePaymentMethod: React.FC<CreatePaymentMethodModalProps> = ({ open, onClose }) => {
-  const dispatch = useAppDispatch();
-  const loading = useAppSelector((state) => state.paymentMethods.loading);
+const initialFormState: NewPaymentMethodDto = {
+  provider: "",
+  maskedNumber: "",
+  details: "",
+  active: true,
+};
 
-  const initialFormState: NewPaymentMethodDto = {
-    provider: "",
-    maskedNumber: "",
-    details: "",
-    active: true,
-  };
+type PaymentMethodErrors = {
+  provider: string;
+  maskedNumber: string;
+  details: string;
+};
+
+const initialErrors: PaymentMethodErrors = {
+  provider: "",
+  maskedNumber: "",
+  details: "",
+};
+
+export function CreatePaymentMethod({ open, onClose,}: CreatePaymentMethodModalProps) {
+  const dispatch = useAppDispatch();
+  const loading = useAppSelector(selectLoading);
 
   const [formData, setFormData] = useState<NewPaymentMethodDto>(initialFormState);
+  const [errors, setErrors] = useState<PaymentMethodErrors>(initialErrors);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target;
+  useEffect(() => {
+    if (!open) {
+      setFormData(initialFormState);
+      setErrors(initialErrors);
+    }
+  }, [open]);
+
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type, checked } = event.target;
+
     setFormData((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
-  };
 
-  const handleSubmit = async () => {
-    try {
-      // Подготовка данных: удаляем необязательные поля, если они пустые
-      const payload: NewPaymentMethodDto = {
-        provider: formData.provider.trim(),
-        active: formData.active,
-      };
-
-      if (formData.maskedNumber?.trim()) {
-        payload.maskedNumber = formData.maskedNumber.trim();
-      }
-
-      if (formData.details?.trim()) {
-        payload.details = formData.details.trim();
-      }
-
-      await dispatch(paymentMethodsSlice.actions.addPaymentMethod(payload)).unwrap();
-      await dispatch(paymentMethodsSlice.actions.getPaymentMethods());
-      showSuccessToast("Erfolg", "Die Zahlungsmethode wurde erfolgreich erstellt.");
-      handleClose(); // Закрыть и очистить форму
-    } catch (error) {
-      handleApiError(error, "Fehler beim Erstellen einer Zahlungsmethode:");
-    }
+    setErrors((prev) => ({
+      ...prev,
+      provider:
+        name === "provider" || name === "maskedNumber"
+          ? ""
+          : prev.provider,
+      ...(name === "maskedNumber" ? { maskedNumber: "" } : {}),
+      ...(name === "details" ? { details: "" } : {}),
+    }));
   };
 
   const handleClose = () => {
+    if (loading) return;
+
+    setErrors(initialErrors);
     onClose();
-    setFormData(initialFormState); // Очистка формы
   };
 
-  useEffect(() => {
-    if (!open) {
-      setFormData(initialFormState); // Очистка при закрытии
+  const handleSubmit = async () => {
+    if (loading) return;
+
+    const provider = formData.provider.trim();
+    const maskedNumber = formData.maskedNumber?.trim() ?? "";
+    const details = formData.details?.trim() ?? "";
+
+    // Проверка обязательного поля
+    if (!provider) {
+      setErrors({
+        ...initialErrors,
+        provider: "Bitte das Feld ausfüllen.",
+      });
+      return;
     }
-  }, [open]);
+
+    setErrors(initialErrors);
+
+    const payload: NewPaymentMethodDto = {
+      provider,
+      maskedNumber,
+      details,
+      active: formData.active,
+    };
+
+    try {
+      await dispatch(addPaymentMethod(payload)).unwrap();
+
+      showSuccessToast(
+        "Erfolg",
+        "Die Zahlungsmethode wurde erfolgreich erstellt.",
+      );
+
+      handleClose();
+    } catch (error) {
+      // Ошибки Bean Validation от Backend
+      if (isBackendValidationErrors(error)) {
+        const backendErrors: PaymentMethodErrors = {
+          ...initialErrors,
+        };
+
+        error.errors.forEach((validationError) => {
+          const { field, message } = validationError;
+
+          if (
+            field === "provider" ||
+            field === "maskedNumber" ||
+            field === "details"
+          ) {
+            backendErrors[field] = translateValidationMessage(message);
+          }
+        });
+
+        if (Object.values(backendErrors).some(Boolean)) {
+          setErrors(backendErrors);
+          return;
+        }
+      }
+
+      // Ошибки бизнес-логики от Backend
+      setErrors({
+        ...initialErrors,
+        provider: getApiErrorMessage(
+          error,
+          "Fehler beim Erstellen der Zahlungsmethode.",
+        ),
+      });
+    }
+  };
 
   return (
-  <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm" aria-labelledby="create-payment-method-title">
-    <DialogTitle
-      id="create-payment-method-title"
-      sx={{
-        textAlign: "left",
-        fontWeight: "bold",
-        textDecoration: "underline",
-        color: "#0277bd"
-      }}
+    <DraggableDialog
+      open={open}
+      onClose={loading ? undefined : handleClose}
+      dialogWidth={520}
+      title={
+        <DialogTitleText>
+          Neue Zahlungsmethode
+        </DialogTitleText>
+      }
+      actions={
+        <Button
+          onClick={handleSubmit}
+          variant="contained"
+          disabled={loading}
+          sx={primaryButtonStyle}
+        >
+          {loading ? "Speichern..." : "Speichern"}
+        </Button>
+      }
     >
-      Neuen Zahlungsmethode anlegen
-    </DialogTitle>
-
-    <DialogContent>
       <TextField
-        autoFocus
-        margin="normal"
-        fullWidth
         id="provider"
-        label="Provider *"
-        name="provider"
+        autoFocus
+        fullWidth
         required
+        label="Provider"
+        name="provider"
         value={formData.provider}
         onChange={handleChange}
-        inputProps={{ 'aria-label': 'Zahlungsanbieter' }}
+        error={Boolean(errors.provider)}
+        helperText={errors.provider}
+        disabled={loading}
+        sx={{ mt: 3 }}
       />
 
       <TextField
-        margin="normal"
-        fullWidth
         id="maskedNumber"
+        fullWidth
         label="Masked Number"
         name="maskedNumber"
-        required
-        value={formData.maskedNumber}
+        value={formData.maskedNumber ?? ""}
         onChange={handleChange}
-        inputProps={{ 'aria-label': 'Maskierte Nummer der Zahlungsmethode' }}
+        error={Boolean(errors.maskedNumber)}
+        helperText={errors.maskedNumber}
+        disabled={loading}
+        sx={{ mt: 2 }}
       />
 
       <TextField
-        margin="normal"
-        fullWidth
         id="details"
+        fullWidth
         label="Details"
         name="details"
-        value={formData.details}
+        value={formData.details ?? ""}
         onChange={handleChange}
-        inputProps={{ 'aria-label': 'Zusätzliche Details zur Zahlungsmethode' }}
+        error={Boolean(errors.details)}
+        helperText={errors.details}
+        disabled={loading}
+        sx={{ mt: 2 }}
       />
-    </DialogContent>
 
-    <DialogActions>
-      <Button onClick={handleClose} disabled={loading}>Abbrechen</Button>
-      <Button onClick={handleSubmit} color="primary" variant="contained" disabled={loading}>
-        Speichern
-      </Button>
-    </DialogActions>
-  </Dialog>
-);
-};
+      <FormControlLabel
+        sx={{ mt: 2 }}
+        control={
+          <Switch
+            name="active"
+            checked={formData.active}
+            onChange={handleChange}
+            disabled={loading}
+          />
+        }
+        label="Aktiv"
+      />
+    </DraggableDialog>
+  );
+}

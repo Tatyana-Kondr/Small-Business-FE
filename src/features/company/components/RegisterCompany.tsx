@@ -3,7 +3,7 @@ import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
 import { addCompany, selectError, selectLoading } from "../companiesSlice";
 import { NewCompanyDto } from "../types";
 import { ErrorMessage, Field, Form, Formik, FormikHelpers } from "formik";
-import { companyValidationSchema } from "../../../utils/companyValidationSchema";
+import { companyValidationSchema } from "../../../utils/validation/companyValidationSchema";
 
 export default function RegisterCompany() {
   const dispatch = useAppDispatch();
@@ -21,7 +21,10 @@ export default function RegisterCompany() {
     vatId: "", // обрати внимание, чтобы совпадало с DTO
   };
 
-  const handleSubmit = async (values: NewCompanyDto, formikHelpers: FormikHelpers<NewCompanyDto>) => {
+  const handleSubmit = async (
+    values: NewCompanyDto,
+    formikHelpers: FormikHelpers<NewCompanyDto>,
+  ) => {
     console.log("Submitting company →", values);
     try {
       await dispatch(addCompany(values)).unwrap();
@@ -36,17 +39,26 @@ export default function RegisterCompany() {
     try {
       companyValidationSchema.validateSync(values, { abortEarly: false });
     } catch (err: any) {
-      console.error("Validation errors:", err.inner.map((e: any) => ({ path: e.path, message: e.message })));
+      console.error(
+        "Validation errors:",
+        err.inner.map((e: any) => ({ path: e.path, message: e.message })),
+      );
     }
   };
 
   return (
-    <Box sx={{ maxWidth: 600, p: 3, border: "1px solid #ccc", borderRadius: 2 }}>
+    <Box
+      sx={{ maxWidth: 600, p: 3, border: "1px solid #ccc", borderRadius: 2 }}
+    >
       <Typography variant="h6" gutterBottom>
         Neue Firma registrieren
       </Typography>
 
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
 
       <Formik
         initialValues={initialValues}
@@ -87,7 +99,11 @@ export default function RegisterCompany() {
             ))}
 
             <Box display="flex" justifyContent="flex-end" mt={2}>
-              <Button type="submit" variant="contained" disabled={isSubmitting || loading}>
+              <Button
+                type="submit"
+                variant="contained"
+                disabled={isSubmitting || loading}
+              >
                 Registrieren
               </Button>
             </Box>

@@ -28,3 +28,13 @@ export const PaymentStatuses: PaymentStatus[] = [
   "BEZAHLT",
 ];
 
+// Типы платежей
+
+export type PaymentType =
+  | "EINNAHME"
+  | "AUSGABE";
+
+export const PaymentTypes: PaymentType[] = [
+  "EINNAHME",
+  "AUSGABE",
+];

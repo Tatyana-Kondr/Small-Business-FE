@@ -58,6 +58,8 @@ import { formatNumber } from "../../../utils/formatNumber";
 import { getAdaptivePageSize } from "../../../utils/getAdaptivePageSize";
 import ClearFiltersButton from "../../../components/ui/ClearFiltersButton";
 import DateRangeFilter from "../../../components/ui/DateRangeFilter";
+import { formatLocalDate } from "../../../utils/formatLocalDate";
+import { formatWeight } from "../../../utils/formatWeigh";
 
 export default function ProductionsList() {
   const dispatch = useAppDispatch();
@@ -189,19 +191,19 @@ export default function ProductionsList() {
     }));
   };
 
-  const handleSort = (field: string, direction: "ASC" | "DESC") => {
-    const newSort = [`${field},${direction}`];
+  const handleSort = (
+  field: string,
+  direction: "ASC" | "DESC"
+) => {
+  const newSort = [`${field},${direction}`];
 
-    if (field !== "dateOfProduction") {
-      newSort.push("dateOfProduction,DESC");
-    }
-    if (field !== "id") {
-      newSort.push("id,DESC");
-    }
+  if (field !== "id") {
+    newSort.push("id,DESC");
+  }
 
-    setSort(newSort);
-    setPage(0);
-  };
+  setSort(newSort);
+  setPage(0);
+};
 
   return (
     <Box sx={listPageStyle}>
@@ -259,7 +261,7 @@ export default function ProductionsList() {
                     onSort={handleSort}
                   />
                 </TableCell>
-                <TableCell sx={fixedCellWidth(150)}>
+                <TableCell sx={fixedCellWidth(200)}>
                   <SortableHeader
                     title="Artikel"
                     field="productArticle"
@@ -267,7 +269,7 @@ export default function ProductionsList() {
                     onSort={handleSort}
                   />
                 </TableCell>
-                <TableCell sx={{ width: "40%" }}>
+                <TableCell sx={{ minWidth: 280 }}>
                   <SortableHeader
                     title="Produktname"
                     field="productName"
@@ -275,7 +277,8 @@ export default function ProductionsList() {
                     onSort={handleSort}
                   />
                 </TableCell>
-                <TableCell sx={fixedCellWidth(150)}>
+                <TableCell sx={fixedCellWidth(100)}>Menge</TableCell>
+                <TableCell sx={fixedCellWidth(130)}>
                   <SortableHeader
                     title="Betrag"
                     field="amount"
@@ -284,7 +287,7 @@ export default function ProductionsList() {
                   />
                 </TableCell>
                 {isAdmin && (
-                  <TableCell sx={fixedCellWidth(150)}>Aktionen</TableCell>
+                  <TableCell sx={fixedCellWidth(110)}>Aktionen</TableCell>
                 )}
               </TableRow>
             </StyledTableHead>
@@ -313,21 +316,13 @@ export default function ProductionsList() {
                           ...fixedCellWidth(130),
                         }}
                       >
-                        {production.dateOfProduction
-                          ? new Date(
-                              production.dateOfProduction,
-                            ).toLocaleDateString("de-DE", {
-                              day: "2-digit",
-                              month: "2-digit",
-                              year: "numeric",
-                            })
-                          : ""}
+                       {formatLocalDate(production.dateOfProduction)}
                       </TableCell>
 
                       <TableCell
                         sx={{
                           ...cellStyle,
-                          ...fixedCellWidth(150),
+                          ...fixedCellWidth(200),
                         }}
                       >
                         {production.productArticle}
@@ -342,20 +337,34 @@ export default function ProductionsList() {
 
                       <TableCell
                         sx={{
-                          ...rightCellStyle,
-                          ...fixedCellWidth(150),
+                          ...centerCellStyle,
+                          ...fixedCellWidth(100),
                         }}
                       >
-                        {production.amount} €
+                        {formatWeight(production.quantity)}
+                      </TableCell>
+
+                      <TableCell
+                        sx={{
+                          ...rightCellStyle,
+                          ...fixedCellWidth(130),
+                        }}
+                      >
+                        {formatNumber(production.amount)} €
                       </TableCell>
                       {isAdmin && (
                         <TableCell
                           sx={{
                             ...actionCellStyle,
-                            ...fixedCellWidth(150),
+                            ...fixedCellWidth(110),
                           }}
                         >
-                          <Box sx={tableActionsStyle}>
+                          <Box
+                            sx={{
+                              ...tableActionsStyle,
+                              gridTemplateColumns: "28px 28px",
+                            }}
+                          >
                             <Box sx={tableActionSlotStyle}>
                               <Tooltip title="Bearbeiten" arrow>
                                 <IconButton
@@ -392,7 +401,7 @@ export default function ProductionsList() {
                     {openRows[production.id] && (
                       <TableRow>
                         <TableCell
-                          colSpan={isAdmin ? 6 : 5}
+                          colSpan={isAdmin ? 7 : 6}
                           sx={{ paddingBottom: 0, paddingTop: 0 }}
                         >
                           <Collapse
@@ -442,7 +451,7 @@ export default function ProductionsList() {
 
                                         <TableCell sx={hoverExpandCellStyle}>
                                           <HoverExpandText
-                                            text={item.productName ?? "_"}
+                                            text={item.productName ?? ""}
                                             hoverBgColor={colors.tableHover}
                                           />
                                         </TableCell>
@@ -472,7 +481,7 @@ export default function ProductionsList() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={isAdmin ? 6 : 5} align="center">
+                  <TableCell colSpan={isAdmin ? 7 : 6} align="center">
                     Keine Herstellungen gefunden
                   </TableCell>
                 </TableRow>

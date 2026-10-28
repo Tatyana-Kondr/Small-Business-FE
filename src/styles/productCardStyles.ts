@@ -7,7 +7,7 @@ type AppSx = SystemStyleObject<Theme>;
 export const productCardContainerStyle: AppSx = {
   display: "flex",
   justifyContent: "center",
-  py: 3,
+  pb: 2,
 };
 
 export const productCardPaperStyle: AppSx = {
@@ -22,6 +22,13 @@ export const productCardPaperStyle: AppSx = {
   mx: "auto",
   display: "flex",
   flexDirection: "column",
+
+  height: 680,
+  minHeight: 680,
+
+  boxSizing: "border-box",
+  minWidth: 0,
+
   borderRadius: 2,
 };
 
@@ -33,23 +40,31 @@ export const productCardHeaderStyle: AppSx = {
   )`,
   color: colors.white,
   px: 2.5,
-  py: 1.5,
-  mb: 2,
+  py: 1,
+  mb: 1,
   display: "flex",
   justifyContent: "space-between",
-  alignItems: "flex-start",
+  alignItems: "center",
   gap: 2,
   borderRadius: 1,
 };
 
 export const productCardTabsStyle: AppSx = {
-  mb: 2,
+  mb: 1,
   borderBottom: `1px solid ${colors.border}`,
 
   "& .MuiTab-root": {
     textTransform: "none",
     fontWeight: 600,
     minHeight: 44,
+
+    "&:focus": {
+      outline: "none",
+    },
+
+    "&:focus-visible": {
+      outline: "none",
+    },
   },
 
   "& .Mui-selected": {
@@ -61,16 +76,10 @@ export const productCardTabsStyle: AppSx = {
   },
 };
 
-export const productSectionStyle: AppSx = {
-  height: "100%",
-  border: `1px solid ${colors.border}`,
-  backgroundColor: colors.white,
-  p: 2,
-};
-
 export const productDetailsBoxStyle: AppSx = {
   display: "flex",
   flexDirection: "column",
+  width: "100%",
   height: "100%",
 };
 
@@ -100,8 +109,9 @@ export const productGalleryStyle: AppSx = {
   display: "flex",
   flexDirection: "column",
   alignItems: "center",
-  gap: 2,
+  width: "100%",
   height: "100%",
+  minHeight: 0,
 };
 
 export const productMainImageBoxStyle: AppSx = {
@@ -129,13 +139,6 @@ export const galleryArrowRightStyle: AppSx = {
   zIndex: 1,
 };
 
-export const thumbnailListStyle: AppSx = {
-  display: "flex",
-  justifyContent: "center",
-  flexWrap: "wrap",
-  gap: 1,
-};
-
 export const thumbnailStyle = (selected: boolean): AppSx => ({
   border: selected
     ? `2px solid ${colors.accentBlue}`
@@ -154,8 +157,11 @@ export const thumbnailStyle = (selected: boolean): AppSx => ({
 export const galleryActionsStyle: AppSx = {
   display: "flex",
   justifyContent: "center",
-  gap: 3,
+  alignItems: "center",
+  gap: 1,
   flexWrap: "wrap",
+  mt: "auto",
+  pt: 4,
 };
 
 export const imageModalStyle: AppSx = {

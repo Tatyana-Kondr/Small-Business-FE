@@ -120,7 +120,7 @@ export const appComponents: Components<Omit<Theme, "components">> = {
             },
 
             arrow: {
-                color: colors.primaryDark,
+                color: colors.grey,
             },
         },
     },

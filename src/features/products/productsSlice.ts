@@ -1,7 +1,5 @@
 import { createAppSlice } from "../../redux/createAppSlice";
 import {
-  fetchAllProducts,
-  fetchAllProductsByCategory,
   fetchDeleteProduct,
   fetchEditProduct,
   fetchPickProducts,
@@ -9,15 +7,10 @@ import {
   fetchProducts,
   fetchProductsByCategory,
 } from "./api";
-import {
-  ProductPickDto,
-  ProductsState,
-  UpdateProductDto,
-} from "./types";
+import { ProductPickDto, ProductsState, UpdateProductDto } from "./types";
 
 const initialState: ProductsState = {
   productsPaged: [],
-  productsAll: [],
   pickProducts: [],
   pickLoading: false,
   pickError: null,
@@ -38,6 +31,13 @@ export const productsSlice = createAppSlice({
   reducers: (create) => ({
     invalidateProducts: create.reducer((state) => {
       state.productsVersion += 1;
+    }),
+
+    clearPickProducts: create.reducer((state) => {
+      state.pickProducts = [];
+      state.pickLoading = false;
+      state.pickError = null;
+      state.pickLastQuery = null;
     }),
 
     getProducts: create.asyncThunk(
@@ -68,28 +68,6 @@ export const productsSlice = createAppSlice({
           state.currentPage = response.pageable.pageNumber;
           state.pageSize = action.meta.arg.size ?? 15;
           state.currentSort = action.meta.arg.sort ?? "name";
-        },
-        rejected: (state, action) => {
-          state.loading = false;
-          state.error =
-            action.error.message || "Fehler beim Laden der Produkte.";
-        },
-      },
-    ),
-
-    getAllProducts: create.asyncThunk(
-      async ({ searchTerm = "" }: { searchTerm?: string }) => {
-        const response = await fetchAllProducts(searchTerm);
-        return response;
-      },
-      {
-        pending: (state) => {
-          state.loading = true;
-          state.error = null;
-        },
-        fulfilled: (state, action) => {
-          state.productsAll = action.payload;
-          state.loading = false;
         },
         rejected: (state, action) => {
           state.loading = false;
@@ -172,33 +150,6 @@ export const productsSlice = createAppSlice({
       },
     ),
 
-    getAllProductsByCategory: create.asyncThunk(
-      async ({
-        categoryId,
-        searchTerm = "",
-      }: {
-        categoryId: number;
-        searchTerm?: string;
-      }) => {
-        return await fetchAllProductsByCategory(categoryId, searchTerm);
-      },
-      {
-        pending: (state) => {
-          state.loading = true;
-          state.error = null;
-        },
-        fulfilled: (state, action) => {
-          state.productsAll = action.payload;
-          state.loading = false;
-        },
-        rejected: (state, action) => {
-          state.loading = false;
-          state.error =
-            action.error.message || "Fehler beim Laden der Produkte.";
-        },
-      },
-    ),
-
     editProduct: create.asyncThunk(
       async ({
         id,
@@ -216,8 +167,9 @@ export const productsSlice = createAppSlice({
         },
         fulfilled: (state, action) => {
           state.loading = false;
-          // Если редактируется открытая карточка — сразу обновим selectedProduct
-          state.selectedProduct = action.payload;
+          if (state.selectedProduct?.id === action.payload.id) {
+            state.selectedProduct = action.payload;
+          }
           state.productsVersion += 1;
         },
         rejected: (state, action) => {
@@ -234,21 +186,22 @@ export const productsSlice = createAppSlice({
         return id;
       },
       {
-        pending: (state) => {
-          state.loading = true;
-          state.error = null;
+        pending: () => {
+          // Не изменяем loading и error карточки продукта.
+          // ConfirmDeleteDialog управляет состоянием удаления.
         },
+
         fulfilled: (state, action) => {
-          state.loading = false;
           if (state.selectedProduct?.id === action.payload) {
             state.selectedProduct = undefined;
           }
+
           state.productsVersion += 1;
         },
-        rejected: (state, action) => {
-          state.loading = false;
-          state.error =
-            action.error.message || "Fehler beim Löschen des Produkts.";
+
+        rejected: () => {
+          // Ошибку отображает DeleteProduct через showErrorToast().
+          // selectedProduct и error карточки не изменяем.
         },
       },
     ),
@@ -275,7 +228,6 @@ export const productsSlice = createAppSlice({
 
   selectors: {
     selectProductsPaged: (state) => state.productsPaged,
-    selectProductsAll: (state) => state.productsAll,
     selectTotalPages: (state: ProductsState) => state.totalPages,
     selectCurrentPage: (state: ProductsState) => state.currentPage,
     selectPageSize: (state: ProductsState) => state.pageSize,
@@ -292,10 +244,9 @@ export const productsSlice = createAppSlice({
 
 export const {
   invalidateProducts,
+  clearPickProducts,
   getProducts,
-  getAllProducts,
   getProductsByCategory,
-  getAllProductsByCategory,
   editProduct,
   getProduct,
   deleteProduct,
@@ -304,7 +255,6 @@ export const {
 
 export const {
   selectProductsPaged,
-  selectProductsAll,
   selectTotalPages,
   selectCurrentPage,
   selectPageSize,

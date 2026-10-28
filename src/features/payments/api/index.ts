@@ -249,6 +249,14 @@ export async function fetchAllPaymentMethods(): Promise<PaymentMethod[]> {
   );
 }
 
+export async function fetchActivePaymentMethods(): Promise<PaymentMethod[]> {
+  return apiFetch<PaymentMethod[]>(
+    "/api/payment-methods/active",
+    { auth: true },
+    "Fehler beim Laden der aktiven Zahlungsmethoden.",
+  );
+}
+
 export async function fetchPaymentMethodById(
   id: number,
 ): Promise<PaymentMethod> {

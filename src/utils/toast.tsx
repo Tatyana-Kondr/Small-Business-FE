@@ -18,8 +18,7 @@ function showCustomToast({
   toast.custom((t) => (
     <div
       style={{
-        maxWidth: "400px",
-        width: "100%",
+        width: "min(400px, calc(100vw - 48px))",
         backgroundColor: "#fff",
         borderLeft: `6px solid ${color}`,
         boxShadow: "0 4px 14px rgba(0, 0, 0, 0.1)",
@@ -35,7 +34,7 @@ function showCustomToast({
       <div style={{ flexShrink: 0, color, fontSize: "24px", marginRight: "12px" }}>
         {icon}
       </div>
-      <div style={{ flex: 1 }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
         <div
           style={{
             color: titleColor,

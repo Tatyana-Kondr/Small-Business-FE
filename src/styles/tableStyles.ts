@@ -13,7 +13,7 @@ const TABLE_CELL_PADDING = "2px 8px";
 // TABLE
 // =========================
 
-export const tableContainerStyle: AppSx = { 
+export const tableContainerStyle: AppSx = {
   width: "100%",
   borderRadius: 0,
   boxShadow: "none",
@@ -23,10 +23,24 @@ export const tableContainerStyle: AppSx = {
   },
 };
 
-export const tableStyle: AppSx = {//
+export const compactTableContainerStyle = (width: number): AppSx => ({
+  ...tableContainerStyle,
+  width,
+  maxWidth: "100%",
+  mx: "auto",
+});
+
+export const tableStyle: AppSx = {
+  //
   width: "100%",
   tableLayout: "fixed",
 };
+
+export const compactTableStyle = (width: number): AppSx => ({
+  ...tableStyle,
+  width,
+  minWidth: width,
+});
 
 // =========================
 // TABLE HEAD
@@ -156,6 +170,15 @@ export const actionIconButtonStyle: AppSx = {
   },
 };
 
+export const deleteItemButtonStyle: AppSx = {
+  ...actionIconButtonStyle,
+  "&:hover": {
+    color: colors.danger,
+    transform: "scale(1.2)",
+    backgroundColor: "transparent",
+  },
+};
+
 export const pdfTextButtonStyle: SxProps<Theme> = {
   fontWeight: "bold",
   transition: "transform 0.2s ease-in-out",
@@ -196,19 +219,6 @@ export const tableActionSlotStyle: AppSx = {
 // INPUTS INSIDE TABLES
 // =========================
 
-export const saleTableTextInputStyle: AppSx = {
-  "& .MuiInputBase-root": {
-    border: "none",
-    backgroundColor: "transparent",
-    p: 0,
-  },
-
-  "& .MuiInputBase-input": {
-    fontSize: "0.875rem",
-    p: 0,
-  },
-};
-
 export const saleTableNameInputStyle: AppSx = {
   "& .MuiInputBase-root": {
     alignItems: "flex-start",
@@ -229,10 +239,10 @@ export const saleTableNameInputStyle: AppSx = {
   },
 };
 
-export const saleTableNameCellStyle: AppSx = { 
-  ...cellStyle, 
-  verticalAlign: "top", 
-  py: 0.75, 
+export const saleTableNameCellStyle: AppSx = {
+  ...cellStyle,
+  verticalAlign: "top",
+  py: 0.75,
 };
 
 // =========================

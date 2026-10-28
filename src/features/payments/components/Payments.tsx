@@ -20,6 +20,7 @@ import {
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { useEffect, useState } from "react";
+import dayjs from "dayjs";
 
 import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
 
@@ -453,14 +454,9 @@ export default function Payments() {
                   />
                 </TableCell>
 
-                <TableCell sx={fixedCellWidth(140)}>
-                  <SortableHeader
-                    title="Betrag"
-                    field="amount"
-                    activeSort={sort}
-                    onSort={handleSort}
-                  />
-                </TableCell>
+                <TableCell sx={fixedCellWidth(130)}>Einnahme</TableCell>
+
+                <TableCell sx={fixedCellWidth(130)}>Ausgabe</TableCell>
 
                 <TableCell sx={fixedCellWidth(150)}>
                   <SortableHeader
@@ -498,9 +494,7 @@ export default function Payments() {
                   />
                 </TableCell>
 
-                <TableCell sx={fixedCellWidth(130)}>
-                  Aktionen
-                </TableCell>
+                <TableCell sx={fixedCellWidth(110)}>Aktionen</TableCell>
               </TableRow>
             </StyledTableHead>
 
@@ -535,25 +529,32 @@ export default function Payments() {
                       }}
                     >
                       {payment.paymentDate
-                        ? new Date(payment.paymentDate).toLocaleDateString(
-                            "de-DE",
-                            {
-                              day: "2-digit",
-                              month: "2-digit",
-                              year: "numeric",
-                            },
-                          )
+                        ? dayjs(payment.paymentDate).format("DD.MM.YYYY")
                         : ""}
                     </TableCell>
 
-                    {/* Betrag */}
+                    {/* Einnahme */}
                     <TableCell
                       sx={{
                         ...rightCellStyle,
                         ...fixedCellWidth(140),
                       }}
                     >
-                      {formatNumber(payment.amount)} €
+                      {payment.type === "EINNAHME"
+                        ? `${formatNumber(payment.amount)} €`
+                        : "—"}
+                    </TableCell>
+
+                    {/* Ausgabe */}
+                    <TableCell
+                      sx={{
+                        ...rightCellStyle,
+                        ...fixedCellWidth(140),
+                      }}
+                    >
+                      {payment.type === "AUSGABE"
+                        ? `${formatNumber(payment.amount)} €`
+                        : "—"}
                     </TableCell>
 
                     {/* Dokumenttyp */}
@@ -600,10 +601,15 @@ export default function Payments() {
                     <TableCell
                       sx={{
                         ...actionCellStyle,
-                        ...fixedCellWidth(130),
+                        ...fixedCellWidth(110),
                       }}
                     >
-                      <Box sx={tableActionsStyle}>
+                      <Box
+                        sx={{
+                          ...tableActionsStyle,
+                          gridTemplateColumns: "28px 28px",
+                        }}
+                      >
                         <Box sx={tableActionSlotStyle}>
                           <Tooltip title="Bearbeiten" arrow>
                             <IconButton
@@ -643,7 +649,7 @@ export default function Payments() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={9} align="center">
+                  <TableCell colSpan={10} align="center">
                     Keine Zahlungen gefunden
                   </TableCell>
                 </TableRow>

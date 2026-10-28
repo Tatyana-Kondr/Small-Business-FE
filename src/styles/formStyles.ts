@@ -32,32 +32,6 @@ export const listPageStyle: SxProps<Theme> = {
   overflow: "hidden",
 };
 
-export const formBoxStyle: SxProps<Theme> = {
-  bgcolor: "#fafafa",
-  borderRadius: 2,
-  p: 4,
-  boxShadow: 4,
-  display: "flex",
-  flexDirection: "column",
-  gap: 2,
-};
-
-export const formGridStyle: SxProps<Theme> = {
-  display: "grid",
-  gap: 2,
-};
-
-export const formActionsRightStyle: SxProps<Theme> = {
-  display: "flex",
-  justifyContent: "flex-end",
-  gap: 2,
-  mt: 1,
-};
-
-export const requiredFieldHelperStyle: SxProps<Theme> = {
-  color: colors.danger,
-};
-
 export const pageToolbarStyle: SxProps<Theme> = {
   display: "flex",
   justifyContent: "space-between",
@@ -67,40 +41,38 @@ export const pageToolbarStyle: SxProps<Theme> = {
   position: "sticky",
   top: 0,
   zIndex: 1000,
-
+  mt: 1,
   mb: 2,
 };
 
-export const formSectionStyle: SxProps<Theme> = {
-  p: 2,
-  mb: 2,
-  border: `1px solid ${colors.border}`,
-  boxShadow: "none",
-  borderRadius: 1,
-};
+export const compactPageToolbarStyle = (width: number): AppSx => ({
+  ...pageToolbarStyle,
+  width,
+  maxWidth: "100%",
+  mx: "auto",
+});
 
-export const saleFormFieldStyle: AppSx = {
-  "& .MuiOutlinedInput-root": {
+export const dateFieldStyle: AppSx = {
+  "& .MuiPickersOutlinedInput-root": {
     height: 40,
-  },
 
-  "& .MuiInputBase-input": {
-    boxSizing: "border-box",
-  },
+    "&:hover": {
+      backgroundColor: colors.accentLight,
+    },
 
-  "& .MuiSelect-select": {
-    display: "flex",
-    alignItems: "center",
-  },
-};
+    "&:hover .MuiPickersOutlinedInput-notchedOutline": {
+      borderColor: colors.accentBlue,
+    },
 
-export const saleDateFieldStyle: AppSx = {
-  "& .MuiOutlinedInput-root": {
-    height: 40,
-  },
+    "&.Mui-focused": {
+      backgroundColor: colors.accentLight,
+      boxShadow: `0 0 0 2px ${colors.accentLight}`,
+    },
 
-  "& .MuiInputBase-input": {
-    py: 0,
+    "&.Mui-focused .MuiPickersOutlinedInput-notchedOutline": {
+      borderColor: colors.accentBlue,
+      borderWidth: 2,
+    },
   },
 
   "& .MuiInputAdornment-root": {
@@ -185,4 +157,74 @@ export const listPaginationStyle: SxProps<Theme> = {
   justifyContent: "center",
   flexShrink: 0,
   pb: 1,
+};
+
+export const productFormColumnsStyle: SxProps<Theme> = {
+  display: "grid",
+  gridTemplateColumns: {
+    xs: "1fr",
+    sm: "1fr 1fr",
+  },
+  gap: 3,
+};
+
+export const productFormColumnStyle: SxProps<Theme> = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 2,
+};
+
+export const compactDimensionFieldStyle = {
+  "& .MuiInputBase-input": {
+    fontSize: "0.8rem",
+  },
+  "& .MuiInputLabel-root": {
+    fontSize: "0.8rem",
+  },
+};
+
+export const productEditSectionStyle: SxProps<Theme> = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 2,
+  minWidth: 0,
+};
+
+export const productDimensionsGridStyle: SxProps<Theme> = {
+  display: "grid",
+  gridTemplateColumns: {
+    xs: "minmax(0, 1fr)",
+    sm: "repeat(2, minmax(0, 1fr))",
+  },
+  gap: 2,
+};
+
+export const productMainRowStyle: SxProps<Theme> = {
+  display: "grid",
+  gridTemplateColumns: {
+    xs: "minmax(0, 1fr)",
+    md: "minmax(0, 1.5fr) minmax(0, 0.7fr)",
+  },
+  gap: 2,
+};
+
+export const productDetailsRowStyle: SxProps<Theme> = {
+  display: "grid",
+  gridTemplateColumns: {
+    xs: "minmax(0, 1fr)",
+    sm: "repeat(2, minmax(0, 1fr))",
+    md: "repeat(4, minmax(0, 1fr))",
+  },
+  gap: 2,
+};
+
+export const productEditThreeColumnsStyle: SxProps<Theme> = {
+  display: "grid",
+  gridTemplateColumns: {
+    xs: "minmax(0, 1fr)",
+    md: "minmax(0, 0.4fr) minmax(0, 0.8fr) minmax(0, 1.2fr)",
+  },
+  gap: 4,
+  mt: 1,
+  alignItems: "start",
 };

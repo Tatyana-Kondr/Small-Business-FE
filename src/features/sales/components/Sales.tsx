@@ -76,14 +76,18 @@ import { getAdaptivePageSize } from "../../../utils/getAdaptivePageSize";
 import ClearFiltersButton from "../../../components/ui/ClearFiltersButton";
 import FilterToggleButton from "../../../components/ui/FilterToggleButton";
 import DateRangeFilter from "../../../components/ui/DateRangeFilter";
+import { selectPaymentsVersion } from "../../payments/paymentsSlice";
 
 export default function Sales() {
   const dispatch = useAppDispatch();
+
   const sales = useAppSelector(selectSales);
   const currentUser = useAppSelector(selectUser);
   const isAdmin = currentUser?.role === "ADMIN";
   const totalPages = useAppSelector(selectTotalPages);
   const salesVersion = useAppSelector(selectSalesVersion);
+  const paymentsVersion = useAppSelector(selectPaymentsVersion);
+
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(getAdaptivePageSize);
   const [searchTerm, setSearchTerm] = useState("");
@@ -116,15 +120,11 @@ export default function Sales() {
         if (prev === newPageSize) {
           return prev;
         }
-
         setPage(0);
-
         return newPageSize;
       });
     };
-
     window.addEventListener("resize", handleResize);
-
     return () => {
       window.removeEventListener("resize", handleResize);
     };
@@ -147,35 +147,58 @@ export default function Sales() {
       filters.paymentStatus ||
       filters.invoiceNumber;
 
-    if (hasFilters) {
-      dispatch(
-        getSalesByFilter({
+    const request = hasFilters
+      ? getSalesByFilter({
           page,
           size: pageSize,
           ...convertFiltersToParams(filters),
           searchQuery: debouncedSearchTerm,
           sort,
-        }),
-      );
-    } else if (debouncedSearchTerm) {
-      dispatch(
-        searchSales({
-          page,
-          size: pageSize,
-          query: debouncedSearchTerm,
-          sort,
-        }),
-      );
-    } else {
-      dispatch(
-        getSales({
-          page,
-          size: pageSize,
-          sort,
-        }),
-      );
-    }
-  }, [dispatch, page, pageSize, debouncedSearchTerm, filters, sort, salesVersion,]);
+        })
+      : debouncedSearchTerm
+        ? searchSales({
+            page,
+            size: pageSize,
+            query: debouncedSearchTerm,
+            sort,
+          })
+        : getSales({
+            page,
+            size: pageSize,
+            sort,
+          });
+
+    const promise = dispatch(request);
+    let active = true;
+
+    void promise
+      .unwrap()
+      .then((result) => {
+        if (!active) return;
+
+        // Если последняя страница стала пустой после удаления,
+        // переходим на предыдущую существующую страницу.
+        if (page > 0 && page >= result.totalPages) {
+          setPage(Math.max(0, result.totalPages - 1));
+        }
+      })
+      .catch(() => {
+        // Ошибка загрузки уже сохраняется в salesSlice.
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [
+    dispatch,
+    page,
+    pageSize,
+    debouncedSearchTerm,
+    filters,
+    sort,
+    salesVersion,
+    paymentsVersion,
+  ]);
 
   const handlePageChange = (_: any, value: number) => {
     setPage(value - 1);
@@ -230,7 +253,16 @@ export default function Sales() {
       return;
     }
 
+    if (!sale.invoiceNumber) {
+      showErrorToast(
+        "Rechnung nicht gefunden",
+        "Für diesen Auftrag ist keine Rechnungsnummer vorhanden.",
+      );
+      return;
+    }
+
     const year = sale.invoiceNumber.substring(2, 6);
+
     const url = `${import.meta.env.VITE_API_URL}/api/sales/invoices/${year}/${sale.invoiceNumber}.pdf`;
 
     try {
@@ -270,6 +302,14 @@ export default function Sales() {
     if (!token) {
       alert(
         "Fehlender Authentifizierungstoken. Bitte melden Sie sich erneut an.",
+      );
+      return;
+    }
+
+    if (!sale.invoiceNumber || !sale.deliveryBill) {
+      showErrorToast(
+        "Lieferschein nicht gefunden",
+        "Für diesen Auftrag ist kein Lieferschein vorhanden.",
       );
       return;
     }
@@ -319,6 +359,10 @@ export default function Sales() {
     setSort(newSort);
     setPage(0);
   };
+
+  const hasSaleDiscount = (sale: any) =>
+    sale.saleItems?.some((item: any) => Number(item.discountAmount ?? 0) > 0) ??
+    false;
 
   return (
     <Box sx={listPageStyle}>
@@ -641,9 +685,11 @@ export default function Sales() {
                                       Einzelpreis
                                     </TableCell>
 
-                                    <TableCell sx={fixedCellWidth(80)}>
-                                      Rabatt
-                                    </TableCell>
+                                    {hasSaleDiscount(sale) && (
+                                      <TableCell sx={fixedCellWidth(120)}>
+                                        Rabatt
+                                      </TableCell>
+                                    )}
 
                                     <TableCell sx={fixedCellWidth(100)}>
                                       Netto
@@ -686,23 +732,30 @@ export default function Sales() {
                                         </TableCell>
 
                                         <TableCell sx={rightCellStyle}>
-                                          {item.unitPrice} €
+                                          {formatNumber(item.unitPrice)} €
                                         </TableCell>
 
-                                        <TableCell sx={centerCellStyle}>
-                                          {item.discount} %
+                                        {hasSaleDiscount(sale) && (
+                                          <TableCell sx={rightCellStyle}>
+                                            {Number(item.discountAmount ?? 0) >
+                                            0
+                                              ? `${Math.round(Number(item.discount ?? 0))}% / ${formatNumber(
+                                                  item.discountAmount,
+                                                )} €`
+                                              : ""}
+                                          </TableCell>
+                                        )}
+
+                                        <TableCell sx={rightCellStyle}>
+                                          {formatNumber(item.totalPrice)} €
                                         </TableCell>
 
                                         <TableCell sx={rightCellStyle}>
-                                          {item.totalPrice} €
+                                          {formatNumber(item.taxAmount)} €
                                         </TableCell>
 
                                         <TableCell sx={rightCellStyle}>
-                                          {item.taxAmount} €
-                                        </TableCell>
-
-                                        <TableCell sx={rightCellStyle}>
-                                          {item.totalAmount} €
+                                          {formatNumber(item.totalAmount)} €
                                         </TableCell>
                                       </TableRow>
                                     ),

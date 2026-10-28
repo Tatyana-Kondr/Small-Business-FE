@@ -3,32 +3,29 @@ import { colors } from "./colors";
 
 export const pageTitleStyle: SxProps<Theme> = {
   textAlign: "left",
-  fontWeight: "bold",
+  fontWeight: 700,
+  color: colors.primaryBlue,
   textDecoration: "underline",
-  color: colors.primaryBlue,
-};
-
-export const sectionTitleStyle: SxProps<Theme> = {
-  textAlign: "left",
-  fontWeight: "bold",
-  color: colors.primaryBlue,
+  letterSpacing: "0.3px",
 };
 
 export const dialogTitleStyle: SxProps<Theme> = {
   textAlign: "left",
   fontWeight: "bold",
-  textDecoration: "underline",
-  color: colors.primaryBlue,
+  color: colors.primaryDark,
+  borderLeft: `4px solid ${colors.accentBlue}`,
+  pl: 1.5,
+  lineHeight: 1.4,
 };
 
-export const errorTextStyle: SxProps<Theme> = {
-  color: "error.main",
-  fontWeight: 500,
-};
-
-export const formSaleSectionTitleStyle: SxProps<Theme> = {
+export const sectionTitleStyle: SxProps<Theme> = {
   color: colors.accentBlue,
-  fontWeight: 600,
+  fontWeight: 550,
+  fontSize: "0.8rem",
   textAlign: "left",
-  mb: 2,
+  textTransform: "uppercase",
+  letterSpacing: "0.04em",
+  mb: 1,
+  pb: 0.5,
+
 };

@@ -1,109 +1,174 @@
-import { Box, Button, Container, Paper, styled, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from "@mui/material";
-import { useAppDispatch, useAppSelector } from "../../../../redux/hooks";
+import {
+  Box,
+  Button,
+  CircularProgress,
+  Container,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableRow,
+} from "@mui/material";
+
 import { useEffect, useState } from "react";
-import { getUnits, selectUnits } from "../../unitsOfMeasurementSlice";
+
+import { useAppDispatch, useAppSelector } from "../../../../redux/hooks";
+
+import {
+  getUnits,
+  selectLoading,
+  selectUnits,
+} from "../../unitsOfMeasurementSlice";
+
 import { UnitOfMeasurement } from "../../types";
+
 import EditUnit from "./EditUnit";
 import DeleteUnit from "./DeleteUnit";
 import { CreateUnit } from "./CreateUnit";
 
+import { compactPageToolbarStyle } from "../../../../styles/formStyles";
+import {
+  cellStyle,
+  centerCellStyle,
+  compactTableContainerStyle,
+  compactTableStyle,
+  fixedCellWidth,
+  leftBorderCellStyle,
+  StyledTableHead,
+  tableRowHoverStyle,
+} from "../../../../styles/tableStyles";
 
-const StyledTableHead = styled(TableHead)(({
-    backgroundColor: "#1a3d6d",
-    "& th": {
-        color: "white",
-        fontWeight: "bold",
-        borderRight: "1px solid #ddd",
-        textAlign: "center"
-    },
-}));
-const StyledTableRow = styled(TableRow)({
-    backgroundColor: "#ffffff",
-    "&:hover": {
-        backgroundColor: "#f5f5f5", // Подсветка строки при наведении
-        cursor: "pointer",
-    },
-});
+import {
+  outlinedButtonStyle,
+  primaryButtonStyle,
+} from "../../../../styles/buttonStyles";
 
 export default function UnitsList() {
-    const dispatch = useAppDispatch();
-    const units = useAppSelector(selectUnits);
-    const [selectedUnit, setSelectedUnit] = useState<UnitOfMeasurement | null>(null);
-    const [openModal, setOpenModal] = useState(false);
-    const [editOpen, setEditOpen] = useState(false);
+  const dispatch = useAppDispatch();
 
-    useEffect(() => {
-        dispatch(getUnits());
-    }, [dispatch]);
+  const units = useAppSelector(selectUnits);
+  const loading = useAppSelector(selectLoading);
 
-    const handleEdit = (unit: UnitOfMeasurement) => {
-        setSelectedUnit(unit);
-        setEditOpen(true);
-    };
+  const [selectedUnit, setSelectedUnit] = useState<UnitOfMeasurement | null>(
+    null,
+  );
+  const [openModal, setOpenModal] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
-    return (
-       <Container>
-            {/* Верхняя панель */}
-            <Box display="flex" justifyContent="flex-end" alignItems="center" mb={2}>                            
-                <Button variant="contained" color="primary" onClick={() => setOpenModal(true)}>
-                    Neue Maßeinheit anlegen
-                </Button>
-            </Box>
+  useEffect(() => {
+    dispatch(getUnits());
+  }, [dispatch]);
 
-            {/* Таблица */}
-            <TableContainer component={Paper} sx={{ boxShadow: "none" }}>
-                <Table>
-                    <StyledTableHead>
-                        <TableRow>
-                            <TableCell>ID</TableCell>
-                            <TableCell>Name</TableCell>
-                            <TableCell></TableCell>
-                        </TableRow>
-                    </StyledTableHead>
-                    <TableBody>
-                        {units.length > 0 ? (
-                            units.map((unit) => (
-                                <StyledTableRow key={unit.id}>
-                                    <TableCell style={{ padding: "6px 12px", borderRight: "1px solid #ddd", borderLeft: "1px solid #ddd" }}>{unit.id}</TableCell>
-                                    <TableCell sx={{ width: "400px", padding: "6px 12px", borderRight: "1px solid #ddd" }}>{unit.name}</TableCell>
-                                    <TableCell sx={{ width: "200px", padding: "6px", borderRight: "1px solid #ddd" }}>
-                                        <Box display="flex" justifyContent="space-between" gap={1}>
-                                            <Button
-                                                variant="outlined"
-                                                color="primary"
-                                                size="small"
-                                                onClick={() => handleEdit(unit)}
-                                                sx={{ minWidth: "100px", "&:hover": { borderColor: "#00acc1" } }}
-                                            >
-                                                Bearbeiten
-                                            </Button>
+  const handleEdit = (unit: UnitOfMeasurement) => {
+    setSelectedUnit(unit);
+    setEditOpen(true);
+  };
 
-                                            <Box sx={{ minWidth: "80px" }}>
-                                                <DeleteUnit
-                                                    unitId={unit.id}
-                                                    name={unit.name}
-                                                />
-                                            </Box>
-                                        </Box>
-                                    </TableCell>
+  const handleCloseEdit = () => {
+    setEditOpen(false);
+    setSelectedUnit(null);
+  };
 
-                                </StyledTableRow>
-                            ))
-                        ) : (
-                            <TableRow>
-                                <TableCell colSpan={4} align="center">Keine Maßeinheiten vorhanden</TableCell>
-                            </TableRow>
-                        )}
-                    </TableBody>
-                </Table>
-            </TableContainer>
-            <CreateUnit open={openModal} onClose={() => setOpenModal(false)} />
+  const tableWidth = 600;
 
-            <EditUnit
-                open={editOpen}
-                onClose={() => setEditOpen(false)}
-                unit={selectedUnit}
-            />
-        </Container>
-    );
+  return (
+    <Container>
+      <Box sx={compactPageToolbarStyle(tableWidth)}>
+        <Button
+          variant="contained"
+          onClick={() => setOpenModal(true)}
+          sx={{
+            ...primaryButtonStyle,
+            ml: "auto",
+          }}
+        >
+          Neue Maßeinheit anlegen
+        </Button>
+      </Box>
+
+      <TableContainer
+        component={Paper}
+        sx={compactTableContainerStyle(tableWidth)}
+      >
+        <Table sx={compactTableStyle(tableWidth)}>
+          <StyledTableHead>
+            <TableRow>
+              <TableCell sx={fixedCellWidth(80)}>ID</TableCell>
+
+              <TableCell>Name</TableCell>
+
+              <TableCell sx={fixedCellWidth(250)}>Aktionen</TableCell>
+            </TableRow>
+          </StyledTableHead>
+
+          <TableBody>
+            {loading && units.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={3} align="center" sx={{ py: 3 }}>
+                  <CircularProgress size={24} />
+                </TableCell>
+              </TableRow>
+            ) : units.length > 0 ? (
+              units.map((unit) => (
+                <TableRow key={unit.id} sx={tableRowHoverStyle}>
+                  <TableCell
+                    sx={{
+                      ...centerCellStyle,
+                      ...leftBorderCellStyle,
+                      ...fixedCellWidth(80),
+                    }}
+                  >
+                    {unit.id}
+                  </TableCell>
+
+                  <TableCell sx={cellStyle}>{unit.name}</TableCell>
+
+                  <TableCell
+                    sx={{
+                      ...cellStyle,
+                      ...fixedCellWidth(250),
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        gap: 1,
+                      }}
+                    >
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() => handleEdit(unit)}
+                        sx={{
+                          ...outlinedButtonStyle,
+                          minWidth: 110,
+                        }}
+                      >
+                        Bearbeiten
+                      </Button>
+
+                      <DeleteUnit unitId={unit.id} name={unit.name} />
+                    </Box>
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={3} align="center" sx={cellStyle}>
+                  Keine Maßeinheiten vorhanden
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
+
+      <CreateUnit open={openModal} onClose={() => setOpenModal(false)} />
+
+      <EditUnit open={editOpen} onClose={handleCloseEdit} unit={selectedUnit} />
+    </Container>
+  );
 }

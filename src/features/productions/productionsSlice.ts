@@ -1,5 +1,14 @@
-import { createAppSlice } from "../../redux/createAppSlice"
-import { fetchAddProduction, fetchDeleteProduction, fetchProductionById, fetchProductions, fetchProductionsByFilter, fetchSearchProductions, fetchUpdateProduction } from "./api";
+import { createAppSlice } from "../../redux/createAppSlice";
+import { HttpError } from "../../utils/errors/handleFetchError";
+import {
+  fetchAddProduction,
+  fetchDeleteProduction,
+  fetchProductionById,
+  fetchProductions,
+  fetchProductionsByFilter,
+  fetchSearchProductions,
+  fetchUpdateProduction,
+} from "./api";
 import { NewProductionDto, ProductionsState } from "./types";
 
 const initialState: ProductionsState = {
@@ -18,7 +27,6 @@ interface GetProductionsParams {
   page: number;
   size?: number;
   sort?: string[];
-  searchTerm?: string;
 }
 
 const handlePending = (state: ProductionsState) => {
@@ -26,7 +34,11 @@ const handlePending = (state: ProductionsState) => {
   state.error = null;
 };
 
-const handleRejected = (state: ProductionsState, action: any, message: string) => {
+const handleRejected = (
+  state: ProductionsState,
+  action: any,
+  message: string,
+) => {
   state.error = action.error?.message ?? message;
   state.loading = false;
 };
@@ -35,9 +47,12 @@ export const productionsSlice = createAppSlice({
   name: "productions",
   initialState,
   reducers: (create) => ({
-
     getProductions: create.asyncThunk(
-      async ({ page, size = 15, sort = ["dateOfProduction,DESC", "id,DESC"] }: GetProductionsParams) => {
+      async ({
+        page,
+        size = 15,
+        sort = ["dateOfProduction,DESC", "id,DESC"],
+      }: GetProductionsParams) => {
         return await fetchProductions(page, size, sort);
       },
       {
@@ -47,7 +62,10 @@ export const productionsSlice = createAppSlice({
           state.totalPages = totalPages;
           state.currentPage = pageable.pageNumber;
           state.pageSize = action.meta.arg.size ?? 15;
-          state.sort = action.meta.arg.sort ?? ["dateOfProduction,DESC", "id,DESC"];
+          state.sort = action.meta.arg.sort ?? [
+            "dateOfProduction,DESC",
+            "id,DESC",
+          ];
           state.loading = false;
           state.error = null;
         },
@@ -55,30 +73,42 @@ export const productionsSlice = createAppSlice({
         rejected: (state, action) => {
           handleRejected(state, action, "Fehler beim Laden der Herstellungen.");
         },
-      }
+      },
     ),
 
     addProduction: create.asyncThunk(
-  async (newProduction: NewProductionDto) => {
-    return await fetchAddProduction(newProduction);
-  },
-  {
-    pending: handlePending,
+      async (newProduction: NewProductionDto, { rejectWithValue }) => {
+        try {
+          return await fetchAddProduction(newProduction);
+        } catch (error) {
+          if (error instanceof HttpError) {
+            return rejectWithValue(error.data ?? { message: error.message });
+          }
 
-    fulfilled: (state) => {
-      state.loading = false;
-      state.error = null;
-      state.productionsVersion += 1;
-    },
+          throw error;
+        }
+      },
+      {
+        pending: handlePending,
 
-    rejected: (state, action) =>
-      handleRejected(
-        state,
-        action,
-        "Fehler beim Hinzufügen der Herstellung.",
-      ),
-  }
-),
+        fulfilled: (state) => {
+          state.loading = false;
+          state.error = null;
+          state.productionsVersion += 1;
+        },
+
+        rejected: (state, action) => {
+          state.loading = false;
+
+          const payload = action.payload as { message?: string } | undefined;
+
+          state.error =
+            payload?.message ||
+            action.error.message ||
+            "Fehler beim Hinzufügen der Herstellung.";
+        },
+      },
+    ),
 
     getProductionById: create.asyncThunk(
       async (id: number) => await fetchProductionById(id),
@@ -91,11 +121,16 @@ export const productionsSlice = createAppSlice({
         },
         rejected: (state, action) =>
           handleRejected(state, action, "Fehler beim Laden der Herstellung."),
-      }
+      },
     ),
 
     searchProductions: create.asyncThunk(
-      async ({ query, page, size = 15, sort = ["dateOfProduction,DESC", "id,DESC"] }: GetProductionsParams & { query: string }) => {
+      async ({
+        query,
+        page,
+        size = 15,
+        sort = ["dateOfProduction,DESC", "id,DESC"],
+      }: GetProductionsParams & { query: string }) => {
         return await fetchSearchProductions(query, page, size, sort);
       },
       {
@@ -104,14 +139,17 @@ export const productionsSlice = createAppSlice({
           state.totalPages = action.payload.totalPages;
           state.currentPage = action.payload.pageable.pageNumber;
           state.pageSize = action.meta.arg.size ?? 15;
-          state.sort = action.meta.arg.sort ?? ["dateOfProduction,DESC", "id,DESC"];
+          state.sort = action.meta.arg.sort ?? [
+            "dateOfProduction,DESC",
+            "id,DESC",
+          ];
           state.loading = false;
           state.error = null;
         },
         pending: handlePending,
         rejected: (state, action) =>
           handleRejected(state, action, "Fehler beim Laden der Herstellungen."),
-      }
+      },
     ),
 
     getProductionsByFilter: create.asyncThunk(
@@ -144,76 +182,110 @@ export const productionsSlice = createAppSlice({
           state.totalPages = action.payload.totalPages;
           state.currentPage = action.payload.pageable.pageNumber;
           state.pageSize = action.meta.arg.size ?? 15;
-          state.sort = action.meta.arg.sort ?? ["dateOfProduction,DESC", "id,DESC"];
+          state.sort = action.meta.arg.sort ?? [
+            "dateOfProduction,DESC",
+            "id,DESC",
+          ];
           state.loading = false;
           state.error = null;
         },
         pending: handlePending,
         rejected: (state, action) =>
-          handleRejected(state, action, "Fehler beim Laden der gefilterten Herstellungen."),
-      }
+          handleRejected(
+            state,
+            action,
+            "Fehler beim Laden der gefilterten Herstellungen.",
+          ),
+      },
     ),
 
     updateProduction: create.asyncThunk(
-  async ({
-    id,
-    updatedProduction,
-  }: {
-    id: number;
-    updatedProduction: NewProductionDto;
-  }) => {
-    return await fetchUpdateProduction(id, updatedProduction);
-  },
-  {
-    pending: handlePending,
+      async (
+        {
+          id,
+          updatedProduction,
+        }: {
+          id: number;
+          updatedProduction: NewProductionDto;
+        },
+        { rejectWithValue },
+      ) => {
+        try {
+          return await fetchUpdateProduction(id, updatedProduction);
+        } catch (error) {
+          if (error instanceof HttpError) {
+            return rejectWithValue(error.data ?? { message: error.message });
+          }
 
-    fulfilled: (state, action) => {
-      state.loading = false;
-      state.error = null;
+          throw error;
+        }
+      },
+      {
+        pending: handlePending,
 
-      if (state.selectedProduction?.id === action.payload.id) {
-        state.selectedProduction = action.payload;
-      }
+        fulfilled: (state, action) => {
+          state.loading = false;
+          state.error = null;
 
-      state.productionsVersion += 1;
-    },
+          if (state.selectedProduction?.id === action.payload.id) {
+            state.selectedProduction = action.payload;
+          }
 
-    rejected: (state, action) =>
-      handleRejected(
-        state,
-        action,
-        "Fehler beim Bearbeiten der Herstellung.",
-      ),
-  }
-),
+          state.productionsVersion += 1;
+        },
+
+        rejected: (state, action) => {
+          state.loading = false;
+
+          const payload = action.payload as { message?: string } | undefined;
+
+          state.error =
+            payload?.message ||
+            action.error.message ||
+            "Fehler beim Bearbeiten der Herstellung.";
+        },
+      },
+    ),
 
     deleteProduction: create.asyncThunk(
-  async (id: number) => {
-    await fetchDeleteProduction(id);
-    return id;
-  },
-  {
-    pending: handlePending,
+      async (id: number, { rejectWithValue }) => {
+        try {
+          await fetchDeleteProduction(id);
+          return id;
+        } catch (error) {
+          if (error instanceof HttpError) {
+            return rejectWithValue(error.data ?? { message: error.message });
+          }
 
-    fulfilled: (state, action) => {
-      state.loading = false;
-      state.error = null;
+          throw error;
+        }
+      },
+      {
+        pending: handlePending,
 
-      if (state.selectedProduction?.id === action.payload) {
-        state.selectedProduction = undefined;
-      }
+        fulfilled: (state, action) => {
+          state.loading = false;
+          state.error = null;
 
-      state.productionsVersion += 1;
-    },
+          if (state.selectedProduction?.id === action.payload) {
+            state.selectedProduction = undefined;
+          }
 
-    rejected: (state, action) =>
-      handleRejected(
-        state,
-        action,
-        "Fehler beim Löschen der Herstellung.",
-      ),
-  }
-),
+          state.productionsVersion += 1;
+        },
+
+        rejected: (state, action) => {
+          state.loading = false;
+
+          const payload = action.payload as { message?: string } | undefined;
+
+          state.error =
+            payload?.message ||
+            action.error.message ||
+            "Fehler beim Löschen der Herstellung.";
+        },
+      },
+    ),
   }),
 
   selectors: {
@@ -222,7 +294,8 @@ export const productionsSlice = createAppSlice({
     selectCurrentPage: (state: ProductionsState) => state.currentPage,
     selectPageSize: (state: ProductionsState) => state.pageSize,
     selectProduction: (state: ProductionsState) => state.selectedProduction,
-    selectProductionsVersion: (state: ProductionsState) => state.productionsVersion,
+    selectProductionsVersion: (state: ProductionsState) =>
+      state.productionsVersion,
     selectLoading: (state: ProductionsState) => state.loading,
     selectError: (state: ProductionsState) => state.error,
     selectProductionById: (state: ProductionsState, id: number) =>
@@ -230,13 +303,23 @@ export const productionsSlice = createAppSlice({
   },
 });
 
-export const { 
+export const {
   getProductions,
   addProduction,
   getProductionById,
   searchProductions,
   getProductionsByFilter,
   updateProduction,
-  deleteProduction, } = productionsSlice.actions;
-export const { selectProductions, selectTotalPages, selectPageSize, selectCurrentPage, selectProduction, selectProductionsVersion, selectLoading, selectError, selectProductionById } =
-  productionsSlice.selectors;
+  deleteProduction,
+} = productionsSlice.actions;
+export const {
+  selectProductions,
+  selectTotalPages,
+  selectPageSize,
+  selectCurrentPage,
+  selectProduction,
+  selectProductionsVersion,
+  selectLoading,
+  selectError,
+  selectProductionById,
+} = productionsSlice.selectors;

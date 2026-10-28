@@ -8,40 +8,40 @@ import {
   Select,
   MenuItem,
   SelectChangeEvent,
-  Dialog,
   FormHelperText,
-  CircularProgress,
 } from "@mui/material";
 import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
-import { NewProductDto } from "../types";
-import { handleApiError } from "../../../utils/handleApiError";
-import { showSuccessToast } from "../../../utils/toast";
+import { NewProductDto, Product, ProductPickDto } from "../types";
+import { handleApiError } from "../../../utils/errors/handleApiError";
 import { getUnits, selectUnits } from "../unitsOfMeasurementSlice";
 import {
   getProductCategories,
   selectProductCategories,
 } from "../productCategoriesSlice";
+import { primaryButtonStyle } from "../../../styles/buttonStyles";
 import {
-  cancelButtonStyle,
-  primaryButtonStyle,
-} from "../../../styles/buttonStyles";
-import {
-  backendErrorsToFormErrors,
   clearFieldError,
   FormErrors,
   hasErrors,
   isBackendValidationErrors,
   validateRequiredFields,
 } from "../../../utils/validation/validation";
-import { HttpError } from "../../../utils/handleFetchError";
 import {
-  formActionsRightStyle,
-  formBoxStyle,
-  formGridStyle,
+  productFormColumnsStyle,
+  productFormColumnStyle,
 } from "../../../styles/formStyles";
-import PageTitle from "../../../components/PageTitle";
-import { fetchAddProduct } from "../api";
+import { fetchAddProduct, fetchSimilarProducts } from "../api";
 import { invalidateProducts } from "../productsSlice";
+import ProductDuplicateWarningDialog from "./ProductDuplicateWarningDialog";
+import DraggableDialog from "../../../components/DraggableDialog";
+import DialogTitleText from "../../../components/DialogTitleText";
+import {
+  validatePercentage,
+  validatePrice,
+} from "../../../utils/validation/numberValidation";
+import { translateValidationMessage } from "../../../utils/validation/validationMessages";
+import { useNavigate } from "react-router-dom";
+import EditGeneratedArticle from "./EditGeneratedArticle";
 
 type CreateProductProps = {
   onClose: () => void;
@@ -49,24 +49,27 @@ type CreateProductProps = {
 
 export default function CreateProduct({ onClose }: CreateProductProps) {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const categories = useAppSelector(selectProductCategories);
   const units = useAppSelector(selectUnits);
 
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<FormErrors<NewProductDto>>({});
-  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(
+  const [similarProducts, setSimilarProducts] = useState<ProductPickDto[]>([]);
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [createdProduct, setCreatedProduct] = useState<Product | null>(null);
+  const [pendingProduct, setPendingProduct] = useState<NewProductDto | null>(
     null,
   );
 
   const [newProduct, setNewProduct] = useState<NewProductDto>({
     name: "",
     vendorArticle: "",
-    purchasingPrice: 0,
+    purchasingPrice: null,
     markupPercentage: 20,
-    sellingPrice: 0,
-    productCategory: { id: 0, name: "", artName: "" },
+    sellingPrice: null,
+    productCategoryId: 0,
     unitOfMeasurementId: 0,
-    unitOfMeasurement: { id: 0, name: "" },
     storageLocation: "",
   });
 
@@ -74,23 +77,6 @@ export default function CreateProduct({ onClose }: CreateProductProps) {
     dispatch(getProductCategories());
     dispatch(getUnits());
   }, [dispatch]);
-
-  const resetForm = () => {
-    setNewProduct({
-      name: "",
-      vendorArticle: "",
-      purchasingPrice: 0,
-      markupPercentage: 20,
-      sellingPrice: 0,
-      productCategory: { id: 0, name: "", artName: "" },
-      unitOfMeasurementId: 0,
-      unitOfMeasurement: { id: 0, name: "" },
-      storageLocation: "",
-    });
-
-    setSelectedCategoryId(null);
-    setErrors({});
-  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -105,31 +91,22 @@ export default function CreateProduct({ onClose }: CreateProductProps) {
 
   const handleCategoryChange = (e: SelectChangeEvent<number>) => {
     const categoryId = Number(e.target.value);
-    const category = categories.find((cat) => cat.id === categoryId);
 
-    setSelectedCategoryId(categoryId);
+    setNewProduct((prev) => ({
+      ...prev,
+      productCategoryId: categoryId,
+    }));
 
-    if (category) {
-      setNewProduct((prev) => ({
-        ...prev,
-        productCategory: category,
-      }));
-    }
-
-    setErrors((prev) => clearFieldError(prev, "productCategory"));
+    setErrors((prev) => clearFieldError(prev, "productCategoryId"));
   };
 
   const handleUnitChange = (e: SelectChangeEvent<number>) => {
     const unitId = Number(e.target.value);
-    const unit = units.find((u) => u.id === unitId);
 
-    if (unit) {
-      setNewProduct((prev) => ({
-        ...prev,
-        unitOfMeasurementId: unit.id,
-        unitOfMeasurement: unit,
-      }));
-    }
+    setNewProduct((prev) => ({
+      ...prev,
+      unitOfMeasurementId: unitId,
+    }));
 
     setErrors((prev) => clearFieldError(prev, "unitOfMeasurementId"));
   };
@@ -152,86 +129,142 @@ export default function CreateProduct({ onClose }: CreateProductProps) {
   const handlePurchasingPriceChange = (
     e: React.ChangeEvent<HTMLInputElement>,
   ) => {
-    const purchasingPrice = parseFloat(e.target.value) || 0;
+    const value = e.target.value;
+
+    const purchasingPrice = value === "" ? null : Number(value);
 
     setNewProduct((prev) => ({
       ...prev,
       purchasingPrice,
-      sellingPrice: calculateSellingPrice(
-        purchasingPrice,
-        prev.markupPercentage,
-      ),
+      sellingPrice:
+        purchasingPrice === null || prev.markupPercentage === null
+          ? null
+          : calculateSellingPrice(purchasingPrice, prev.markupPercentage),
     }));
+
+    setErrors((prev) => {
+      let updated = clearFieldError(prev, "purchasingPrice");
+      updated = clearFieldError(updated, "sellingPrice");
+      return updated;
+    });
   };
 
   const handleMarkupPercentageChange = (
     e: React.ChangeEvent<HTMLInputElement>,
   ) => {
-    const markupPercentage = parseFloat(e.target.value) || 0;
+    const value = e.target.value;
+
+    const markupPercentage = value === "" ? null : Number(value);
 
     setNewProduct((prev) => ({
       ...prev,
       markupPercentage,
-      sellingPrice: calculateSellingPrice(
-        prev.purchasingPrice,
-        markupPercentage,
-      ),
+      sellingPrice:
+        markupPercentage === null || prev.purchasingPrice === null
+          ? null
+          : calculateSellingPrice(prev.purchasingPrice, markupPercentage),
     }));
+
+    setErrors((prev) => {
+      let updated = clearFieldError(prev, "markupPercentage");
+      updated = clearFieldError(updated, "sellingPrice");
+      return updated;
+    });
   };
 
   const handleSellingPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const sellingPrice = parseFloat(e.target.value) || 0;
+    const value = e.target.value;
+
+    const sellingPrice = value === "" ? null : Number(value);
 
     setNewProduct((prev) => ({
       ...prev,
       sellingPrice,
-      markupPercentage: calculateMarkupPercentage(
-        prev.purchasingPrice,
-        sellingPrice,
-      ),
+      markupPercentage:
+        sellingPrice === null ||
+        prev.purchasingPrice === null ||
+        prev.purchasingPrice === 0
+          ? null
+          : calculateMarkupPercentage(prev.purchasingPrice, sellingPrice),
     }));
+
+    setErrors((prev) => {
+      let updated = clearFieldError(prev, "sellingPrice");
+      updated = clearFieldError(updated, "markupPercentage");
+      return updated;
+    });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const applyBackendValidationErrors = (error: unknown): boolean => {
+    if (!isBackendValidationErrors(error)) {
+      return false;
+    }
 
+    const formErrors: FormErrors<NewProductDto> = {};
+
+    error.errors.forEach((validationError) => {
+      const field = validationError.field as keyof NewProductDto;
+
+      formErrors[field] = translateValidationMessage(validationError.message);
+    });
+
+    setErrors(formErrors);
+
+    return true;
+  };
+
+  const validateProduct = (): FormErrors<NewProductDto> => {
     const validationErrors = validateRequiredFields(newProduct, [
       "name",
-      "productCategory",
+      "productCategoryId",
       "unitOfMeasurementId",
     ]);
 
-    setErrors(validationErrors);
+    if (newProduct.purchasingPrice !== null) {
+      const purchasingPriceError = validatePrice(newProduct.purchasingPrice);
 
-    if (hasErrors(validationErrors)) {
-      return;
+      if (purchasingPriceError) {
+        validationErrors.purchasingPrice = purchasingPriceError;
+      }
     }
 
-    setLoading(true);
+    if (newProduct.sellingPrice !== null) {
+      const sellingPriceError = validatePrice(newProduct.sellingPrice);
 
+      if (sellingPriceError) {
+        validationErrors.sellingPrice = sellingPriceError;
+      }
+    }
+
+    if (newProduct.markupPercentage !== null) {
+      const markupError = validatePercentage(newProduct.markupPercentage);
+
+      if (markupError) {
+        validationErrors.markupPercentage = markupError;
+      }
+    }
+
+    return validationErrors;
+  };
+
+  const createProduct = async (dto: NewProductDto) => {
     try {
-      const dtoToSend: NewProductDto = {
-        ...newProduct,
-        name: newProduct.name.trim(),
-        vendorArticle: newProduct.vendorArticle?.trim() ?? "",
-        storageLocation: newProduct.storageLocation?.trim() ?? "",
-        unitOfMeasurementId: newProduct.unitOfMeasurement?.id,
-      };
+      setLoading(true);
 
-      const createdProduct = await fetchAddProduct(dtoToSend);
+      const product = await fetchAddProduct(dto);
 
       dispatch(invalidateProducts());
 
-      showSuccessToast(
-        "Erfolg",
-        `${createdProduct.name} wurde erfolgreich erstellt.`,
-      );
+      setDuplicateDialogOpen(false);
+      setSimilarProducts([]);
+      setPendingProduct(null);
 
-      resetForm();
-      onClose();
+      setCreatedProduct(product);
     } catch (error) {
-      if (error instanceof HttpError && isBackendValidationErrors(error.data)) {
-        setErrors(backendErrorsToFormErrors<NewProductDto>(error.data.errors));
+      if (applyBackendValidationErrors(error)) {
+        setDuplicateDialogOpen(false);
+        setSimilarProducts([]);
+        setPendingProduct(null);
         return;
       }
 
@@ -241,23 +274,118 @@ export default function CreateProduct({ onClose }: CreateProductProps) {
     }
   };
 
-  return (
-    <Dialog open onClose={onClose} maxWidth="sm" fullWidth>
-      <Box sx={formBoxStyle}>
-        <Box sx={{ mb: 1 }}>
-          <PageTitle>Neues Produkt hinzufügen</PageTitle>
-        </Box>
+  const handleCloseArticleDialog = () => {
+    if (!createdProduct) return;
 
-        <Box sx={formGridStyle}>
+    const productId = createdProduct.id;
+
+    setCreatedProduct(null);
+    onClose();
+
+    navigate(`/product-card/${productId}`);
+  };
+
+  const handleSubmit = async () => {
+    if (loading) {
+      return;
+    }
+
+    const validationErrors = validateProduct();
+
+    setErrors(validationErrors);
+
+    if (hasErrors(validationErrors)) {
+      return;
+    }
+
+    const dtoToSend: NewProductDto = {
+      ...newProduct,
+      name: newProduct.name.trim(),
+      vendorArticle: newProduct.vendorArticle.trim(),
+      storageLocation: newProduct.storageLocation?.trim() ?? "",
+    };
+
+    try {
+      setLoading(true);
+
+      const similar = await fetchSimilarProducts(
+        dtoToSend.name,
+        dtoToSend.vendorArticle,
+      );
+
+      if (similar.length > 0) {
+        setSimilarProducts(similar);
+        setPendingProduct(dtoToSend);
+        setDuplicateDialogOpen(true);
+        return;
+      }
+
+      await createProduct(dtoToSend);
+    } catch (error) {
+      handleApiError(error, "Das Produkt konnte nicht geprüft werden.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCloseDuplicateDialog = () => {
+    if (loading) return;
+
+    setDuplicateDialogOpen(false);
+    setSimilarProducts([]);
+    setPendingProduct(null);
+  };
+
+  const handleCreateAnyway = async () => {
+    if (!pendingProduct) return;
+
+    await createProduct(pendingProduct);
+  };
+
+  return (
+    <>
+      <DraggableDialog
+        open={!createdProduct}
+        onClose={loading ? undefined : onClose}
+        dialogWidth={900}
+        maxWidth={false}
+        scroll="paper"
+        title={
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              width: "100%",
+            }}
+          >
+            <DialogTitleText>Neues Produkt hinzufügen</DialogTitleText>
+          </Box>
+        }
+        actions={
+          <>
+            <Button
+              variant="contained"
+              onClick={handleSubmit}
+              sx={primaryButtonStyle}
+              disabled={loading}
+            >
+              {loading ? "Speichern..." : "Speichern"}
+            </Button>
+          </>
+        }
+      >
+        <Box sx={{ mt: 3 }}>
           <TextField
             label="Name"
             fullWidth
             name="name"
             value={newProduct.name}
-            onChange={handleChange}
             error={Boolean(errors.name)}
             helperText={errors.name}
             disabled={loading}
+            sx={{ mb: 2 }}
+            onChange={handleChange}
           />
 
           <TextField
@@ -271,114 +399,134 @@ export default function CreateProduct({ onClose }: CreateProductProps) {
             disabled={loading}
           />
 
-          <TextField
-            label="Kaufpreis"
-            fullWidth
-            name="purchasingPrice"
-            type="number"
-            value={String(newProduct.purchasingPrice)}
-            onChange={handlePurchasingPriceChange}
-            error={Boolean(errors.purchasingPrice)}
-            helperText={errors.purchasingPrice}
-            disabled={loading}
-          />
+          <Box sx={{ ...productFormColumnsStyle, mt: 2 }}>
+            <Box sx={productFormColumnStyle}>
+              <TextField
+                label="Kaufpreis"
+                fullWidth
+                name="purchasingPrice"
+                type="number"
+                value={newProduct.purchasingPrice ?? ""}
+                onChange={handlePurchasingPriceChange}
+                error={Boolean(errors.purchasingPrice)}
+                helperText={errors.purchasingPrice}
+                disabled={loading}
+              />
 
-          <TextField
-            label="Aufschlag %"
-            fullWidth
-            name="markupPercentage"
-            type="number"
-            value={String(newProduct.markupPercentage)}
-            onChange={handleMarkupPercentageChange}
-            disabled={loading}
-          />
+              <TextField
+                label="Aufschlag %"
+                fullWidth
+                name="markupPercentage"
+                type="number"
+                value={newProduct.markupPercentage ?? ""}
+                onChange={handleMarkupPercentageChange}
+                error={Boolean(errors.markupPercentage)}
+                helperText={errors.markupPercentage}
+                disabled={loading}
+              />
 
-          <TextField
-            label="Verkaufspreis"
-            fullWidth
-            name="sellingPrice"
-            type="number"
-            value={String(newProduct.sellingPrice)}
-            onChange={handleSellingPriceChange}
-            error={Boolean(errors.sellingPrice)}
-            helperText={errors.sellingPrice}
-            disabled={loading}
-          />
+              <TextField
+                label="Verkaufspreis"
+                fullWidth
+                name="sellingPrice"
+                type="number"
+                value={newProduct.sellingPrice ?? ""}
+                onChange={handleSellingPriceChange}
+                error={Boolean(errors.sellingPrice)}
+                helperText={errors.sellingPrice}
+                disabled={loading}
+              />
+            </Box>
 
-          <TextField
-            label="Lagerplatz"
-            fullWidth
-            name="storageLocation"
-            value={newProduct.storageLocation}
-            onChange={handleChange}
-            disabled={loading}
-          />
+            <Box sx={productFormColumnStyle}>
+              <TextField
+                label="Lagerplatz"
+                fullWidth
+                name="storageLocation"
+                value={newProduct.storageLocation}
+                onChange={handleChange}
+                disabled={loading}
+              />
 
-          <FormControl fullWidth error={Boolean(errors.productCategory)}>
-            <InputLabel>Kategorie</InputLabel>
+              <FormControl fullWidth error={Boolean(errors.productCategoryId)}>
+                <InputLabel>Kategorie</InputLabel>
 
-            <Select
-              value={selectedCategoryId ?? ""}
-              onChange={handleCategoryChange}
-              label="Kategorie"
-              disabled={loading}
-            >
-              <MenuItem disabled value="">
-                Kategorie wählen
-              </MenuItem>
+                <Select
+                  value={newProduct.productCategoryId || ""}
+                  onChange={handleCategoryChange}
+                  label="Kategorie"
+                  disabled={loading}
+                >
+                  <MenuItem disabled value="">
+                    Kategorie wählen
+                  </MenuItem>
 
-              {categories.map((category) => (
-                <MenuItem key={category.id} value={category.id}>
-                  {category.name}
-                </MenuItem>
-              ))}
-            </Select>
+                  {categories.map((category) => (
+                    <MenuItem key={category.id} value={category.id}>
+                      {category.name}
+                    </MenuItem>
+                  ))}
+                </Select>
 
-            {errors.productCategory && (
-              <FormHelperText>{errors.productCategory}</FormHelperText>
-            )}
-          </FormControl>
+                {errors.productCategoryId && (
+                  <FormHelperText>{errors.productCategoryId}</FormHelperText>
+                )}
+              </FormControl>
 
-          <FormControl fullWidth error={Boolean(errors.unitOfMeasurementId)}>
-            <InputLabel>Maßeinheit</InputLabel>
+              <FormControl
+                fullWidth
+                error={Boolean(errors.unitOfMeasurementId)}
+              >
+                <InputLabel>Maßeinheit</InputLabel>
 
-            <Select
-              value={newProduct.unitOfMeasurementId || ""}
-              onChange={handleUnitChange}
-              label="Maßeinheit"
-              disabled={loading}
-            >
-              <MenuItem disabled value="">
-                Maßeinheit wählen
-              </MenuItem>
+                <Select
+                  value={newProduct.unitOfMeasurementId || ""}
+                  onChange={handleUnitChange}
+                  label="Maßeinheit"
+                  disabled={loading}
+                >
+                  <MenuItem disabled value="">
+                    Maßeinheit wählen
+                  </MenuItem>
 
-              {units.map((unit) => (
-                <MenuItem key={unit.id} value={unit.id}>
-                  {unit.name}
-                </MenuItem>
-              ))}
-            </Select>
+                  {units.map((unit) => (
+                    <MenuItem key={unit.id} value={unit.id}>
+                      {unit.name}
+                    </MenuItem>
+                  ))}
+                </Select>
 
-            {errors.unitOfMeasurementId && (
-              <FormHelperText>{errors.unitOfMeasurementId}</FormHelperText>
-            )}
-          </FormControl>
+                {errors.unitOfMeasurementId && (
+                  <FormHelperText>{errors.unitOfMeasurementId}</FormHelperText>
+                )}
+              </FormControl>
+            </Box>
+          </Box>
         </Box>
+      </DraggableDialog>
 
-        <Box sx={formActionsRightStyle}>
-          <Button onClick={onClose} sx={cancelButtonStyle} disabled={loading}>
-            Abbrechen
-          </Button>
+      <ProductDuplicateWarningDialog
+        open={duplicateDialogOpen}
+        products={similarProducts}
+        categories={categories}
+        confirmText="Trotzdem erstellen"
+        message={
+          "Es wurden Produkte mit demselben Namen oder derselben Lieferanten-Artikelnummer gefunden.\nBitte prüfen Sie, ob das Produkt bereits vorhanden ist."
+        }
+        loading={loading}
+        onCancel={handleCloseDuplicateDialog}
+        onConfirm={handleCreateAnyway}
+      />
 
-          <Button
-            onClick={handleSubmit}
-            sx={primaryButtonStyle}
-            disabled={loading}
-          >
-            {loading ? <CircularProgress size={24} /> : "Speichern"}
-          </Button>
-        </Box>
-      </Box>
-    </Dialog>
+      {createdProduct && (
+        <EditGeneratedArticle
+          open
+          productId={createdProduct.id}
+          productName={createdProduct.name}
+          generatedArticle={createdProduct.article}
+          onClose={handleCloseArticleDialog}
+        />
+      )}
+    </>
   );
 }

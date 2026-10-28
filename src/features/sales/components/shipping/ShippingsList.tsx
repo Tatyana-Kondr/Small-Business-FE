@@ -1,108 +1,166 @@
-import { Box, Button, Container, Paper, styled, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from "@mui/material";
-import { useAppDispatch, useAppSelector } from "../../../../redux/hooks";
-import { getShippings, selectShippings } from "../../shippingsSlice";
+import {
+  Box,
+  Button,
+  Container,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableRow,
+} from "@mui/material";
+
 import { useEffect, useState } from "react";
+
+import { useAppDispatch, useAppSelector } from "../../../../redux/hooks";
+
+import { getShippings, selectShippings } from "../../shippingsSlice";
+
 import { Shipping } from "../../types";
+
 import DeleteShipping from "./DeleteShipping";
 import { CreateShipping } from "./CreateShipping";
 import EditShipping from "./EditShipping";
 
-const StyledTableHead = styled(TableHead)(({
-    backgroundColor: "#1a3d6d",
-    "& th": {
-        color: "white",
-        fontWeight: "bold",
-        borderRight: "1px solid #ddd",
-        textAlign: "center"
-    },
-}));
-const StyledTableRow = styled(TableRow)({
-    backgroundColor: "#ffffff",
-    "&:hover": {
-        backgroundColor: "#f5f5f5", // Подсветка строки при наведении
-        cursor: "pointer",
-    },
-});
+import { compactPageToolbarStyle } from "../../../../styles/formStyles";
+import {
+  cellStyle,
+  centerCellStyle,
+  compactTableContainerStyle,
+  compactTableStyle,
+  fixedCellWidth,
+  leftBorderCellStyle,
+  StyledTableHead,
+  tableRowHoverStyle,
+} from "../../../../styles/tableStyles";
+
+import {
+  outlinedButtonStyle,
+  primaryButtonStyle,
+} from "../../../../styles/buttonStyles";
 
 export default function ShippingsList() {
-    const dispatch = useAppDispatch();
-    const shippings = useAppSelector(selectShippings);
-    const [selectedShipping, setSelectedShipping] = useState<Shipping | null>(null);
-    const [openModal, setOpenModal] = useState(false);
-    const [editOpen, setEditOpen] = useState(false);
+  const dispatch = useAppDispatch();
 
-    useEffect(() => {
-        dispatch(getShippings());
-    }, [dispatch]);
+  const shippings = useAppSelector(selectShippings);
 
-    const handleEdit = (shipping: Shipping) => {
-        setSelectedShipping(shipping);
-        setEditOpen(true);
-    };
+  const [selectedShipping, setSelectedShipping] = useState<Shipping | null>(
+    null,
+  );
 
-    return (
-       <Container>
-            {/* Верхняя панель */}
-            <Box display="flex" justifyContent="flex-end" alignItems="center" mb={2}>                            
-                <Button variant="contained" color="primary" onClick={() => setOpenModal(true)}>
-                    Neuen Versandart anlegen
-                </Button>
-            </Box>
+  const [openModal, setOpenModal] = useState(false);
 
-            {/* Таблица */}
-            <TableContainer component={Paper} sx={{ boxShadow: "none" }}>
-                <Table>
-                    <StyledTableHead>
-                        <TableRow>
-                            <TableCell>ID</TableCell>
-                            <TableCell>Name</TableCell>
-                            <TableCell></TableCell>
-                        </TableRow>
-                    </StyledTableHead>
-                    <TableBody>
-                        {shippings.length > 0 ? (
-                            shippings.map((shipping) => (
-                                <StyledTableRow key={shipping.id}>
-                                    <TableCell style={{ padding: "6px 12px", borderRight: "1px solid #ddd", borderLeft: "1px solid #ddd" }}>{shipping.id}</TableCell>
-                                    <TableCell sx={{ width: "400px", padding: "6px 12px", borderRight: "1px solid #ddd" }}>{shipping.name}</TableCell>
-                                    <TableCell sx={{ width: "200px", padding: "6px", borderRight: "1px solid #ddd" }}>
-                                        <Box display="flex" justifyContent="space-between" gap={1}>
-                                            <Button
-                                                variant="outlined"
-                                                color="primary"
-                                                size="small"
-                                                onClick={() => handleEdit(shipping)}
-                                                sx={{ minWidth: "100px", "&:hover": { borderColor: "#00acc1" } }}
-                                            >
-                                                Bearbeiten
-                                            </Button>
+  const [editOpen, setEditOpen] = useState(false);
 
-                                            <Box sx={{ minWidth: "80px" }}>
-                                                <DeleteShipping
-                                                    shippingId={shipping.id}
-                                                    name={shipping.name}
-                                                />
-                                            </Box>
-                                        </Box>
-                                    </TableCell>
+  useEffect(() => {
+    dispatch(getShippings());
+  }, [dispatch]);
 
-                                </StyledTableRow>
-                            ))
-                        ) : (
-                            <TableRow>
-                                <TableCell colSpan={4} align="center">Keine Versandarten vorhanden</TableCell>
-                            </TableRow>
-                        )}
-                    </TableBody>
-                </Table>
-            </TableContainer>
-            <CreateShipping open={openModal} onClose={() => setOpenModal(false)} />
+  const handleEdit = (shipping: Shipping) => {
+    setSelectedShipping(shipping);
+    setEditOpen(true);
+  };
 
-            <EditShipping
-                open={editOpen}
-                onClose={() => setEditOpen(false)}
-                shipping={selectedShipping}
-            />
-        </Container>
-    );
+  const tableWidth = 800;
+
+  return (
+    <Container>
+      <Box sx={compactPageToolbarStyle(tableWidth)}>
+        <Button
+          variant="contained"
+          onClick={() => setOpenModal(true)}
+          sx={{
+            ...primaryButtonStyle,
+            ml: "auto",
+          }}
+        >
+          Neue Versandart anlegen
+        </Button>
+      </Box>
+
+      <TableContainer
+        component={Paper}
+        sx={compactTableContainerStyle(tableWidth)}
+      >
+        <Table sx={compactTableStyle(tableWidth)}>
+          <StyledTableHead>
+            <TableRow>
+              <TableCell sx={fixedCellWidth(80)}>ID</TableCell>
+
+              <TableCell>Name</TableCell>
+
+              <TableCell sx={fixedCellWidth(250)}>Aktionen</TableCell>
+            </TableRow>
+          </StyledTableHead>
+
+          <TableBody>
+            {shippings.length > 0 ? (
+              shippings.map((shipping) => (
+                <TableRow key={shipping.id} sx={tableRowHoverStyle}>
+                  <TableCell
+                    sx={{
+                      ...centerCellStyle,
+                      ...leftBorderCellStyle,
+                      ...fixedCellWidth(80),
+                    }}
+                  >
+                    {shipping.id}
+                  </TableCell>
+
+                  <TableCell sx={cellStyle}>{shipping.name}</TableCell>
+
+                  <TableCell
+                    sx={{
+                      ...cellStyle,
+                      ...fixedCellWidth(250),
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        gap: 1,
+                      }}
+                    >
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() => handleEdit(shipping)}
+                        sx={{
+                          ...outlinedButtonStyle,
+                          minWidth: 110,
+                        }}
+                      >
+                        Bearbeiten
+                      </Button>
+
+                      <DeleteShipping
+                        shippingId={shipping.id}
+                        name={shipping.name}
+                      />
+                    </Box>
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={3} align="center" sx={cellStyle}>
+                  Keine Versandarten vorhanden
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
+
+      <CreateShipping open={openModal} onClose={() => setOpenModal(false)} />
+
+      <EditShipping
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        shipping={selectedShipping}
+      />
+    </Container>
+  );
 }

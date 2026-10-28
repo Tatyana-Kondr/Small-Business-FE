@@ -1,18 +1,22 @@
 import { useEffect, useState } from "react";
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  TextField,
-  Button,
-  DialogActions,
-} from "@mui/material";
-import { useAppDispatch } from "../../../../redux/hooks";
-import { showSuccessToast } from "../../../../utils/toast";
-import { handleApiError } from "../../../../utils/handleApiError";
-import { UnitOfMeasurement } from "../../types";
-import { getUnits, updateUnit } from "../../unitsOfMeasurementSlice";
 
+import { Button, TextField } from "@mui/material";
+
+import { useAppDispatch } from "../../../../redux/hooks";
+
+import { UnitOfMeasurement } from "../../types";
+import { updateUnit } from "../../unitsOfMeasurementSlice";
+
+import { showSuccessToast } from "../../../../utils/toast";
+import { getApiErrorMessage } from "../../../../utils/errors/handleApiError";
+
+import { isBackendValidationErrors } from "../../../../utils/validation/validation";
+import { translateValidationMessage } from "../../../../utils/validation/validationMessages";
+
+import DraggableDialog from "../../../../components/DraggableDialog";
+import DialogTitleText from "../../../../components/DialogTitleText";
+
+import { primaryButtonStyle } from "../../../../styles/buttonStyles";
 
 interface EditUnitProps {
   open: boolean;
@@ -22,70 +26,119 @@ interface EditUnitProps {
 
 export default function EditUnit({ open, onClose, unit }: EditUnitProps) {
   const dispatch = useAppDispatch();
-  const [name, setName] = useState<string>("");
+
+  const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // При изменении обновляем локальный стейт
   useEffect(() => {
-    setName(unit?.name ?? "");
+    if (open) {
+      setName(unit?.name ?? "");
+      setError("");
+    }
+  }, [open, unit]);
+
+  const handleClose = () => {
+    if (loading) return;
+
     setError("");
-  }, [unit]);
+    onClose();
+  };
 
   const handleSubmit = async () => {
-    if (!name.trim()) {
-      setError("Bitte das Feld ausfüllen");
+    if (loading || !unit) return;
+
+    const trimmedName = name.trim();
+
+    // Проверка обязательного поля
+    if (!trimmedName) {
+      setError("Bitte das Feld ausfüllen.");
       return;
     }
-    if (!unit) {
-      setError("Ungültiger Maßeinheit");
+
+    // Проверка максимальной длины
+    if (trimmedName.length > 20) {
+      setError("Der Name der Maßeinheit darf maximal 20 Zeichen lang sein.");
       return;
     }
+
     setLoading(true);
     setError("");
+
     try {
-      await dispatch(updateUnit({ id: unit.id, updatedUnit: { name: name } })).unwrap();
-      await dispatch(getUnits());
-      showSuccessToast("Erfolg", "Der Maßeinheit wurde erfolgreich aktualisiert.");
+      await dispatch(
+        updateUnit({
+          id: unit.id,
+          updatedUnit: {
+            name: trimmedName,
+          },
+        }),
+      ).unwrap();
+
+      showSuccessToast(
+        "Erfolg",
+        "Die Maßeinheit wurde erfolgreich aktualisiert.",
+      );
+
       onClose();
-    } catch (err) {
-      handleApiError(err, "Fehler bei der Aktualisierung der Maßeinheit");
+    } catch (error) {
+      // Ошибки Bean Validation от Backend
+      if (isBackendValidationErrors(error)) {
+        const nameError = error.errors.find(
+          (validationError) => validationError.field === "name",
+        );
+
+        if (nameError) {
+          setError(translateValidationMessage(nameError.message));
+          return;
+        }
+      }
+
+      // Ошибки бизнес-логики от Backend
+      setError(
+        getApiErrorMessage(
+          error,
+          "Beim Aktualisieren der Maßeinheit ist ein Fehler aufgetreten.",
+        ),
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCancel = () => {
-    onClose();
-    setName("");
-    setError("");
-  };
-
   return (
-    <Dialog open={open} onClose={handleCancel} fullWidth maxWidth="sm">
-      <DialogTitle sx={{ textAlign:"left", fontWeight: "bold", textDecoration: 'underline', color: "#0277bd"}}>Maßeinheit bearbeiten</DialogTitle>
-      <DialogContent>
-        <TextField
-          autoFocus
-          fullWidth
-          margin="normal"
-          label="Maßeinheit"
-          name="name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          error={!!error}
-          helperText={error}
-          disabled={loading}
-        />
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={handleCancel} color="secondary" disabled={loading}>
-          Abbrechen
+    <DraggableDialog
+      open={open}
+      onClose={loading ? undefined : handleClose}
+      dialogWidth={500}
+      title={<DialogTitleText>Maßeinheit bearbeiten</DialogTitleText>}
+      actions={
+        <Button
+          onClick={handleSubmit}
+          variant="contained"
+          disabled={loading || !unit}
+          sx={primaryButtonStyle}
+        >
+          {loading ? "Speichern..." : "Speichern"}
         </Button>
-        <Button onClick={handleSubmit} color="primary" variant="contained" disabled={loading}>
-          Speichern
-        </Button>
-      </DialogActions>
-    </Dialog>
+      }
+    >
+      <TextField
+        autoFocus
+        fullWidth
+        required
+        label="Maßeinheit"
+        name="name"
+        value={name}
+        onChange={(event) => {
+          setName(event.target.value);
+          setError("");
+        }}
+        error={Boolean(error)}
+        helperText={error}
+        disabled={loading || !unit}
+        sx={{ mt: 3 }}
+      />
+    </DraggableDialog>
   );
 }

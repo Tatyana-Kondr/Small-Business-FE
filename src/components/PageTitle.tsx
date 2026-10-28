@@ -1,5 +1,3 @@
-// src/components/common/PageTitle.tsx
-
 import { Typography } from "@mui/material";
 import { pageTitleStyle } from "../styles/typographyStyles";
 

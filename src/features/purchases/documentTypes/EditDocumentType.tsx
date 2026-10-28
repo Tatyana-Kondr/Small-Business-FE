@@ -1,19 +1,23 @@
 import { useEffect, useState } from "react";
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  TextField,
-  Button,
-  DialogActions,
-} from "@mui/material";
+
+import { Button, TextField } from "@mui/material";
+
 import { TypeOfDocument } from "../types";
+
 import { useAppDispatch } from "../../../redux/hooks";
-import { getDocumentTypes, updateDocumentType } from "../typeOfDocumentSlice";
+
+import { updateDocumentType } from "../typeOfDocumentSlice";
+
 import { showSuccessToast } from "../../../utils/toast";
-import { handleApiError } from "../../../utils/handleApiError";
+import { getApiErrorMessage } from "../../../utils/errors/handleApiError";
 
+import { isBackendValidationErrors } from "../../../utils/validation/validation";
+import { translateValidationMessage } from "../../../utils/validation/validationMessages";
 
+import DraggableDialog from "../../../components/DraggableDialog";
+import DialogTitleText from "../../../components/DialogTitleText";
+
+import { primaryButtonStyle } from "../../../styles/buttonStyles";
 
 interface EditTypeProps {
   open: boolean;
@@ -21,72 +25,124 @@ interface EditTypeProps {
   type: TypeOfDocument | null;
 }
 
-export default function EditDocumentType({ open, onClose, type }: EditTypeProps) {
+export default function EditDocumentType({
+  open,
+  onClose,
+  type,
+}: EditTypeProps) {
   const dispatch = useAppDispatch();
-  const [name, setName] = useState<string>("");
+
+  const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // При изменении обновляем локальный стейт
   useEffect(() => {
-    setName(type?.name ?? "");
+    if (open) {
+      setName(type?.name ?? "");
+      setError("");
+    }
+  }, [open, type]);
+
+  const handleClose = () => {
+    if (loading) return;
+
     setError("");
-  }, [type]);
+    onClose();
+  };
 
   const handleSubmit = async () => {
-    if (!name.trim()) {
-      setError("Bitte das Feld ausfüllen");
+    if (loading || !type) return;
+
+    const trimmedName = name.trim();
+
+    // Проверка обязательного поля
+    if (!trimmedName) {
+      setError("Bitte das Feld ausfüllen.");
       return;
     }
-    if (!type) {
-      setError("Ungültiger Dokumenttyp");
-      return;
-    }
+
     setLoading(true);
     setError("");
+
     try {
-      await dispatch(updateDocumentType({ id: type.id, updatedTypeOfDocument: { name: name } })).unwrap();
-      await dispatch(getDocumentTypes());
-      showSuccessToast("Erfolg", "Der Dokumenttyp wurde erfolgreich aktualisiert.");
+      await dispatch(
+        updateDocumentType({
+          id: type.id,
+          updatedTypeOfDocument: {
+            name: trimmedName,
+          },
+        }),
+      ).unwrap();
+
+      showSuccessToast(
+        "Erfolg",
+        "Der Dokumenttyp wurde erfolgreich aktualisiert.",
+      );
+
       onClose();
-    } catch (err) {
-      handleApiError(err, "Fehler bei der Aktualisierung der Dokumenttyp");
+    } catch (error) {
+      // Ошибки Bean Validation от Backend
+      if (isBackendValidationErrors(error)) {
+        const nameError = error.errors.find(
+          (validationError) => validationError.field === "name",
+        );
+
+        if (nameError) {
+          setError(translateValidationMessage(nameError.message));
+          return;
+        }
+      }
+
+      // Ошибки бизнес-логики от Backend
+      setError(
+        getApiErrorMessage(
+          error,
+          "Fehler bei der Aktualisierung des Dokumenttyps.",
+        ),
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCancel = () => {
-    onClose();
-    setName("");
-    setError("");
-  };
-
   return (
-    <Dialog open={open} onClose={handleCancel} fullWidth maxWidth="sm">
-      <DialogTitle sx={{ textAlign:"left", fontWeight: "bold", textDecoration: 'underline', color: "#0277bd"}}>Dokumenttyp bearbeiten</DialogTitle>
-      <DialogContent>
-        <TextField
-          autoFocus
-          fullWidth
-          margin="normal"
-          label="Dokumenttyp"
-          name="name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          error={!!error}
-          helperText={error}
-          disabled={loading}
-        />
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={handleCancel} color="secondary" disabled={loading}>
-          Abbrechen
+    <DraggableDialog
+      open={open}
+      onClose={loading ? undefined : handleClose}
+      dialogWidth={450}
+      title={<DialogTitleText>Dokumenttyp bearbeiten</DialogTitleText>}
+      actions={
+        <Button
+          onClick={handleSubmit}
+          variant="contained"
+          disabled={loading || !type}
+          sx={primaryButtonStyle}
+        >
+          {loading ? "Speichern..." : "Speichern"}
         </Button>
-        <Button onClick={handleSubmit} color="primary" variant="contained" disabled={loading}>
-          Speichern
-        </Button>
-      </DialogActions>
-    </Dialog>
+      }
+    >
+      <TextField
+        autoFocus
+        fullWidth
+        required
+        label="Name"
+        name="name"
+        value={name}
+        onChange={(event) => {
+          setName(event.target.value);
+          setError("");
+        }}
+        error={Boolean(error)}
+        helperText={error}
+        disabled={loading || !type}
+        sx={{ mt: 3 }}
+        slotProps={{
+          htmlInput: {
+            "aria-label": "Name des Dokumenttyps",
+          },
+        }}
+      />
+    </DraggableDialog>
   );
 }

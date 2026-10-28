@@ -1,24 +1,17 @@
-import { useState } from "react";
-import {
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
-} from "@mui/material";
+import type { ReactNode } from "react";
 
 import { useAppDispatch } from "../../../redux/hooks";
 import { deleteCustomer } from "../customersSlice";
-import {
-  showErrorToast,
-  showSuccessToast,
-} from "../../../utils/toast";
+
+import { showErrorToast, showSuccessToast } from "../../../utils/toast";
+import { getApiErrorMessage } from "../../../utils/errors/handleApiError";
+
+import ConfirmDeleteDialog from "../../../components/ConfirmDeleteDialog";
 
 interface DeleteCustomerProps {
   customerId: number;
   customerName: string;
-  trigger?: React.ReactNode;
+  trigger?: ReactNode;
 }
 
 export default function DeleteCustomer({
@@ -28,108 +21,51 @@ export default function DeleteCustomer({
 }: DeleteCustomerProps) {
   const dispatch = useAppDispatch();
 
-  const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  const handleOpen = () => {
-    setOpen(true);
-  };
-
-  const handleClose = () => {
-    setOpen(false);
-  };
-
-  const handleDelete = async () => {
-    setLoading(true);
-
+  const handleDelete = async (): Promise<void> => {
     try {
       await dispatch(deleteCustomer(customerId)).unwrap();
 
-      showSuccessToast(
-        "Erfolg",
-        `${customerName} wurde erfolgreich gelöscht.`
+      showSuccessToast("Erfolg", `${customerName} wurde erfolgreich gelöscht.`);
+    } catch (error: unknown) {
+      const err =
+        typeof error === "object" && error !== null
+          ? (error as Record<string, unknown>)
+          : null;
+
+      let message = getApiErrorMessage(
+        error,
+        `Fehler beim Löschen von ${customerName}.`,
       );
 
-      handleClose();
-    } catch (error: any) {
-      let message = "Fehler beim Löschen.";
+      // Только для DeleteCustomer:
+      // извлекаем конкретные причины запрета удаления
+      if (err?.status === 409 && Array.isArray(err.errors)) {
+        const messages = err.errors
+          .filter(
+            (item): item is { message: string } =>
+              typeof item === "object" &&
+              item !== null &&
+              "message" in item &&
+              typeof item.message === "string",
+          )
+          .map((item) => item.message.trim())
+          .filter(Boolean);
 
-      const raw = error?.message || "";
-
-      if (raw.includes("409")) {
-        message = `${customerName} kann nicht gelöscht werden, da es in anderen Einträgen verwendet wird.`;
-      } else if (raw.includes("404")) {
-        message = `${customerName} wurde nicht gefunden.`;
+        if (messages.length > 0) {
+          message = messages.join("\n");
+        }
       }
 
       showErrorToast("Fehler beim Löschen", message);
-    } finally {
-      setLoading(false);
+
+      // Передаём ошибку ConfirmDeleteDialog
+      throw error;
     }
   };
 
   return (
-    <>
-      {trigger ? (
-        <span
-          onClick={(event) => {
-            event.stopPropagation();
-            handleOpen();
-          }}
-          style={{
-            cursor: "pointer",
-            display: "inline-flex",
-          }}
-        >
-          {trigger}
-        </span>
-      ) : (
-        <Button
-          variant="outlined"
-          color="error"
-          size="small"
-          onClick={handleOpen}
-          sx={{
-            "&:hover": {
-              borderColor: "#d32f2f",
-              backgroundColor: "#fddede",
-            },
-          }}
-        >
-          Löschen
-        </Button>
-      )}
-
-      <Dialog open={open} onClose={handleClose}>
-        <DialogTitle
-          sx={{
-            color: "error.main",
-            fontWeight: "bold",
-          }}
-        >
-          ⚠️ WARNUNG!
-        </DialogTitle>
-
-        <DialogContent>
-          <DialogContentText>
-            Wollen Sie den <strong>{customerName}</strong> wirklich löschen?
-          </DialogContentText>
-        </DialogContent>
-
-        <DialogActions>
-          <Button onClick={handleClose} color="primary">
-            Abbrechen
-          </Button>
-
-          <Button
-            onClick={handleDelete}
-            color="error"
-            disabled={loading}
-          >
-            {loading ? "Löschung..." : "Löschen"}
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </>
+    <ConfirmDeleteDialog trigger={trigger} onConfirm={handleDelete}>
+      Möchten Sie <strong>{customerName}</strong> wirklich löschen?
+    </ConfirmDeleteDialog>
   );
 }

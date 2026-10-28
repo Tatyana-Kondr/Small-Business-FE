@@ -1,5 +1,5 @@
-import { defineConfig, loadEnv } from 'vite';
-import react from '@vitejs/plugin-react';
+import { defineConfig, loadEnv } from "vite";
+import react from "@vitejs/plugin-react";
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
@@ -7,11 +7,13 @@ export default defineConfig(({ mode }) => {
   return {
     base: "./", // делает пути относительными
 
+    cacheDir: ".vite-cache",
+
     plugins: [react()],
 
     build: {
-      sourcemap: false,                  // отключаем source maps для продакшена
-      chunkSizeWarningLimit: 2000,       // увеличиваем лимит, чтобы не ругался
+      sourcemap: false, // отключаем source maps для продакшена
+      chunkSizeWarningLimit: 2000, // увеличиваем лимит, чтобы не ругался
       rollupOptions: {
         output: {
           manualChunks: {
@@ -22,11 +24,11 @@ export default defineConfig(({ mode }) => {
               "react-router-dom",
               "axios",
               "@reduxjs/toolkit",
-              "react-redux"
-            ]
-          }
-        }
-      }
+              "react-redux",
+            ],
+          },
+        },
+      },
     },
 
     server: {

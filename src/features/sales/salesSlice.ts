@@ -1,4 +1,5 @@
 import { createAppSlice } from "../../redux/createAppSlice";
+import { HttpError } from "../../utils/errors/handleFetchError";
 import {
   fetchAddSale,
   fetchDeleteSale,
@@ -75,8 +76,16 @@ export const salesSlice = createAppSlice({
     ),
 
     addSale: create.asyncThunk(
-      async (newSale: NewSaleDto) => {
-        return await fetchAddSale(newSale);
+      async (newSale: NewSaleDto, { rejectWithValue }) => {
+        try {
+          return await fetchAddSale(newSale);
+        } catch (error) {
+          if (error instanceof HttpError) {
+            return rejectWithValue(error.data ?? { message: error.message });
+          }
+
+          throw error;
+        }
       },
       {
         pending: handlePending,
@@ -87,8 +96,16 @@ export const salesSlice = createAppSlice({
           state.salesVersion += 1;
         },
 
-        rejected: (state, action) =>
-          handleRejected(state, action, "Fehler beim Hinzufügen des Auftrags."),
+        rejected: (state, action) => {
+          state.loading = false;
+
+          const payload = action.payload as { message?: string } | undefined;
+
+          state.error =
+            payload?.message ||
+            action.error.message ||
+            "Fehler beim Hinzufügen des Auftrags.";
+        },
       },
     ),
 
@@ -199,8 +216,25 @@ export const salesSlice = createAppSlice({
     ),
 
     updateSale: create.asyncThunk(
-      async ({ id, updatedSale }: { id: number; updatedSale: NewSaleDto }) => {
-        return await fetchUpdateSale(id, updatedSale);
+      async (
+        {
+          id,
+          updatedSale,
+        }: {
+          id: number;
+          updatedSale: NewSaleDto;
+        },
+        { rejectWithValue },
+      ) => {
+        try {
+          return await fetchUpdateSale(id, updatedSale);
+        } catch (error) {
+          if (error instanceof HttpError) {
+            return rejectWithValue(error.data ?? { message: error.message });
+          }
+
+          throw error;
+        }
       },
       {
         pending: handlePending,
@@ -216,8 +250,16 @@ export const salesSlice = createAppSlice({
           state.salesVersion += 1;
         },
 
-        rejected: (state, action) =>
-          handleRejected(state, action, "Fehler beim Bearbeiten des Auftrags."),
+        rejected: (state, action) => {
+          state.loading = false;
+
+          const payload = action.payload as { message?: string } | undefined;
+
+          state.error =
+            payload?.message ||
+            action.error.message ||
+            "Fehler beim Bearbeiten des Auftrags.";
+        },
       },
     ),
 
@@ -252,13 +294,21 @@ export const salesSlice = createAppSlice({
       {
         fulfilled: (state, action) => {
           const updatedSale = action.payload;
+
           state.salesList = state.salesList.map((s) =>
             s.id === updatedSale.id ? updatedSale : s,
           );
+
+          if (state.selectedSale?.id === updatedSale.id) {
+            state.selectedSale = updatedSale;
+          }
+          state.salesVersion += 1;
           state.loading = false;
           state.error = null;
         },
+
         pending: handlePending,
+
         rejected: (state, action) =>
           handleRejected(
             state,

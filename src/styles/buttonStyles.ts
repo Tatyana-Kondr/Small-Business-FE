@@ -26,19 +26,20 @@ export const cancelButtonStyle: SxProps<Theme> = {
    // transform: "scale(1.02)",
    // fontWeight: 500,
     color: colors.accentDark,
+    borderColor: colors.accent,
     backgroundColor: colors.accentLight,
   },
 };
 
-//серые иконки
-export const iconButtonHoverStyle: SxProps<Theme> = {
-  p: 0.5,
-  transition: "transform 0.2s ease-in-out",
-
+//кнопка "Löschen"
+export const deleteButtonStyle: SxProps<Theme> = {
+  transition: "transform 0.2s ease, font-weight 0.2s ease",
   "&:hover": {
-    color: colors.iconGrey,
-    transform: "scale(1.2)",
-    backgroundColor: "transparent",
+   // transform: "scale(1.02)",
+   // fontWeight: 500,
+    color: colors.danger,
+    borderColor: colors.danger,
+    backgroundColor: colors.dangerBackground,
   },
 };
 

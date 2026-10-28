@@ -1,170 +1,230 @@
-import { useState } from "react";
-import { Box, Button, Modal, TextField, CircularProgress } from "@mui/material";
-import { useAppDispatch } from "../../../../redux/hooks";
-import { fetchAddProductCategory } from "../../api";
-import { getProductCategories } from "../../productCategoriesSlice";
-import { showSuccessToast } from "../../../../utils/toast";
-import { handleApiError } from "../../../../utils/handleApiError";
-import { cancelButtonStyle, primaryButtonStyle } from "../../../../styles/buttonStyles";
-import PageTitle from "../../../../components/PageTitle";
+
+import { useEffect, useState } from "react";
+
+import { Button, TextField } from "@mui/material";
+
+import { useAppDispatch, useAppSelector } from "../../../../redux/hooks";
+
 import { NewProductCategoryDto } from "../../types";
-import { backendErrorsToFormErrors, clearFieldError, FormErrors, hasErrors, isBackendValidationErrors, validateRequiredFields } from "../../../../utils/validation/validation";
-import { HttpError } from "../../../../utils/handleFetchError";
 
+import {
+  addProductCategory,
+  selectLoading,
+} from "../../productCategoriesSlice";
 
-export default function CreateProductCategory() {
+import { showSuccessToast } from "../../../../utils/toast";
+import { getApiErrorMessage } from "../../../../utils/errors/handleApiError";
+
+import { isBackendValidationErrors } from "../../../../utils/validation/validation";
+import { translateValidationMessage } from "../../../../utils/validation/validationMessages";
+
+import { NAME_REGEX } from "../../../../utils/regex";
+
+import DraggableDialog from "../../../../components/DraggableDialog";
+import DialogTitleText from "../../../../components/DialogTitleText";
+
+import { primaryButtonStyle } from "../../../../styles/buttonStyles";
+
+interface CreateProductCategoryProps {
+  open: boolean;
+  onClose: () => void;
+}
+
+const initialFormState: NewProductCategoryDto = {
+  name: "",
+  artName: "",
+};
+
+type FieldErrors = Partial<Record<keyof NewProductCategoryDto, string>>;
+
+export function CreateProductCategory({
+  open,
+  onClose,
+}: CreateProductCategoryProps) {
   const dispatch = useAppDispatch();
 
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [artName, setArtName] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<FormErrors<NewProductCategoryDto>>({});
+  const loading = useAppSelector(selectLoading);
 
-  const handleOpen = () => setOpen(true);
+  const [formData, setFormData] =
+    useState<NewProductCategoryDto>(initialFormState);
+
+  const [errors, setErrors] = useState<FieldErrors>({});
+
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!open) {
+      setFormData(initialFormState);
+      setErrors({});
+      setError("");
+    }
+  }, [open]);
+
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = event.target;
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+
+    setErrors((prev) => ({
+      ...prev,
+      [name]: "",
+    }));
+
+    setError("");
+  };
 
   const handleClose = () => {
-    setOpen(false);
-    setName("");
-    setArtName("");
+    if (loading) return;
+
     setErrors({});
-    setLoading(false);
+    setError("");
+    onClose();
   };
 
   const handleSubmit = async () => {
+    if (loading) return;
+
     const dto: NewProductCategoryDto = {
-      name: name.trim(),
-      artName: artName.trim(),
+      name: formData.name.trim().toUpperCase(),
+      artName: formData.artName.trim().toUpperCase(),
     };
 
-    const validationErrors = validateRequiredFields(dto, [
-      "name",
-      "artName",
-    ]);
+    const validationErrors: FieldErrors = {};
+
+    // Name
+    if (!dto.name) {
+      validationErrors.name = "Bitte das Feld ausfüllen.";
+    } else if (dto.name.length < 3 || dto.name.length > 50) {
+      validationErrors.name =
+        "Die Eingabe muss zwischen 3 und 50 Zeichen lang sein.";
+    } else if (!NAME_REGEX.test(dto.name)) {
+      validationErrors.name = "Ungültige Zeichen sind nicht erlaubt.";
+    }
+
+    // ArtName
+    if (!dto.artName) {
+      validationErrors.artName = "Bitte das Feld ausfüllen.";
+    } else if (dto.artName.length < 2 || dto.artName.length > 6) {
+      validationErrors.artName =
+        "Die Eingabe muss zwischen 2 und 6 Zeichen lang sein.";
+    } else if (!NAME_REGEX.test(dto.artName)) {
+      validationErrors.artName = "Ungültige Zeichen sind nicht erlaubt.";
+    }
 
     setErrors(validationErrors);
+    setError("");
 
-    if (hasErrors(validationErrors)) {
+    if (Object.values(validationErrors).some(Boolean)) {
       return;
     }
 
-    setLoading(true);
-
     try {
-      await fetchAddProductCategory(dto);
-      await dispatch(getProductCategories()).unwrap();
+      await dispatch(addProductCategory(dto)).unwrap();
 
-      showSuccessToast("Erfolg", "Kategorie erfolgreich hinzugefügt!");
+      showSuccessToast(
+        "Erfolg",
+        "Die Produktkategorie wurde erfolgreich erstellt.",
+      );
+
       handleClose();
-    } catch (error) {
-      if (
-        error instanceof HttpError &&
-        isBackendValidationErrors(error.data)
-      ) {
-        setErrors(
-          backendErrorsToFormErrors<NewProductCategoryDto>(
-            error.data.errors
-          )
-        );
-        return;
-      }
+    } catch (err) {
+      // Bean Validation от Backend
+      if (isBackendValidationErrors(err)) {
+        const backendErrors: FieldErrors = {};
 
-      if (error instanceof HttpError && error.status === 409) {
-        if (error.message === "Category already exists") {
-          setErrors((prev) => ({
-            ...prev,
-            name: "Kategorie existiert bereits.",
-          }));
-          return;
-        }
+        err.errors.forEach((validationError) => {
+          if (
+            validationError.field === "name" ||
+            validationError.field === "artName"
+          ) {
+            backendErrors[validationError.field] =
+              translateValidationMessage(validationError.message);
+          }
+        });
 
-        if (error.message === "Category article name already exists") {
-          setErrors((prev) => ({
-            ...prev,
-            artName: "ArtName existiert bereits.",
-          }));
+        if (Object.values(backendErrors).some(Boolean)) {
+          setErrors(backendErrors);
           return;
         }
       }
 
-      handleApiError(error, "Fehler beim Hinzufügen der Kategorie");
-    } finally {
-      setLoading(false);
+      // Ошибки бизнес-логики, включая 409 Conflict
+      setError(
+        getApiErrorMessage(
+          err,
+          "Fehler beim Erstellen der Produktkategorie.",
+        ),
+      );
     }
   };
 
   return (
-    <>
-      <Button variant="contained" sx={primaryButtonStyle} onClick={handleOpen}>
-        Kategorie hinzufügen
-      </Button>
-
-      <Modal open={open} onClose={handleClose}>
-        <Box
-          sx={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            width: 400,
-            bgcolor: "background.paper",
-            boxShadow: 24,
-            p: 4,
-            borderRadius: 2,
-          }}
+    <DraggableDialog
+      open={open}
+      onClose={loading ? undefined : handleClose}
+      dialogWidth={520}
+      title={<DialogTitleText>Neue Produktkategorie</DialogTitleText>}
+      actions={
+        <Button
+          onClick={handleSubmit}
+          variant="contained"
+          disabled={loading}
+          sx={primaryButtonStyle}
         >
-          <Box sx={{ mb: 2 }}>
-            <PageTitle>Neue Kategorie</PageTitle>
-          </Box>
+          {loading ? "Speichern..." : "Speichern"}
+        </Button>
+      }
+    >
+      <TextField
+        id="name"
+        autoFocus
+        fullWidth
+        required
+        label="Name"
+        name="name"
+        value={formData.name}
+        onChange={handleChange}
+        error={Boolean(errors.name)}
+        helperText={errors.name}
+        disabled={loading}
+        inputProps={{ maxLength: 50 }}
+        sx={{ mt: 3 }}
+      />
 
-          <TextField
-            label="Name"
-            fullWidth
-            value={name}
-            onChange={(e) => {
-              setName(e.target.value);
-              setErrors((prev) => clearFieldError(prev, "name"));
-            }}
-            margin="dense"
-            error={Boolean(errors.name)}
-            helperText={errors.name}
-            disabled={loading}
-          />
+      <TextField
+        id="artName"
+        fullWidth
+        required
+        label="ArtName"
+        name="artName"
+        value={formData.artName}
+        onChange={handleChange}
+        error={Boolean(errors.artName)}
+        helperText={errors.artName}
+        disabled={loading}
+        inputProps={{ maxLength: 6 }}
+        sx={{ mt: 2 }}
+      />
 
-          <TextField
-            label="ArtName"
-            fullWidth
-            value={artName}
-            onChange={(e) => {
-              setArtName(e.target.value);
-              setErrors((prev) => clearFieldError(prev, "artName"));
-            }}
-            margin="dense"
-            error={Boolean(errors.artName)}
-            helperText={errors.artName}
-            disabled={loading}
-          />
-
-          <Box mt={2} display="flex" justifyContent="space-between">
-            <Button
-              onClick={handleClose}
-              disabled={loading}
-              sx={cancelButtonStyle}
-            >
-              Abbrechen
-            </Button>
-
-            <Button
-              onClick={handleSubmit}
-              variant="contained"
-              disabled={loading}
-              sx={primaryButtonStyle}
-            >
-              {loading ? <CircularProgress size={24} /> : "Speichern"}
-            </Button>
-          </Box>
-        </Box>
-      </Modal>
-    </>
+      {error && (
+        <TextField
+          fullWidth
+          multiline
+          value={error}
+          error
+          slotProps={{
+            input: {
+              readOnly: true,
+            },
+          }}
+          sx={{ mt: 2 }}
+        />
+      )}
+    </DraggableDialog>
   );
 }
+
+export default CreateProductCategory;

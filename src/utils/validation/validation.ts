@@ -73,3 +73,34 @@ export function clearFieldError<T>(
   delete nextErrors[field];
   return nextErrors;
 }
+
+export function validateLength(
+  value: string | undefined,
+  min: number,
+  max: number,
+): string | undefined {
+  if (!value) return undefined;
+
+  if (value.length < min || value.length > max) {
+    return translateValidationMessage(
+      `Must be between ${min} and ${max} characters`,
+    );
+  }
+
+  return undefined;
+}
+
+export function validateMaxLength(
+  value: string | undefined,
+  max: number,
+): string | undefined {
+  if (!value) return undefined;
+
+  if (value.length > max) {
+    return translateValidationMessage(
+      `Cannot be more than ${max} characters`,
+    );
+  }
+
+  return undefined;
+}

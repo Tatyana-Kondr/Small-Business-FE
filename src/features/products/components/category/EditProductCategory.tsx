@@ -1,41 +1,82 @@
-import { useState } from "react";
-import { Box, Button, Modal, TextField, CircularProgress } from "@mui/material";
-import { NewProductCategoryDto, ProductCategory } from "../../types";
-import { useAppDispatch } from "../../../../redux/hooks";
-import {  getProductCategories } from "../../productCategoriesSlice";
-import { showSuccessToast } from "../../../../utils/toast";
-import { handleApiError } from "../../../../utils/handleApiError";
-import { backendErrorsToFormErrors, clearFieldError, FormErrors, hasErrors, isBackendValidationErrors, validateRequiredFields } from "../../../../utils/validation/validation";
-import { cancelButtonStyle, primaryButtonStyle } from "../../../../styles/buttonStyles";
-import PageTitle from "../../../../components/PageTitle";
-import { HttpError } from "../../../../utils/handleFetchError";
-import { fetchEditProductCategory } from "../../api";
 
+import { useEffect, useState } from "react";
+
+import { Button, TextField } from "@mui/material";
+
+import { useAppDispatch } from "../../../../redux/hooks";
+
+import { NewProductCategoryDto, ProductCategory } from "../../types";
+import { editProductCategory } from "../../productCategoriesSlice";
+
+import { showSuccessToast } from "../../../../utils/toast";
+import { getApiErrorMessage } from "../../../../utils/errors/handleApiError";
+
+import {
+  backendErrorsToFormErrors,
+  clearFieldError,
+  FormErrors,
+  hasErrors,
+  isBackendValidationErrors,
+  validateRequiredFields,
+} from "../../../../utils/validation/validation";
+
+import DraggableDialog from "../../../../components/DraggableDialog";
+import DialogTitleText from "../../../../components/DialogTitleText";
+
+import { primaryButtonStyle } from "../../../../styles/buttonStyles";
 
 interface EditProductCategoryProps {
-  category: ProductCategory;
+  open: boolean;
   onClose: () => void;
+  category: ProductCategory | null;
 }
 
 export default function EditProductCategory({
-  category,
+  open,
   onClose,
+  category,
 }: EditProductCategoryProps) {
   const dispatch = useAppDispatch();
 
-  const [name, setName] = useState(category.name);
-  const [artName, setArtName] = useState(category.artName);
-  const [loading, setLoading] = useState(false);
+  const [name, setName] = useState("");
+  const [artName, setArtName] = useState("");
   const [errors, setErrors] = useState<FormErrors<NewProductCategoryDto>>({});
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setName(category?.name ?? "");
+      setArtName(category?.artName ?? "");
+      setErrors({});
+      setError("");
+    }
+  }, [open, category]);
+
+  const handleClose = () => {
+    if (loading) return;
+
+    setErrors({});
+    setError("");
+    onClose();
+  };
 
   const handleSubmit = async () => {
+    if (loading || !category) return;
+
     const dto: NewProductCategoryDto = {
       name: name.trim(),
       artName: artName.trim(),
     };
 
-    const validationErrors = validateRequiredFields(dto, ["name", "artName"]);
+    // Проверка обязательных полей
+    const validationErrors = validateRequiredFields(dto, [
+      "name",
+      "artName",
+    ]);
+
     setErrors(validationErrors);
+    setError("");
 
     if (hasErrors(validationErrors)) {
       return;
@@ -44,96 +85,93 @@ export default function EditProductCategory({
     setLoading(true);
 
     try {
-      await fetchEditProductCategory({
-        id: category.id,
-        newProductCategoryDto: dto,
-      });
+      await dispatch(
+        editProductCategory({
+          id: category.id,
+          newProductCategoryDto: dto,
+        }),
+      ).unwrap();
 
-      await dispatch(getProductCategories()).unwrap();
+      showSuccessToast(
+        "Erfolg",
+        "Die Kategorie wurde erfolgreich aktualisiert.",
+      );
 
-      showSuccessToast("Erfolg", "Kategorie wurde erfolgreich aktualisiert!");
       onClose();
     } catch (error) {
-      if (
-        error instanceof HttpError &&
-        isBackendValidationErrors(error.data)
-      ) {
+      // Ошибки Bean Validation от Backend
+      if (isBackendValidationErrors(error)) {
         setErrors(
           backendErrorsToFormErrors<NewProductCategoryDto>(
-            error.data.errors
-          )
+            error.errors,
+          ),
         );
         return;
       }
 
-      handleApiError(error, "Fehler bei der Aktualisierung der Kategorie");
+      // Ошибки бизнес-логики от Backend
+      setError(
+        getApiErrorMessage(
+          error,
+          "Beim Aktualisieren der Kategorie ist ein Fehler aufgetreten.",
+        ),
+      );
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Modal open onClose={onClose}>
-      <Box
-        sx={{
-          position: "absolute",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-          width: 400,
-          bgcolor: "background.paper",
-          boxShadow: 24,
-          p: 4,
-          borderRadius: 2,
+    <DraggableDialog
+      open={open}
+      onClose={loading ? undefined : handleClose}
+      dialogWidth={500}
+      title={<DialogTitleText>Kategorie bearbeiten</DialogTitleText>}
+      actions={
+        <Button
+          onClick={handleSubmit}
+          variant="contained"
+          disabled={loading || !category}
+          sx={primaryButtonStyle}
+        >
+          {loading ? "Speichern..." : "Speichern"}
+        </Button>
+      }
+    >
+      <TextField
+        autoFocus
+        fullWidth
+        required
+        label="Name"
+        name="name"
+        value={name}
+        onChange={(event) => {
+          setName(event.target.value);
+          setErrors((prev) => clearFieldError(prev, "name"));
+          setError("");
         }}
-      >
-        <Box sx={{ mb: 2 }}>
-          <PageTitle>Kategorienaktualisierung</PageTitle>
-        </Box>
+        error={Boolean(errors.name || error)}
+        helperText={errors.name || error}
+        disabled={loading || !category}
+        sx={{ mt: 3 }}
+      />
 
-        <TextField
-          label="Name"
-          fullWidth
-          value={name}
-          onChange={(e) => {
-            setName(e.target.value);
-            setErrors((prev) => clearFieldError(prev, "name"));
-          }}
-          margin="dense"
-          error={Boolean(errors.name)}
-          helperText={errors.name}
-          disabled={loading}
-        />
-
-        <TextField
-          label="ArtName"
-          fullWidth
-          value={artName}
-          onChange={(e) => {
-            setArtName(e.target.value);
-            setErrors((prev) => clearFieldError(prev, "artName"));
-          }}
-          margin="dense"
-          error={Boolean(errors.artName)}
-          helperText={errors.artName}
-          disabled={loading}
-        />
-
-        <Box mt={2} display="flex" justifyContent="space-between">
-          <Button onClick={onClose} disabled={loading} sx={cancelButtonStyle}>
-            Abbrechen
-          </Button>
-
-          <Button
-            onClick={handleSubmit}
-            variant="contained"
-            disabled={loading}
-            sx={primaryButtonStyle}
-          >
-            {loading ? <CircularProgress size={24} /> : "Speichern"}
-          </Button>
-        </Box>
-      </Box>
-    </Modal>
+      <TextField
+        fullWidth
+        required
+        label="ArtName"
+        name="artName"
+        value={artName}
+        onChange={(event) => {
+          setArtName(event.target.value);
+          setErrors((prev) => clearFieldError(prev, "artName"));
+          setError("");
+        }}
+        error={Boolean(errors.artName)}
+        helperText={errors.artName}
+        disabled={loading || !category}
+        sx={{ mt: 2 }}
+      />
+    </DraggableDialog>
   );
 }

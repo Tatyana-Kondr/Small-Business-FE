@@ -1,22 +1,19 @@
-import { useState } from "react";
-import {
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
-} from "@mui/material";
+import type { ReactNode } from "react";
+
 import { useAppDispatch } from "../../../redux/hooks";
-import { showSuccessToast } from "../../../utils/toast";
-import { handleApiError } from "../../../utils/handleApiError";
 import { deletePurchase } from "../purchasesSlice";
+
+import { showSuccessToast } from "../../../utils/toast";
+import { handleApiError } from "../../../utils/errors/handleApiError";
+
+import ConfirmDeleteDialog from "../../../components/ConfirmDeleteDialog";
+import { formatLocalDate } from "../../../utils/formatLocalDate";
 
 interface DeletePurchaseProps {
   purchaseId: number;
   vendorName: string;
   purchasingDate: string;
-  trigger?: React.ReactNode;
+  trigger?: ReactNode;
 }
 
 export default function DeletePurchase({
@@ -26,105 +23,26 @@ export default function DeletePurchase({
   trigger,
 }: DeletePurchaseProps) {
   const dispatch = useAppDispatch();
-  const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
 
-  const handleOpen = () => setOpen(true);
-  const handleClose = () => setOpen(false);
-
-  const handleDelete = async () => {
-    setLoading(true);
-
+  const handleDelete = async (): Promise<void> => {
     try {
       await dispatch(deletePurchase(purchaseId)).unwrap();
 
-      showSuccessToast(
-        "Erfolg",
-        "Die Bestellung wurde erfolgreich gelöscht.",
-      );
+      showSuccessToast("Erfolg", "Die Bestellung wurde erfolgreich gelöscht.");
+    } catch (error) {
+      handleApiError(error, "Fehler beim Löschen der Bestellung.");
 
-      handleClose();
-    } catch (error: any) {
-      handleApiError(
-        error,
-        "Fehler beim Löschen der Bestellung.",
-      );
-    } finally {
-      setLoading(false);
+      throw error;
     }
   };
 
+  const formattedDate = formatLocalDate(purchasingDate);
+
   return (
-    <>
-      {trigger ? (
-        <span
-          onClick={(e) => {
-            e.stopPropagation();
-            handleOpen();
-          }}
-          style={{
-            cursor: "pointer",
-            display: "inline-flex",
-          }}
-        >
-          {trigger}
-        </span>
-      ) : (
-        <Button
-          variant="outlined"
-          color="error"
-          size="small"
-          onClick={handleOpen}
-          sx={{
-            "&:hover": {
-              borderColor: "#d32f2f",
-              backgroundColor: "#fddede",
-            },
-          }}
-        >
-          Löschen
-        </Button>
-      )}
-
-      <Dialog open={open} onClose={handleClose}>
-        <DialogTitle
-          sx={{
-            color: "error.main",
-            fontWeight: "bold",
-          }}
-        >
-          ⚠️ WARNUNG!
-        </DialogTitle>
-
-        <DialogContent>
-          <DialogContentText>
-            Wollen Sie die Bestellung Nr. <strong>{purchaseId}</strong> von{" "}
-            <strong>{vendorName}</strong> vom{" "}
-            <strong>
-              {new Date(purchasingDate).toLocaleDateString("de-DE", {
-                day: "2-digit",
-                month: "2-digit",
-                year: "numeric",
-              })}
-            </strong>{" "}
-            wirklich löschen?
-          </DialogContentText>
-        </DialogContent>
-
-        <DialogActions>
-          <Button onClick={handleClose}>
-            Abbrechen
-          </Button>
-
-          <Button
-            onClick={handleDelete}
-            color="error"
-            disabled={loading}
-          >
-            {loading ? "Löschung..." : "Löschen"}
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </>
+    <ConfirmDeleteDialog trigger={trigger} onConfirm={handleDelete}>
+      Möchten Sie die Bestellung Nr. <strong>{purchaseId}</strong> von{" "}
+      <strong>{vendorName}</strong> vom <strong>{formattedDate}</strong>{" "}
+      wirklich löschen?
+    </ConfirmDeleteDialog>
   );
 }

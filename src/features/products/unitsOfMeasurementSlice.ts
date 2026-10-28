@@ -1,7 +1,14 @@
 import { createAppSlice } from "../../redux/createAppSlice";
-import { fetchAllUnits, fetchCreateUnit, fetchDeleteUnit, fetchUnitById, fetchUpdateUnit } from "./api";
-import { NewUnitOfMeasurementDto, UnitsOfMeasurementState } from "./types";
 
+import {
+  fetchAllUnits,
+  fetchCreateUnit,
+  fetchDeleteUnit,
+  fetchUnitById,
+  fetchUpdateUnit,
+} from "./api";
+
+import { NewUnitOfMeasurementDto, UnitsOfMeasurementState } from "./types";
 
 const initialState: UnitsOfMeasurementState = {
   unitsList: [],
@@ -13,68 +20,83 @@ const initialState: UnitsOfMeasurementState = {
 export const unitsOfMeasurementSlice = createAppSlice({
   name: "units",
   initialState,
+
   reducers: (create) => ({
     getUnits: create.asyncThunk(
       async () => {
-        return await fetchAllUnits();
+        return fetchAllUnits();
       },
       {
+        pending: (state) => {
+          state.loading = true;
+          state.error = null;
+        },
+
         fulfilled: (state, action) => {
           state.unitsList = action.payload;
           state.loading = false;
           state.error = null;
         },
-        pending: (state) => {
-          state.loading = true;
-          state.error = null;
-        },
+
         rejected: (state, action) => {
-          state.error = action.error?.message || "Fehler beim Laden der Maßeinheiten.";
           state.loading = false;
+          state.error =
+            action.error?.message || "Fehler beim Laden der Maßeinheiten.";
         },
-      }
+      },
     ),
 
     addUnit: create.asyncThunk(
       async (newUnit: NewUnitOfMeasurementDto) => {
-        return await fetchCreateUnit(newUnit);
+        return fetchCreateUnit(newUnit);
       },
       {
-        fulfilled: (state, action) => {
-          state.selectedUnit = action.payload;
-          state.loading = false;
-          state.error = null;
-        },
         pending: (state) => {
           state.loading = true;
           state.error = null;
         },
-        rejected: (state, action) => {
-          state.error = action.error?.message || "Fehler beim Erstellen der Maßeinheit.";
+
+        fulfilled: (state, action) => {
+          state.unitsList.push(action.payload);
+          state.unitsList.sort((a, b) =>
+            a.name.localeCompare(b.name, "de", {
+              sensitivity: "base",
+            }),
+          );
           state.loading = false;
+          state.error = null;
         },
-      }
+
+        rejected: (state, action) => {
+          state.loading = false;
+          state.error =
+            action.error?.message || "Fehler beim Erstellen der Maßeinheit.";
+        },
+      },
     ),
 
     getUnitById: create.asyncThunk(
       async (id: number) => {
-        return await fetchUnitById(id);
+        return fetchUnitById(id);
       },
       {
+        pending: (state) => {
+          state.loading = true;
+          state.error = null;
+        },
+
         fulfilled: (state, action) => {
           state.selectedUnit = action.payload;
           state.loading = false;
           state.error = null;
         },
-        pending: (state) => {
-          state.loading = true;
-          state.error = null;
-        },
+
         rejected: (state, action) => {
-          state.error = action.error?.message || "Fehler beim Laden der Maßeinheit.";
           state.loading = false;
+          state.error =
+            action.error?.message || "Fehler beim Laden der Maßeinheit.";
         },
-      }
+      },
     ),
 
     updateUnit: create.asyncThunk(
@@ -85,23 +107,44 @@ export const unitsOfMeasurementSlice = createAppSlice({
         id: number;
         updatedUnit: NewUnitOfMeasurementDto;
       }) => {
-        return await fetchUpdateUnit(id, updatedUnit);
+        return fetchUpdateUnit(id, updatedUnit);
       },
       {
-        fulfilled: (state, action) => {
-          state.selectedUnit = action.payload;
-          state.loading = false;
-          state.error = null;
-        },
         pending: (state) => {
           state.loading = true;
           state.error = null;
         },
-        rejected: (state, action) => {
-          state.error = action.error?.message || "Fehler beim Aktualisieren der Maßeinheit.";
+
+        fulfilled: (state, action) => {
+          const index = state.unitsList.findIndex(
+            (unit) => unit.id === action.payload.id,
+          );
+
+          if (index !== -1) {
+            state.unitsList[index] = action.payload;
+          }
+
+          state.unitsList.sort((a, b) =>
+            a.name.localeCompare(b.name, "de", {
+              sensitivity: "base",
+            }),
+          );
+
+          if (state.selectedUnit?.id === action.payload.id) {
+            state.selectedUnit = action.payload;
+          }
+
           state.loading = false;
+          state.error = null;
         },
-      }
+
+        rejected: (state, action) => {
+          state.loading = false;
+          state.error =
+            action.error?.message ||
+            "Fehler beim Aktualisieren der Maßeinheit.";
+        },
+      },
     ),
 
     deleteUnit: create.asyncThunk(
@@ -110,43 +153,54 @@ export const unitsOfMeasurementSlice = createAppSlice({
         return id;
       },
       {
-        fulfilled: (state, action) => {
-          state.unitsList = state.unitsList.filter(
-            (process) => process.id !== action.payload
-          );
-          if (
-            state.selectedUnit &&
-            state.selectedUnit.id === action.payload
-          ) {
-            state.selectedUnit = undefined;
-          }
-          state.loading = false;
-          state.error = null;
-        },
         pending: (state) => {
           state.loading = true;
           state.error = null;
         },
-        rejected: (state, action) => {
-          state.error = action.error?.message || "Fehler beim Löschen der Maßeinheit.";
+
+        fulfilled: (state, action) => {
+          state.unitsList = state.unitsList.filter(
+            (unit) => unit.id !== action.payload,
+          );
+
+          if (state.selectedUnit?.id === action.payload) {
+            state.selectedUnit = undefined;
+          }
+
           state.loading = false;
+          state.error = null;
         },
-      }
+
+        rejected: (state, action) => {
+          state.loading = false;
+          state.error =
+            action.error?.message || "Fehler beim Löschen der Maßeinheit.";
+        },
+      },
     ),
   }),
 
   selectors: {
     selectUnits: (state: UnitsOfMeasurementState) => state.unitsList,
+
     selectUnit: (state: UnitsOfMeasurementState) => state.selectedUnit,
+
     selectLoading: (state: UnitsOfMeasurementState) => state.loading,
+
     selectError: (state: UnitsOfMeasurementState) => state.error,
+
     selectUnitById: (state: UnitsOfMeasurementState, id: number) =>
-      state.unitsList.find((s) => s.id === id),
+      state.unitsList.find((unit) => unit.id === id),
   },
 });
 
-export const { getUnits, addUnit, getUnitById, updateUnit, deleteUnit} = unitsOfMeasurementSlice.actions;
-export const {selectUnits, selectUnit, selectLoading, selectError, selectUnitById} = unitsOfMeasurementSlice.selectors;
+export const { getUnits, addUnit, getUnitById, updateUnit, deleteUnit } =
+  unitsOfMeasurementSlice.actions;
 
-
-
+export const {
+  selectUnits,
+  selectUnit,
+  selectLoading,
+  selectError,
+  selectUnitById,
+} = unitsOfMeasurementSlice.selectors;

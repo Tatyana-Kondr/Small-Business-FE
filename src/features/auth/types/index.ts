@@ -14,7 +14,7 @@ export interface UserDto {
 export interface NewUserDto {
   username: string;
   password: string;
-  email?: string; 
+  email?: string;
 }
 
 export interface UpdateUserDto {
@@ -27,10 +27,9 @@ export interface UpdateUserRoleDto {
 }
 
 export interface ChangePasswordDto {
-  oldPassword: string;
+  oldPassword?: string;
   newPassword: string;
 }
-
 
 // ========== DTO для аутентификации ==========
 export interface AuthRequestDto {
@@ -44,11 +43,11 @@ export interface AuthResponseDto {
   role: Role;
 }
 
-
 // Состояние авторизации в хранилище
 export interface AuthState {
-  usersList: UserDto[],
+  usersList: UserDto[];
   user: UserDto | null;
+  selectedUser: UserDto | null;
   accessToken: string | null;
   status: "idle" | "loading" | "authenticated" | "failed";
   error: string | null;
@@ -56,4 +55,7 @@ export interface AuthState {
   registerErrorMessage?: string;
   isSessionChecked: boolean;
   isAuthenticated: boolean;
+  loginRequestId: string | null;
+  initializationRequestId: string | null;
+  initializationSessionVersion: number | null;
 }

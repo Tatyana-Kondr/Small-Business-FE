@@ -1,4 +1,5 @@
 import { createAppSlice } from "../../redux/createAppSlice";
+import { HttpError } from "../../utils/errors/handleFetchError";
 import {
   fetchAddPayment,
   fetchAllPayments,
@@ -13,7 +14,6 @@ import {
   fetchUpdatePayment,
 } from "./api";
 import { NewPaymentDto, PaymentsState } from "./types";
-
 
 const initialState: PaymentsState = {
   paymentsList: [],
@@ -35,57 +35,59 @@ export const paymentsSlice = createAppSlice({
   initialState,
   reducers: (create) => ({
     getPayments: create.asyncThunk(
-  async ({
-    page,
-    size = 15,
-    sort = ["paymentDate,DESC", "id,DESC"],
-  }: {
-    page: number;
-    size?: number;
-    sort?: string[];
-  }) => {
-    return await fetchAllPayments(
-      page,
-      size,
-      sort
-    );
-  },
-  {
-    fulfilled: (state, action) => {
-      state.paymentsList = action.payload.content;
-      state.totalPages = action.payload.totalPages;
-      state.currentPage =
-        action.payload.pageable.pageNumber;
+      async ({
+        page,
+        size = 15,
+        sort = ["paymentDate,DESC", "id,DESC"],
+      }: {
+        page: number;
+        size?: number;
+        sort?: string[];
+      }) => {
+        return await fetchAllPayments(page, size, sort);
+      },
+      {
+        fulfilled: (state, action) => {
+          state.paymentsList = action.payload.content;
+          state.totalPages = action.payload.totalPages;
+          state.currentPage = action.payload.pageable.pageNumber;
 
-      state.pageSize =
-        action.meta.arg.size ?? 15;
+          state.pageSize = action.meta.arg.size ?? 15;
 
-      state.currentSort =
-        action.meta.arg.sort ??
-        ["paymentDate,DESC", "id,DESC"];
+          state.currentSort = action.meta.arg.sort ?? [
+            "paymentDate,DESC",
+            "id,DESC",
+          ];
 
-      state.loading = false;
-      state.error = null;
-    },
+          state.loading = false;
+          state.error = null;
+        },
 
-    pending: (state) => {
-      state.loading = true;
-      state.error = null;
-    },
+        pending: (state) => {
+          state.loading = true;
+          state.error = null;
+        },
 
-    rejected: (state, action) => {
-      state.error =
-        action.error.message ||
-        "Fehler beim Laden der Zahlungen.";
+        rejected: (state, action) => {
+          state.error =
+            action.error.message || "Fehler beim Laden der Zahlungen.";
 
-      state.loading = false;
-    },
-  }
-),
+          state.loading = false;
+        },
+      },
+    ),
 
     addPayment: create.asyncThunk(
-      async (newPayment: NewPaymentDto) => {
-        return await fetchAddPayment(newPayment);
+      async (newPayment: NewPaymentDto, { rejectWithValue }) => {
+        try {
+          return await fetchAddPayment(newPayment);
+        } catch (error) {
+          if (error instanceof HttpError) {
+            return rejectWithValue(error.data ?? { message: error.message });
+          }
+
+          throw error;
+        }
       },
       {
         pending: (state) => {
@@ -100,9 +102,20 @@ export const paymentsSlice = createAppSlice({
         },
 
         rejected: (state, action) => {
-          state.error =
-            action.error.message || "Fehler beim Hinzufügen der Zahlung.";
           state.loading = false;
+
+          const payload = action.payload as
+            | {
+                message?: string;
+                errors?: Array<{ message?: string }>;
+              }
+            | undefined;
+
+          state.error =
+            payload?.message ||
+            payload?.errors?.[0]?.message ||
+            (action.payload === undefined ? action.error.message : undefined) ||
+            "Fehler beim Hinzufügen der Zahlung.";
         },
       },
     ),
@@ -130,129 +143,127 @@ export const paymentsSlice = createAppSlice({
     ),
 
     searchPayments: create.asyncThunk(
-  async ({
-    query,
-    page,
-    size = 15,
-    sort = ["paymentDate,DESC", "id,DESC"],
-  }: {
-    query: string;
-    page: number;
-    size?: number;
-    sort?: string[];
-  }) => {
-    return await fetchSearchPayments(
-      query,
-      page,
-      size,
-      sort
-    );
-  },
-  {
-    fulfilled: (state, action) => {
-      state.paymentsList = action.payload.content;
-      state.totalPages = action.payload.totalPages;
-      state.currentPage =
-        action.payload.pageable.pageNumber;
+      async ({
+        query,
+        page,
+        size = 15,
+        sort = ["paymentDate,DESC", "id,DESC"],
+      }: {
+        query: string;
+        page: number;
+        size?: number;
+        sort?: string[];
+      }) => {
+        return await fetchSearchPayments(query, page, size, sort);
+      },
+      {
+        fulfilled: (state, action) => {
+          state.paymentsList = action.payload.content;
+          state.totalPages = action.payload.totalPages;
+          state.currentPage = action.payload.pageable.pageNumber;
 
-      state.pageSize =
-        action.meta.arg.size ?? 15;
+          state.pageSize = action.meta.arg.size ?? 15;
 
-      state.currentSort =
-        action.meta.arg.sort ??
-        ["paymentDate,DESC", "id,DESC"];
+          state.currentSort = action.meta.arg.sort ?? [
+            "paymentDate,DESC",
+            "id,DESC",
+          ];
 
-      state.loading = false;
-      state.error = null;
-    },
+          state.loading = false;
+          state.error = null;
+        },
 
-    pending: (state) => {
-      state.loading = true;
-      state.error = null;
-    },
+        pending: (state) => {
+          state.loading = true;
+          state.error = null;
+        },
 
-    rejected: (state, action) => {
-      state.error =
-        action.error?.message ||
-        "Fehler beim Laden der Zahlungen.";
+        rejected: (state, action) => {
+          state.error =
+            action.error?.message || "Fehler beim Laden der Zahlungen.";
 
-      state.loading = false;
-    },
-  }
-),
+          state.loading = false;
+        },
+      },
+    ),
 
     getPaymentsByFilter: create.asyncThunk(
-  async ({
-    page,
-    size = 15,
-    sort = ["paymentDate,DESC", "id,DESC"],
-    ...filters
-  }: {
-    page: number;
-    size?: number;
-    sort?: string[];
+      async ({
+        page,
+        size = 15,
+        sort = ["paymentDate,DESC", "id,DESC"],
+        ...filters
+      }: {
+        page: number;
+        size?: number;
+        sort?: string[];
 
-    id?: number;
-    customerId?: number;
-    customerName?: string;
-    saleId?: number;
-    purchaseId?: number;
-    documentId?: number;
-    documentNumber?: string;
-    amount?: number;
-    startDate?: string;
-    endDate?: string;
-    searchQuery?: string;
-  }) => {
-    return await fetchPaymentsByFilter(
-      page,
-      size,
-      sort,
-      filters
-    );
-  },
-  {
-    fulfilled: (state, action) => {
-      state.paymentsList = action.payload.content;
-      state.totalPages = action.payload.totalPages;
-      state.currentPage =
-        action.payload.pageable.pageNumber;
+        id?: number;
+        customerId?: number;
+        customerName?: string;
+        saleId?: number;
+        purchaseId?: number;
+        documentId?: number;
+        documentNumber?: string;
+        amount?: number;
+        startDate?: string;
+        endDate?: string;
+        searchQuery?: string;
+      }) => {
+        return await fetchPaymentsByFilter(page, size, sort, filters);
+      },
+      {
+        fulfilled: (state, action) => {
+          state.paymentsList = action.payload.content;
+          state.totalPages = action.payload.totalPages;
+          state.currentPage = action.payload.pageable.pageNumber;
 
-      state.pageSize =
-        action.meta.arg.size ?? 15;
+          state.pageSize = action.meta.arg.size ?? 15;
 
-      state.currentSort =
-        action.meta.arg.sort ??
-        ["paymentDate,DESC", "id,DESC"];
+          state.currentSort = action.meta.arg.sort ?? [
+            "paymentDate,DESC",
+            "id,DESC",
+          ];
 
-      state.loading = false;
-      state.error = null;
-    },
+          state.loading = false;
+          state.error = null;
+        },
 
-    pending: (state) => {
-      state.loading = true;
-      state.error = null;
-    },
+        pending: (state) => {
+          state.loading = true;
+          state.error = null;
+        },
 
-    rejected: (state, action) => {
-      state.error =
-        action.error?.message ||
-        "Fehler beim Abrufen von Zahlungen nach Filter.";
+        rejected: (state, action) => {
+          state.error =
+            action.error?.message ||
+            "Fehler beim Abrufen von Zahlungen nach Filter.";
 
-      state.loading = false;
-    },
-  }
-),
+          state.loading = false;
+        },
+      },
+    ),
 
     updatePayment: create.asyncThunk(
-      async ({
-        id,
-        updatePaymentDto,
-      }: {
-        id: number;
-        updatePaymentDto: NewPaymentDto;
-      }) => {
-        return await fetchUpdatePayment(id, updatePaymentDto);
+      async (
+        {
+          id,
+          updatePaymentDto,
+        }: {
+          id: number;
+          updatePaymentDto: NewPaymentDto;
+        },
+        { rejectWithValue },
+      ) => {
+        try {
+          return await fetchUpdatePayment(id, updatePaymentDto);
+        } catch (error) {
+          if (error instanceof HttpError) {
+            return rejectWithValue(error.data ?? { message: error.message });
+          }
+
+          throw error;
+        }
       },
       {
         pending: (state) => {
@@ -272,9 +283,20 @@ export const paymentsSlice = createAppSlice({
         },
 
         rejected: (state, action) => {
-          state.error =
-            action.error.message || "Fehler beim Bearbeiten der Zahlung.";
           state.loading = false;
+
+          const payload = action.payload as
+            | {
+                message?: string;
+                errors?: Array<{ message?: string }>;
+              }
+            | undefined;
+
+          state.error =
+            payload?.message ||
+            payload?.errors?.[0]?.message ||
+            (action.payload === undefined ? action.error.message : undefined) ||
+            "Fehler beim Bearbeiten der Zahlung.";
         },
       },
     ),

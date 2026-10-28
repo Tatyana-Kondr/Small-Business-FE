@@ -35,6 +35,8 @@ export interface PaymentPrefillDto {
   customerName: string;
   amount: number;
   amountLeft: number;
+  alreadyPaid: number;
+  overpayment: number;
   saleId: number;
   purchaseId: number;
   documentId: number;
@@ -46,8 +48,8 @@ export interface PaymentPrefillDto {
 export interface PaymentMethod {
   id: number;
   provider: string;
-  maskedNumber: string;
-  details: string;
+  maskedNumber: string | null;
+  details: string | null;
   active: boolean;
 }
 
@@ -84,6 +86,7 @@ export interface PaymentsState {
 
 export interface PaymentMethodsState {
   paymentMethodsList: PaymentMethod[];
+  activePaymentMethodsList: PaymentMethod[];
   selectedPaymentMethod: PaymentMethod | undefined;
   loading: boolean;
   error: string | null;

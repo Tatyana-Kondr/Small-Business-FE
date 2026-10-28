@@ -1,21 +1,18 @@
-import { useState } from "react";
-import {
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
-} from "@mui/material";
+import type { ReactNode } from "react";
+
 import { useAppDispatch } from "../../../redux/hooks";
-import { showSuccessToast } from "../../../utils/toast";
-import { handleApiError } from "../../../utils/handleApiError";
 import { deleteProduction } from "../productionsSlice";
+
+import { showSuccessToast } from "../../../utils/toast";
+import { handleApiError } from "../../../utils/errors/handleApiError";
+
+import ConfirmDeleteDialog from "../../../components/ConfirmDeleteDialog";
+import { formatLocalDate } from "../../../utils/formatLocalDate";
 
 interface DeleteProductionProps {
   productionId: number;
   dateOfProduction: string;
-  trigger?: React.ReactNode;
+  trigger?: ReactNode;
 }
 
 export default function DeleteProduction({
@@ -24,80 +21,25 @@ export default function DeleteProduction({
   trigger,
 }: DeleteProductionProps) {
   const dispatch = useAppDispatch();
-  const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
 
-  const handleOpen = () => setOpen(true);
-  const handleClose = () => setOpen(false);
-
-  const handleDelete = async () => {
-    setLoading(true);
+  const handleDelete = async (): Promise<void> => {
     try {
       await dispatch(deleteProduction(productionId)).unwrap();
-      showSuccessToast("Erfolg", `Die Herstellung wurde erfolgreich gelöscht.`);
-      handleClose();
-    } catch (error: any) {
+
+      showSuccessToast("Erfolg", "Die Herstellung wurde erfolgreich gelöscht.");
+    } catch (error) {
       handleApiError(error, "Fehler beim Löschen der Herstellung.");
-    } finally {
-      setLoading(false);
+
+      throw error;
     }
   };
 
-  return (
-    <>
-      {trigger ? (
-        <span
-          onClick={(e) => {
-            e.stopPropagation();
-            handleOpen();
-          }}
-          style={{ cursor: "pointer", display: "inline-flex" }}
-        >
-          {trigger}
-        </span>
-      ) : (
-        <Button
-          variant="outlined"
-          color="error"
-          size="small"
-          onClick={handleOpen}
-          sx={{
-            "&:hover": {
-              borderColor: "#d32f2f",
-              backgroundColor: "#fddede",
-            },
-          }}
-        >
-          Löschen
-        </Button>
-      )}
+  const formattedDate = formatLocalDate(dateOfProduction);
 
-      <Dialog open={open} onClose={handleClose}>
-        <DialogTitle sx={{ color: "error.main", fontWeight: "bold" }}>
-          ⚠️ WARNUNG!
-        </DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            Wollen Sie die Herstellung Nr. <strong>{productionId}</strong> vom{" "}
-            <strong>
-              {new Date(dateOfProduction).toLocaleDateString("de-DE", {
-                day: "2-digit",
-                month: "2-digit",
-                year: "numeric",
-              })}
-            </strong>{" "}
-            wirklich löschen?
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleClose} color="primary">
-            Abbrechen
-          </Button>
-          <Button onClick={handleDelete} color="error" disabled={loading}>
-            {loading ? "Löschung..." : "Löschen"}
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </>
+  return (
+    <ConfirmDeleteDialog trigger={trigger} onConfirm={handleDelete}>
+      Möchten Sie die Herstellung Nr. <strong>{productionId}</strong> vom{" "}
+      <strong>{formattedDate}</strong> wirklich löschen?
+    </ConfirmDeleteDialog>
   );
 }

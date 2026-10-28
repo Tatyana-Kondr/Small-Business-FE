@@ -8,9 +8,11 @@ export interface Purchase {
     document: TypeOfDocument
     documentNumber: string
     subtotal: number
+    discountAmount: number
     taxSum: number
     total: number
     paymentStatus: string
+    hasPayments: boolean
     purchaseItems: PurchaseItem[]
 }
 
@@ -19,10 +21,9 @@ export interface NewPurchaseDto {
     vendorName?: string
     purchasingDate: string
     type: string
-    documentId?: number
+    documentId: number
     document?: TypeOfDocument
     documentNumber: string
-    paymentStatus: string
     purchaseItems: NewPurchaseItemDto[]
 }
 
@@ -34,6 +35,8 @@ export interface PurchaseItem {
     purchaseId: number
     quantity: number
     unitPrice: number
+    discount: number
+    discountAmount: number
     totalPrice: number
     taxPercentage: number
     taxAmount: number
@@ -44,15 +47,30 @@ export interface PurchaseItem {
 export interface NewPurchaseItemDto {
     productId: number
     productName: string
-    purchaseId: number
     quantity: number
     unitPrice: number
-    totalPrice: number
+    discount: number
     taxPercentage: number
-    taxAmount: number
-    totalAmount: number
-    position: number
 }
+
+export interface PurchaseFormItem extends NewPurchaseItemDto {
+  position: number;
+  discountAmount: number;
+  totalPrice: number;
+  taxAmount: number;
+  totalAmount: number;
+}
+
+export type PurchaseFormDto = Omit<NewPurchaseDto, "purchaseItems"> & {
+    paymentStatus: string;
+    hasPayments: boolean;
+    purchaseItems: PurchaseFormItem[];
+};
+
+export type CreatePurchaseFormDto = Omit<
+    PurchaseFormDto,
+    "paymentStatus" | "hasPayments"
+>;
 
 export type PurchaseDocumentDto = {
   id: number;

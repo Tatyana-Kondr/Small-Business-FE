@@ -1,4 +1,6 @@
 import TextField from "@mui/material/TextField";
+import Tooltip from "@mui/material/Tooltip";
+import { colors } from "../styles/colors";
 
 interface Props {
   value: number;
@@ -8,6 +10,8 @@ interface Props {
   max?: number;
   step?: number;
   align?: "left" | "center" | "right";
+  error?: boolean;
+  errorText?: string;
 }
 
 export default function CompactNumberCell({
@@ -18,75 +22,103 @@ export default function CompactNumberCell({
   max,
   step = 0.01,
   align = "right",
+  error = false,
+  errorText = "",
 }: Props) {
   return (
-    <TextField
-      type="number"
-      variant="standard"
-      value={
-        Number.isFinite(Number(value))
-          ? value
-          : ""
-      }
-      disabled={disabled}
-      onChange={(e) => {
-        const rawValue = e.target.value;
-
-        if (rawValue === "") {
-          onChange(0);
-          return;
-        }
-
-        const parsedValue = Number(rawValue);
-
-        if (Number.isFinite(parsedValue)) {
-          onChange(parsedValue);
-        }
-      }}
-      onFocus={(e) => {
-        setTimeout(() => {
-          e.target.select();
-        }, 0);
-      }}
+    <Tooltip
+      title={error ? errorText : ""}
+      placement="top"
       slotProps={{
-        input: {
-          disableUnderline: true,
+        tooltip: {
+          sx: {
+            backgroundColor: colors.white,
+            color: "error.main",
+            fontSize: "0.75rem",
+            fontWeight: 500,
+            px: 1,
+            py: 0.5,
+            boxShadow: "none",
+          },
         },
-
-        htmlInput: {
-          min,
-          max,
-          step,
+        arrow: {
+          sx: {
+            color: "transparent",
+          },
         },
       }}
-      sx={{
-        width: "100%",
+    >
+      <TextField
+        type="number"
+        variant="standard"
+        value={Number.isFinite(Number(value)) ? value : ""}
+        disabled={disabled}
+        error={error}
+        onChange={(e) => {
+          const rawValue = e.target.value;
 
-        "& .MuiInputBase-root": {
+          if (rawValue === "") {
+            onChange(0);
+            return;
+          }
+
+          const parsedValue = Number(rawValue);
+
+          if (Number.isFinite(parsedValue)) {
+            onChange(parsedValue);
+          }
+        }}
+        onFocus={(e) => {
+          setTimeout(() => {
+            e.target.select();
+          }, 0);
+        }}
+        slotProps={{
+          input: {
+            disableUnderline: true,
+          },
+
+          htmlInput: {
+            min,
+            max,
+            step,
+          },
+        }}
+        sx={{
           width: "100%",
-          p: 0,
-        },
 
-        "& .MuiInputBase-input": {
-          fontSize: "0.875rem",
-          p: 0,
-          textAlign: align,
-        },
+          "& .MuiInputBase-root": {
+            width: "100%",
+            p: 0,
 
-        "& input[type=number]": {
-          MozAppearance: "textfield",
-        },
+            ...(error && {
+              outline: "1px solid",
+              outlineColor: "error.main",
+              borderRadius: "3px",
+            }),
+          },
 
-        "& input[type=number]::-webkit-outer-spin-button": {
-          WebkitAppearance: "none",
-          margin: 0,
-        },
+          "& .MuiInputBase-input": {
+            fontSize: "0.875rem",
+            p: error ? "1px 3px" : 0,
+            textAlign: align,
+          },
 
-        "& input[type=number]::-webkit-inner-spin-button": {
-          WebkitAppearance: "none",
-          margin: 0,
-        },
-      }}
-    />
+          "& input[type=number]": {
+            MozAppearance: "textfield",
+          },
+
+          "& input[type=number]::-webkit-outer-spin-button": {
+            WebkitAppearance: "none",
+            margin: 0,
+          },
+
+          "& input[type=number]::-webkit-inner-spin-button": {
+            WebkitAppearance: "none",
+            margin: 0,
+          },
+        }}
+      />
+    </Tooltip>
   );
 }

@@ -1,130 +1,240 @@
-import { NavigateFunction } from "react-router-dom";
-import { HttpError } from "./handleFetchError";
-import { store } from "../redux/store";
-import { logout, refresh } from "../features/auth/authSlice";
-import { ACCESS_TOKEN_KEY } from "./token";
+import type { NavigateFunction } from "react-router-dom";
+import { HttpError } from "./errors/handleFetchError";
+
+import {
+  clearSessionTokens,
+  getAccessToken,
+  getSessionVersion,
+  hasRefreshToken,
+  isSessionCurrent,
+  refreshSession,
+} from "../features/auth/session";
 
 let _navigate: NavigateFunction | null = null;
 
-// Функция для установки navigate из App
 export const setNavigate = (nav: NavigateFunction) => {
   _navigate = nav;
 };
 
-let isRefreshing = false;
-let refreshPromise: Promise<any> | null = null;
+let _dispatch: (() => void) | null = null;
+
+export const setClearAuthHandler = (handler: () => void) => {
+  _dispatch = handler;
+};
 
 export interface ApiFetchOptions extends RequestInit {
-  auth?: boolean; // использовать ли accessToken
+  auth?: boolean;
 }
 
+type ValidationErrorResponse = {
+  errors?: Array<{
+    field?: string;
+    message?: string;
+  }>;
+};
+
+// Чтение ответа сервера
+const parseResponse = async (response: Response): Promise<unknown> => {
+  const text = await response.text();
+
+  if (!text) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { message: text };
+  }
+};
+
+// Сообщение об ошибке backend
+const getResponseErrorMessage = (
+  responseData: unknown,
+  fallbackMessage: string,
+): string => {
+  if (
+    typeof responseData === "object" &&
+    responseData !== null &&
+    "message" in responseData &&
+    typeof responseData.message === "string" &&
+    responseData.message
+  ) {
+    return responseData.message;
+  }
+
+  const validationData = responseData as ValidationErrorResponse;
+
+  if (Array.isArray(validationData?.errors)) {
+    const validationMessage = validationData.errors.find(
+      (error) =>
+        typeof error?.message === "string" && error.message.trim().length > 0,
+    )?.message;
+
+    if (validationMessage) {
+      return validationMessage;
+    }
+  }
+
+  if (
+    Array.isArray(validationData?.errors) &&
+    validationData.errors.length > 0
+  ) {
+    const validationMessage = validationData.errors[0]?.message;
+
+    if (validationMessage) {
+      return validationMessage;
+    }
+  }
+
+  return fallbackMessage;
+};
+
+// Локальное завершение сессии
+const clearSession = () => {
+  clearSessionTokens();
+
+ _dispatch?.();
+
+  _navigate?.("/login", { replace: true });
+};
+
+const sessionEndedError = () =>
+  new HttpError("Die Sitzung wurde beendet.", 401);
 
 export async function apiFetch<T>(
   url: string,
   options: ApiFetchOptions = {},
-  fallbackMessage = "Ein unbekannter Fehler ist aufgetreten."
+  fallbackMessage = "Ein unbekannter Fehler ist aufgetreten.",
 ): Promise<T> {
-  const headers = new Headers(options.headers);
+  const { auth = false, headers: optionHeaders, ...fetchOptions } = options;
 
-  // Если нужен токен
-  if (options.auth) {
-    const token = localStorage.getItem(ACCESS_TOKEN_KEY);
-    if (token) headers.set("Authorization", `Bearer ${token}`);
-  }
+  // Состояние сессии в момент начала запроса
+  const originalToken = auth ? getAccessToken() : null;
 
-  // JSON по умолчанию
-  if (!headers.has("Content-Type") && !(options.body instanceof FormData)) {
-    headers.set("Content-Type", "application/json");
-  }
+  const requestSessionVersion = getSessionVersion();
 
-  const doFetch = async () => {
+  // Проверка актуальности сессии
+  const checkSession = () => {
+    if (auth && !isSessionCurrent(requestSessionVersion)) {
+      throw sessionEndedError();
+    }
+  };
+
+  // Отправка HTTP-запроса
+  const executeRequest = async (token: string | null): Promise<T> => {
+    checkSession();
+
+    const headers = new Headers(optionHeaders);
+
+    if (auth) {
+      if (token) {
+        headers.set("Authorization", `Bearer ${token}`);
+      } else {
+        headers.delete("Authorization");
+      }
+    }
+
+    // FormData: Content-Type устанавливает браузер
+    if (
+      fetchOptions.body != null &&
+      !headers.has("Content-Type") &&
+      !(fetchOptions.body instanceof FormData)
+    ) {
+      headers.set("Content-Type", "application/json");
+    }
+
     const response = await fetch(url, {
-      ...options,
+      ...fetchOptions,
       headers,
-    //  credentials: "include", // чтобы refreshToken кука ушла
     });
 
-    let responseData: any = {};
-    const text = await response.text();
-    try {
-      responseData = text ? JSON.parse(text) : {};
-    } catch {
-      responseData = { message: text };
-    }
+    const responseData = await parseResponse(response);
+
+    // Запрос мог завершиться после logout
+    checkSession();
 
     if (!response.ok) {
-      throw new HttpError(responseData?.message || fallbackMessage, response.status, responseData);
+      throw new HttpError(
+        getResponseErrorMessage(responseData, fallbackMessage),
+        response.status,
+        responseData,
+      );
     }
 
-    if (response.status === 204) return undefined as unknown as T;
+    if (response.status === 204) {
+      return undefined as T;
+    }
+
     return responseData as T;
   };
 
   try {
-    return await doFetch();
-  } catch (err: any) {
-    if (!(err instanceof HttpError)) throw err;
-
-    if (err.status === 403) {
-      // если это refresh/me — да, считаем сессию умерла
-      if (url.endsWith("/refresh")) {
-        localStorage.removeItem(ACCESS_TOKEN_KEY);
-        localStorage.removeItem("refreshToken");
-        store.dispatch(logout());
-        if (_navigate) _navigate("/login", { replace: true });
-      }
-      throw err;
+    return await executeRequest(originalToken);
+  } catch (error) {
+    // Обрабатываем только HTTP-ошибки
+    if (!(error instanceof HttpError)) {
+      throw error;
     }
 
-    // === 401 → пробуем refresh ===
-    if (err.status === 401) {
-      // запрет на refresh для /login и /refresh
-      if (url.endsWith("/login") || url.endsWith("/refresh")) {
-        throw err;
-      }
-
-      try {
-        // если уже идёт рефреш → ждём его
-        if (isRefreshing && refreshPromise) {
-          await refreshPromise;
-        } else {
-          isRefreshing = true;
-          refreshPromise = store.dispatch(refresh()).unwrap();
-          await refreshPromise;
-        }
-
-        // после успешного refresh пробуем запрос снова
-        const retryHeaders = new Headers(options.headers);
-        const newToken = localStorage.getItem(ACCESS_TOKEN_KEY);
-        if (newToken && options.auth) {
-          retryHeaders.set("Authorization", `Bearer ${newToken}`);
-        }
-
-        const retryResponse = await fetch(url, {
-          ...options,
-          headers: retryHeaders,
-          //credentials: "include",
-        });
-
-        if (!retryResponse.ok) {
-          throw new HttpError("Retry failed", retryResponse.status);
-        }
-
-        const retryText = await retryResponse.text();
-        return retryText ? JSON.parse(retryText) : ({} as T);
-      } catch (refreshErr) {
-        // если refresh тоже упал → logout
-        localStorage.removeItem(ACCESS_TOKEN_KEY);
-        localStorage.removeItem("refreshToken");
-        store.dispatch(logout());
-        if (_navigate) _navigate("/login", { replace: true });
-        throw refreshErr;
-      } finally {
-        isRefreshing = false;
-        refreshPromise = null;
-      }
+    // Refresh только для защищённых запросов с 401
+    if (
+      error.status !== 401 ||
+      !auth ||
+      url.endsWith("/login") ||
+      url.endsWith("/refresh")
+    ) {
+      throw error;
     }
 
-    throw err;
+    // Не обновляем токен старой сессии
+    checkSession();
+
+    // Если refresh token отсутствует
+    if (!hasRefreshToken()) {
+      clearSession();
+      throw sessionEndedError();
+    }
+
+    const currentToken = getAccessToken();
+
+    // Другой запрос уже обновил access token
+    if (originalToken && currentToken && originalToken !== currentToken) {
+      checkSession();
+      return executeRequest(currentToken);
+    }
+
+    const originalRefreshToken = localStorage.getItem("refreshToken");
+
+    let newToken: string;
+
+    try {
+      // Один общий refresh для параллельных запросов
+      newToken = await refreshSession();
+    } catch (refreshError) {
+      const currentRefreshToken = localStorage.getItem("refreshToken");
+
+      // Очищаем только актуальную сессию
+      if (
+        isSessionCurrent(requestSessionVersion) &&
+        originalRefreshToken === currentRefreshToken
+      ) {
+        clearSession();
+      }
+
+      throw refreshError;
+    }
+
+    // Проверяем, что пользователь не вышел
+    // во время обновления токена
+    checkSession();
+
+    if (getAccessToken() !== newToken) {
+      throw sessionEndedError();
+    }
+
+    // Повторяем исходный запрос один раз.
+    // Повторный 401 передаётся вызывающему коду.
+    return executeRequest(newToken);
   }
 }

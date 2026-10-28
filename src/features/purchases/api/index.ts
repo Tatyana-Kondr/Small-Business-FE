@@ -123,7 +123,7 @@ export async function fetchPurchasesByFilter(
 export async function fetchUpdatePurchasePaymentStatus(id: number): Promise<Purchase> {
   return apiFetch<Purchase>(
     `/api/purchases/${id}/update-payment-status`,
-    { method: "PATCH", credentials: "include", auth: true },
+    { method: "PATCH", auth: true },
     `Fehler beim Aktualisieren des Zahlungsstatus für Bestellung ${id}.`
   );
 }
@@ -202,50 +202,11 @@ export async function fetchPurchaseDocuments(
 // Загрузить документ
 export async function fetchUploadPurchaseDocument(
   purchaseId: number,
-  file: File,
-  documentName: string,
-  vendorName: string,
-  purchaseDate: string
+  file: File
 ): Promise<PurchaseDocumentDto> {
-
-  const sanitizeFileName = (value: string) =>
-    value
-      .trim()
-      .replace(/[<>:"/\\|?*]/g, "")
-      .replace(/\s+/g, "_");
-
-  const safeDocumentName =
-    sanitizeFileName(documentName) || "Dokument";
-
-  const safeVendorName =
-    sanitizeFileName(vendorName) || "Lieferant";
-
-  const safePurchaseDate =
-    sanitizeFileName(purchaseDate) || "Datum";
-
-  const extension =
-    file.name.split(".").pop()?.toLowerCase() || "pdf";
-
-  const newFileName =
-    `${safeDocumentName}_${safeVendorName}_${safePurchaseDate}_${purchaseId}.${extension}`;
-
-  const renamedFile = new File(
-    [file],
-    newFileName,
-    {
-      type: file.type,
-    }
-  );
-
-  console.log("Original file:", file.name);
-console.log("New file:", renamedFile.name);
-console.log("Document name:", documentName);
-console.log("Vendor name:", vendorName);
-console.log("Purchase date:", purchaseDate);
-
   const formData = new FormData();
 
-  formData.append("file", renamedFile);
+  formData.append("file", file);
 
   return apiFetch<PurchaseDocumentDto>(
     `/api/purchases/${purchaseId}/documents`,

@@ -1,31 +1,56 @@
-import { Box, Paper, styled, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button, Container, Select, MenuItem, IconButton, Tooltip, Dialog } from "@mui/material";
+import {
+  Box,
+  Button,
+  Container,
+  IconButton,
+  MenuItem,
+  Paper,
+  Select,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableRow,
+  Tooltip,
+} from "@mui/material";
+
 import { useEffect, useState } from "react";
-import { changePassword, getAllUsers, selectUsers, updateUser, updateUserRole } from "../authSlice";
-import { ChangePasswordDto, Role, UpdateUserDto, UserDto } from "../types";
-import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
-import ChangePasswordPanel from "./ChangePasswordPanel";
+
 import EditIcon from "@mui/icons-material/Edit";
 import VpnKeyIcon from "@mui/icons-material/VpnKey";
+
+import {
+  changePassword,
+  getAllUsers,
+  selectUsers,
+  updateUser,
+  updateUserRole,
+} from "../authSlice";
+
+import { ChangePasswordDto, Role, UpdateUserDto, UserDto } from "../types";
+
+import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
+
+import ChangePasswordPanel from "./ChangePasswordPanel";
 import EditUser from "./EditUser";
 import Register from "../../../components/Register";
 
+import { compactPageToolbarStyle } from "../../../styles/formStyles";
 
-const StyledTableHead = styled(TableHead)(({
-  backgroundColor: "#1a3d6d",
-  "& th": {
-    color: "white",
-    fontWeight: "bold",
-    borderRight: "1px solid #ddd",
-    textAlign: "center"
-  },
-}));
-const StyledTableRow = styled(TableRow)({
-  backgroundColor: "#ffffff",
-  "&:hover": {
-    backgroundColor: "#f5f5f5", // Подсветка строки при наведении
-    cursor: "pointer",
-  },
-});
+import {
+  actionIconButtonStyle,
+  cellStyle,
+  centerCellStyle,
+  compactTableContainerStyle,
+  compactTableStyle,
+  fixedCellWidth,
+  leftBorderCellStyle,
+  StyledTableHead,
+  tableRowHoverStyle,
+} from "../../../styles/tableStyles";
+
+import { primaryButtonStyle } from "../../../styles/buttonStyles";
+import { handleApiError } from "../../../utils/errors/handleApiError";
 
 export default function UsersList() {
   const dispatch = useAppDispatch();
@@ -34,35 +59,69 @@ export default function UsersList() {
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
-  const [passwordError, setPasswordError] = useState<string | null>(null);
   const [editingUser, setEditingUser] = useState<UserDto | null>(null);
   const [showRegister, setShowRegister] = useState(false);
 
   useEffect(() => {
-    dispatch(getAllUsers()).unwrap().catch(console.error);
+    dispatch(getAllUsers())
+      .unwrap()
+      .catch((error) => {
+        handleApiError(error, "Die Benutzerliste konnte nicht geladen werden.");
+      });
   }, [dispatch]);
 
-  const handleRoleChange = (user: UserDto, newRole: Role) => {
-    if (user.role === newRole) return;
-    dispatch(updateUserRole({ id: user.id, role: newRole }));
+  const handleRoleChange = async (user: UserDto, newRole: Role) => {
+    if (user.role === newRole) {
+      return;
+    }
+
+    try {
+      await dispatch(
+        updateUserRole({
+          id: user.id,
+          role: newRole,
+        }),
+      ).unwrap();
+    } catch (error) {
+      handleApiError(error, "Die Benutzerrolle konnte nicht geändert werden.");
+    }
   };
 
   const handleOpenChangePassword = (userId: number) => {
     setSelectedUserId(userId);
     setShowChangePassword(true);
-  }; 
-  
- const handleChangePassword = (dto: ChangePasswordDto) => {
-  if (!selectedUserId) return;
-  setPasswordLoading(true);
-  setPasswordError(null);
+  };
 
-  dispatch(changePassword({ id: selectedUserId, dto }))
-    .unwrap()
-    .then(() => setShowChangePassword(false))
-    .catch((err: any) => setPasswordError(err.message || "Fehler beim Ändern des Passworts."))
-    .finally(() => setPasswordLoading(false));
-};
+  const handleCloseChangePassword = () => {
+    if (passwordLoading) return;
+
+    setShowChangePassword(false);
+    setSelectedUserId(null);
+  };
+
+  const handleChangePassword = async (
+    dto: ChangePasswordDto,
+  ): Promise<void> => {
+    if (selectedUserId === null) {
+      throw new Error("Kein Benutzer ausgewählt.");
+    }
+
+    setPasswordLoading(true);
+
+    try {
+      await dispatch(
+        changePassword({
+          id: selectedUserId,
+          dto,
+        }),
+      ).unwrap();
+
+      setShowChangePassword(false);
+      setSelectedUserId(null);
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
 
   const handleOpenRegister = () => {
     setShowRegister(true);
@@ -70,106 +129,145 @@ export default function UsersList() {
 
   const handleCloseRegister = () => {
     setShowRegister(false);
-    dispatch(getAllUsers()).unwrap().catch(console.error); 
-  }
+  };
 
   const handleEditUser = (user: UserDto) => {
     setEditingUser(user);
   };
 
-  const handleSaveUser = (updateUserDto: UpdateUserDto) => {
-    if (!editingUser) return;
+  const handleSaveUser = async (
+    updateUserDto: UpdateUserDto,
+  ): Promise<void> => {
+    if (!editingUser) {
+      return;
+    }
 
-    dispatch(updateUser({ id: editingUser.id, updateUserDto }))
-      .unwrap()
-      .then(() => setEditingUser(null))
-      .catch((err) => console.error(err));
+    await dispatch(
+      updateUser({
+        id: editingUser.id,
+        updateUserDto,
+      }),
+    ).unwrap();
+
+    setEditingUser(null);
   };
+
+  const tableWidth = 850;
 
   return (
     <Container>
-      {/* Верхняя панель */}
-      <Box display="flex" justifyContent="flex-end" alignItems="center" mb={2}>  
-        <Button variant="contained" color="primary" onClick={handleOpenRegister}>
+      <Box sx={compactPageToolbarStyle(tableWidth)}>
+        <Button
+          variant="contained"
+          onClick={handleOpenRegister}
+          sx={{
+            ...primaryButtonStyle,
+            ml: "auto",
+          }}
+        >
           Neuen Benutzer registrieren
         </Button>
       </Box>
 
-      {/* Таблица */}
-
-      <TableContainer component={Paper} sx={{ boxShadow: "none" }}>
-        <Table>
+      <TableContainer
+        component={Paper}
+        sx={compactTableContainerStyle(tableWidth)}
+      >
+        <Table sx={compactTableStyle(tableWidth)}>
           <StyledTableHead>
             <TableRow>
-              <TableCell>ID</TableCell>
+              <TableCell sx={fixedCellWidth(80)}>ID</TableCell>
               <TableCell>Username</TableCell>
-              <TableCell>E-Mail</TableCell>
-              <TableCell>Rolle</TableCell>
-              <TableCell>Aktionen</TableCell>
+              <TableCell sx={fixedCellWidth(250)}>E-Mail</TableCell>
+              <TableCell sx={fixedCellWidth(140)}>Rolle</TableCell>
+              <TableCell sx={fixedCellWidth(110)}>Aktionen</TableCell>
             </TableRow>
           </StyledTableHead>
+
           <TableBody>
             {users.length > 0 ? (
               users.map((user) => (
-                <StyledTableRow key={user.id}>
+                <TableRow key={user.id} sx={tableRowHoverStyle}>
                   <TableCell
-                    style={{
-                      padding: "6px 12px",
-                      borderRight: "1px solid #ddd",
-                      borderLeft: "1px solid #ddd",
+                    sx={{
+                      ...centerCellStyle,
+                      ...leftBorderCellStyle,
+                      ...fixedCellWidth(80),
                     }}
                   >
                     {user.id}
                   </TableCell>
-                  <TableCell
-                    style={{
-                      padding: "6px 12px",
-                      borderRight: "1px solid #ddd",
-                      borderLeft: "1px solid #ddd",
-                    }}
-                  >
-                    {user.username}
-                  </TableCell>
+
+                  <TableCell sx={cellStyle}>{user.username}</TableCell>
+
+                  <TableCell sx={cellStyle}>{user.email}</TableCell>
+
                   <TableCell
                     sx={{
-                      width: "400px",
-                      padding: "6px 12px",
-                      borderRight: "1px solid #ddd",
+                      ...cellStyle,
+                      ...fixedCellWidth(150),
                     }}
                   >
-                    {user.email}
-                  </TableCell>
-                  <TableCell sx={{ padding: "6px", borderRight: "1px solid #ddd" }}>
                     <Select
                       value={user.role}
-                      onChange={(e) => handleRoleChange(user, e.target.value as Role)}
+                      onChange={(event) =>
+                        handleRoleChange(user, event.target.value as Role)
+                      }
                       size="small"
-                      sx={{ minWidth: 120 }}
+                      sx={{
+                        minWidth: 120,
+                        height: 28,
+                        fontSize: "0.8rem",
+                        "& .MuiSelect-select": {
+                          py: 0,
+                          fontSize: "0.8rem",
+                        },
+                      }}
                     >
                       <MenuItem value="USER">USER</MenuItem>
+
                       <MenuItem value="ADMIN">ADMIN</MenuItem>
                     </Select>
                   </TableCell>
-                   <TableCell sx={{ padding: "2px 12px", borderRight: "1px solid #ddd" }}>
-                    <Box display="flex" gap={1}>
+
+                  <TableCell
+                    sx={{
+                      ...cellStyle,
+                      ...fixedCellWidth(110),
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 1,
+                      }}
+                    >
                       <Tooltip title="Bearbeiten" arrow>
-                        <IconButton onClick={() =>  handleEditUser(user)} sx={{ p: 0.5, "&:hover": { color: "#bdbdbd" } }}>
+                        <IconButton
+                          onClick={() => handleEditUser(user)}
+                          sx={actionIconButtonStyle}
+                        >
                           <EditIcon />
                         </IconButton>
                       </Tooltip>
+
                       <Tooltip title="Passwort ändern" arrow>
-                        <IconButton onClick={() => handleOpenChangePassword(user.id)}>
+                        <IconButton
+                          onClick={() => handleOpenChangePassword(user.id)}
+                          sx={actionIconButtonStyle}
+                        >
                           <VpnKeyIcon />
                         </IconButton>
                       </Tooltip>
                     </Box>
                   </TableCell>
-
-                </StyledTableRow>
+                </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={4} align="center">
+                <TableCell colSpan={5} align="center" sx={cellStyle}>
                   Keine Benutzer vorhanden
                 </TableCell>
               </TableRow>
@@ -178,30 +276,23 @@ export default function UsersList() {
         </Table>
       </TableContainer>
 
-      {showChangePassword && selectedUserId && (
-        <Dialog open={showChangePassword} onClose={() => setShowChangePassword(false)}>
-          <ChangePasswordPanel
-            userId={selectedUserId}
-            onClose={() => setShowChangePassword(false)}
-            onSubmit={handleChangePassword}
-            loading={passwordLoading}
-            error={passwordError}
-          />
-        </Dialog>
+      {showChangePassword && selectedUserId !== null && (
+        <ChangePasswordPanel
+          onClose={handleCloseChangePassword}
+          onSubmit={handleChangePassword}
+          loading={passwordLoading}
+        />
       )}
 
-      <Dialog open={!!editingUser} onClose={() => setEditingUser(null)} maxWidth="sm" fullWidth>
-        {editingUser && (
-          <EditUser
-            user={editingUser}
-            onSave={handleSaveUser}
-            onClose={() => setEditingUser(null)}
-          />
-        )}
-      </Dialog>
+      {editingUser && (
+        <EditUser
+          user={editingUser}
+          onSave={handleSaveUser}
+          onClose={() => setEditingUser(null)}
+        />
+      )}
 
       {showRegister && <Register onClose={handleCloseRegister} />}
-
     </Container>
   );
 }
